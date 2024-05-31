@@ -1,0 +1,20 @@
+utils:
+    ASK:
+        matrix2array_nosym: do not understand the point; identical
+            matrix2array
+    not sure if I need to change:
+        chemps2_to_pyscf_CIcoeffs
+        readarray (might want to expand)
+    not changed:
+        dialonalize
+        rot1el
+        rot2el_chem
+        rot2el_phys
+        commutator
+        matprod
+        adjoint
+        matrix2array
+        array2matrix
+        printarray (USE THIS ONE!!)
+
+        
