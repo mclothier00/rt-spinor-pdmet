@@ -251,7 +251,7 @@ class dynamics_driver():
             self.tot_system.glob1RDM = init_glob1RDM + 0.5*n2
             self.tot_system.mf1RDM = init_mf1RDM + 0.5*p2
             for cnt, frag in enumerate(self.tot_system.frag_list):
-                frag.rotma = init_rotmat_list[cnt] + 0.5*k2_list[cnt]
+                frag.rotmat = init_rotmat_list[cnt] + 0.5*k2_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5*m2_list[cnt]
 
             if self.laser==True:

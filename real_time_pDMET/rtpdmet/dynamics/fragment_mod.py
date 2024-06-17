@@ -18,7 +18,7 @@ class fragment():
         self.Nimp = impindx.shape[0]
         # number of impurity orbitals in fragment
         self.Nsites = Nsites
-        # total number of sites (or basis functions) in total system
+        # total number of sites (or basis functions if restricted) in total system
         self.Nele = Nele
         # total number of electrons in total system
 
@@ -35,7 +35,7 @@ class fragment():
         self.bathrange = np.arange(
             self.Nimp+self.Nvirt, 2*self.Nimp+self.Nvirt)
         self.corerange = np.arange(2*self.Nimp+self.Nvirt, self.Nsites)
-
+        
         self.last_imp = self.Nimp
         self.last_virt = self.Nimp + self.Nvirt
         self.last_bath = 2*self.Nimp + self.Nvirt
@@ -52,13 +52,14 @@ class fragment():
         '''
 
         # remove rows/columns corresponding to impurity sites from mf 1RDM
-        #mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
-        #mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
+        mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
+        mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
 
-        mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=0)
-        mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=1)
-        mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=0)
-        mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=1)
+        # this shouldn't be necessary as self.impindx should (hopefully) contain both imp spinors
+        #mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=0)
+        #mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=1)
+        #mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=0)
+        #mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=1)
         print(f'new mf1RDM: {mf1RDM}')
 
         # diagonalize environment part of 1RDM to obtain embedding
@@ -91,6 +92,7 @@ class fragment():
         for imp in range(self.Nimp):
             indx = self.impindx[imp]
             self.rotmat[indx, imp] = 1.0
+
         if self.impindx[0] > self.impindx[self.Nimp-1]:
             for imp in range(self.Nimp):
                 rev_impindx = np.flipud(self.impindx)
@@ -110,6 +112,7 @@ class fragment():
                     print("index is  ut of range, attaching zeros in the end")
                     zero_coln = np.array([np.zeros(evecs.shape[1])])
                     evecs = np.concatenate((evecs, zero_coln), axis=0)
+        
         self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
         self.env1RDM_evals = evals
     #####################################################################

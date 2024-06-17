@@ -72,10 +72,9 @@ print('E(GHF-FCI) = %.12f' % cisolver.kernel()[0])
 print('Coeff(GHF):')
 print(cisolver.kernel()[1])
 
-
 ### string indexing
 norb_alpha = norb_beta = 3
-norb_gen = 6
+norb_gen = len(myghf.mo_coeff)
 nelec = 3
 nalpha = 2
 nbeta = 1
