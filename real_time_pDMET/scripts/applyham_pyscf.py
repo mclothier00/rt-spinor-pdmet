@@ -89,7 +89,8 @@ def apply_ham_pyscf_spinor(
 #            Vmat, CI_vec, norbs, nelec)
 #    print(f'shape of temp: {temp.shape}')
 #    CIcoeffs = temp + Econst*CIcoeffs
-
+    print('apply_ham_pyscf_spinor completed with no errors')
+    exit()
     return CIcoeffs
 #####################################################################
 

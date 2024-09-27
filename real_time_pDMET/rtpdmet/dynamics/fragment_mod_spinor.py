@@ -22,9 +22,9 @@ class fragment():
         self.Nele = Nele
         # total number of electrons in total system
 
-        self.Ncore = int(Nele/2) - self.Nimp
+        self.Ncore = int(Nele) - self.Nimp
         # Number of core orbitals in fragment
-        self.Nvirt = Nsites - 2*self.Nimp - self.Ncore
+        self.Nvirt = (Nsites*2) - 2*self.Nimp - self.Ncore
         # Number of virtual orbitals in fragment
 
         # range of orbitals in embedding basis,
@@ -34,14 +34,16 @@ class fragment():
         self.virtrange = np.arange(self.Nimp, self.Nimp+self.Nvirt)
         self.bathrange = np.arange(
             self.Nimp+self.Nvirt, 2*self.Nimp+self.Nvirt)
-        self.corerange = np.arange(2*self.Nimp+self.Nvirt, self.Nsites)
-        
+        self.corerange = np.arange(2*self.Nimp+self.Nvirt, self.Nsites*2)
+
         self.last_imp = self.Nimp
         self.last_virt = self.Nimp + self.Nvirt
         self.last_bath = 2*self.Nimp + self.Nvirt
-        self.last_core = self.Nsites
+        self.last_core = self.Nsites*2
 
     #####################################################################
+
+    ## edited, not thoroughly tested
 
     def get_rotmat(self, mf1RDM):
 
@@ -50,18 +52,10 @@ class fragment():
          PING currently impurities have to be listed in ascending order
          (though dont have to be sequential)
         '''
-
         # remove rows/columns corresponding to impurity sites from mf 1RDM
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
-
-        # this shouldn't be necessary as self.impindx should (hopefully) contain both imp spinors
-        #mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=0)
-        #mf1RDM[:self.Nsites, :self.Nsites] = np.delete(mf1RDM, self.impindx, axis=1)
-        #mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=0)
-        #mf1RDM[self.Nsites:, self.Nsites:] = np.delete(mf1RDM, self.impindx, axis=1)
-        print(f'new mf1RDM: {mf1RDM}')
-
+        
         # diagonalize environment part of 1RDM to obtain embedding
         # (virtual, bath, core) orbitals
         evals, evecs = np.linalg.eigh(mf1RDM)
@@ -88,11 +82,12 @@ class fragment():
 
         # WORKS FOR SINGLE IMPURITY INDEXING
 
-        self.rotmat = np.zeros([self.Nsites, self.Nimp])
+        self.rotmat = np.zeros([2*self.Nsites, self.Nimp])
+        
         for imp in range(self.Nimp):
             indx = self.impindx[imp]
             self.rotmat[indx, imp] = 1.0
-
+        
         if self.impindx[0] > self.impindx[self.Nimp-1]:
             for imp in range(self.Nimp):
                 rev_impindx = np.flipud(self.impindx)
@@ -100,7 +95,7 @@ class fragment():
                 if indx <= evecs.shape[0]:
                     evecs = np.insert(evecs, indx, 0.0, axis=0)
                 else:
-                    print("index is  out of range, attaching zeros in the end")
+                    print("index is out of range, attaching zeros in the end")
                     zero_coln = np.array([np.zeros(evecs.shape[1])])
                     evecs = np.concatenate((evecs, zero_coln), axis=0)
         else:
@@ -109,13 +104,21 @@ class fragment():
                 if indx <= evecs.shape[0]:
                     evecs = np.insert(evecs, indx, 0.0, axis=0)
                 else:
-                    print("index is  ut of range, attaching zeros in the end")
+                    print("index is out of range, attaching zeros in the end")
                     zero_coln = np.array([np.zeros(evecs.shape[1])])
                     evecs = np.concatenate((evecs, zero_coln), axis=0)
         
         self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
         self.env1RDM_evals = evals
+        
+        # does this do anything bad? trying to use this function in rtog_transitions.py
+        rotmat = self.rotmat
+        env1RDM_evals = self.env1RDM_evals
+
+        return rotmat, env1RDM_evals
     #####################################################################
+
+    ## not changed
 
     def get_Hemb(self, h_site, V_site, hamtype=0, hubsite_indx=None):
 
@@ -214,12 +217,16 @@ class fragment():
                 V_emb[:2*self.Nimp, :2*self.Nimp, :2*self.Nimp, :2*self.Nimp]
     #####################################################################
 
+    ## not changed
+
     def add_mu_Hemb(self, mu):
         # Subroutine to add a chemical potential, mu,
         # to only the impurity sites of embedding Hamiltonian
         for i in range(self.Nimp):
             self.h_emb[i, i] += mu
     #####################################################################
+
+    ## not changed
 
     def solve_GS(self):
         # Use the embedding hamiltonian to solve for the FCI ground-state
@@ -228,11 +235,15 @@ class fragment():
             2*self.Nimp, (self.Nimp, self.Nimp))
     #####################################################################
 
+    ## not changed
+
     def get_corr1RDM(self):
         # Subroutine to get the FCI 1RDM
         self.corr1RDM = fci_mod.get_corr1RDM(
             self.CIcoeffs, 2*self.Nimp, (self.Nimp, self.Nimp))
     #####################################################################
+
+    ## not changed
 
     def get_corr12RDM(self):
         # Subroutine to get the FCI 1RDM and 2RDM
@@ -254,6 +265,8 @@ class fragment():
             corr1RDM_virt
     #####################################################################
 
+    ## not changed
+
     def eigvec_MF_check(self, mf1RDM):
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
@@ -265,6 +278,8 @@ class fragment():
         print("difference between diagonalized and identity:",
               diag-identity)
     #####################################################################
+
+    ## not changed
 
     def static_corr_calc(
             self, mf1RDM, mu, h_site, V_site, hamtype=0, hubsite_indx=None):
@@ -281,6 +296,8 @@ class fragment():
         # 5) calculate correlated 1RDM
         self.get_corr1RDM()
     #####################################################################
+
+    ## not changed
 
     def get_frag_E(self):
         '''
@@ -307,6 +324,8 @@ class fragment():
                             self.V_emb[orb1, orb2, orb3, orb4]
                             * self.corr2RDM[orb1, orb2, orb3, orb4])
     #####################################################################
+
+    ## not changed
 
     def get_iddt_corr1RDM(self, h_site, V_site, hamtype=0, hubsite_indx=None):
         '''
@@ -401,6 +420,7 @@ class fragment():
         self.iddt_corr1RDM = np.transpose(genFmat) - np.conjugate(genFmat)
     #####################################################################
 
+    ## not changed
     def get_Xmat(self, mf1RDM, ddt_mf1RDM):
 
         # Subroutine to calculate the X-matrix to propagate embedding orbitals

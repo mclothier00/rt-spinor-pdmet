@@ -41,7 +41,7 @@ class fragment():
 #####################################################################
 
     def get_rotmat(self, mf1RDM):
-        # delete raws that correspond to impurity sites
+        # delete ro contain both imp spinor contain both imp spinorssws that correspond to impurity sites
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
         # delete columns that correspond to impurity sites
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
