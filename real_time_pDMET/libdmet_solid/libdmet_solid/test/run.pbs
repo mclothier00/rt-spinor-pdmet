@@ -1,0 +1,20 @@
+#!/bin/bash -l
+
+#PBS -S /bin/bash
+#PBS -A GT-jkretchmer3-chemx
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=00:10:00
+#PBS -N name
+#PBS -e pbs_error_file.err
+#PBS -o pbs_output_file.out
+#PBS -V
+
+cd $PBS_O_WORKDIR
+
+
+module load anaconda3 
+conda activate dyehorova3
+
+python3  test_pdmet.py > test_pdmet.out
+
+
