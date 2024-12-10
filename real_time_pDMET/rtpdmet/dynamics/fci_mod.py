@@ -172,7 +172,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
     np.set_printoptions(suppress=True)
     print(f"corr1RDM from get_12rdm: \n {np.real(corr1RDM)}")
     print(f"CIcoeffs from get_12rdm: \n {np.real(CIcoeffs)}")
-    exit()
+    # exit()
 
     return corr1RDM, corr2RDM
 

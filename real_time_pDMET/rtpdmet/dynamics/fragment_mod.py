@@ -718,10 +718,6 @@ class fragment:
 
     #####################################################################
 
-    # currently changing, without thoroughly checking...
-    # NOTE: indexing for spinor fock matrices is suspicious, go
-    #       back and rederive!!
-
     def get_iddt_corr1RDM(
         self, h_site, V_site, hamtype=0, hubsite_indx=None, gen=False
     ):
@@ -833,9 +829,9 @@ class fragment:
                 # print(
                 #    f"correlated 1rdm: \n {0.5 * np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), self.corr1RDM)))}"
                 # )
-                print(f"genF when j in i/b: \n {np.real(genFmat)}")
-                print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
-                print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
+                # print(f"genF when j in i/b: \n {np.real(genFmat)}")
+                # print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
+                # print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
 
                 tmp = np.einsum(
                     "dp,pc,pe,bcde->pb",
@@ -850,7 +846,7 @@ class fragment:
                 # print(
                 #    f"generalized Fock: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), genFmat)))}"
                 # )
-                exit()
+                # exit()
 
         if gen:
             if hamtype == 0 or hamtype == 1:
@@ -883,14 +879,10 @@ class fragment:
             actrange = np.concatenate((self.imprange, self.bathrange))
             if hamtype == 0 or hamtype == 1:
                 # General hamiltonian
-                # tmp = V_MO[:, :, actrange[:, None], actrange] - np.einsum(
-                #    "acdb->abdc", V_MO[:, actrange[:, None], actrange, :]
-                # )
                 tmp = V_MO[:, :, actrange[:, None], actrange] - np.einsum(
-                    "iklj->ijkl", V_MO[:, actrange[:, None], actrange, :]
+                    "iklj->ijlk", V_MO[:, actrange, actrange[:, None], :]
                 )
-                # AFmat = np.einsum("cd,abdc->ab", self.corr1RDM, tmp)
-                AFmat = np.einsum("kl,ijkl->ij", self.corr1RDM, tmp)
+                AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
 
             # elif hamtype == 1:
             #    # Hubbard hamiltonian
@@ -918,9 +910,9 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
-                print(f"genF when j in i/b: \n {np.real(genFmat)}")
-                print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
-                print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
+                # print(f"genF when j in i/b: \n {np.real(genFmat)}")
+                # print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
+                # print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
 
                 genFmat[actrange, :] += np.einsum(
                     "iklm,jklm->ji",
@@ -934,7 +926,7 @@ class fragment:
                     self.corr2RDM,
                 )
                 # print(f"generalized Fock: \n {np.real(genFmat)}")
-                exit()
+                # exit()
 
             # elif hamtype == 1:
             # Hubbard hamiltonian

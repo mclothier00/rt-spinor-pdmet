@@ -54,11 +54,11 @@ def rtor_transition(
         tot_system.frag_list[i].rotmat = the_dmet.frag_list[i].rotmat
         tot_system.frag_list[i].CIcoeffs = the_dmet.frag_list[i].CIcoeffs
 
-        corr1, corr2 = fci_mod.get_corr12RDM(
-            tot_system.frag_list[i].CIcoeffs, Nsites, Nele, gen=False
-        )
-        print(corr1)
-        exit()
+        # corr1, corr2 = fci_mod.get_corr12RDM(
+        #    tot_system.frag_list[i].CIcoeffs, Nsites, Nele, gen=False
+        # )
+        # print(corr1)
+        # exit()
         # NOTE: TEMP, remove
         # frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=False)
         # tot_system.frag_list[i].rotmat = frag_i.get_rotmat(
@@ -145,8 +145,8 @@ def rtog_transition(
         corr1, corr2 = fci_mod.get_corr12RDM(
             tot_system.frag_list[i].CIcoeffs, tot_system.Nbasis, Nele, gen=True
         )
-        print(corr1)
-        exit()
+        # print(corr1)
+        # exit()
 
     print(
         "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
@@ -176,14 +176,13 @@ def rtog_transition(
     return tot_system
 
 
-### NOTE: will need a utog_transition:
-
-
 def concat_strings(alphastr, betastr, norb_alpha, norb_beta):
     matrix_elements = []
 
     for i in range(len(alphastr)):
         for j in range(len(betastr)):
+            det_info = []
+
             # convert binary numbers to strings and remove prefix
             alpha_str = bin(alphastr[i])[2:]
             beta_str = bin(betastr[j])[2:]
@@ -194,7 +193,13 @@ def concat_strings(alphastr, betastr, norb_alpha, norb_beta):
 
             # concatenate strings
             matrix_str = "".join(i for j in zip(beta_str, alpha_str) for i in j)
-            matrix_elements.append(int("0b" + matrix_str, 2))
+            det_info.append(int("0b" + matrix_str, 2))
+
+            # add alpha and beta strings to list matrix_elements
+            det_info.append(alphastr[i])
+            det_info.append(betastr[j])
+
+            matrix_elements.append(det_info)
 
     return matrix_elements
 
@@ -218,10 +223,45 @@ def to_gen_coeff(norb_alpha, norb_beta, norb_gen, nalpha, nbeta, coeffs):
     coeffs = np.matrix.flatten(coeffs)
 
     for i in range(len(coeffs)):
-        index = fci.cistring.str2addr(norb_gen, nelec, matrix_elements[i])
+        index = fci.cistring.str2addr(norb_gen, nelec, matrix_elements[i][0])
         new_coeff[index] = coeffs[i]
+        new_coeff[index] = coeffs[i] * coeff_parity_change(
+            matrix_elements[i][1], matrix_elements[i][2], norb_alpha, norb_beta
+        )
 
+    # print(f"new_coeff: \n {new_coeff}")
+    # exit()
     return new_coeff
+
+
+def coeff_parity_change(alphastr, betastr, nalpha, nbeta):
+    # convert binary numbers to strings and remove prefix
+    alpha_str = bin(alphastr)[2:]
+    beta_str = bin(betastr)[2:]
+
+    # adds leading zeros so both strings are of the same length
+    alpha_str = alpha_str.zfill(max(nalpha, nbeta))
+    beta_str = beta_str.zfill(max(nalpha, nbeta))
+
+    # combines alpha and beta string into one restricted string
+    res_str = beta_str + alpha_str
+    resstr = int(res_str, 2)
+
+    # if element in beta string is 1, determines parity
+    new_parity = 1
+
+    for i, bit in enumerate(reversed(res_str[:nbeta])):
+        if bit == "1":
+            rescount = int(res_str[(i + 1) :], 2)
+            rescount = alphastr
+            # print(
+            #    f"whats actually getting counted for {bin(resstr)} for {i}: {bin(rescount >> (i+1))}"
+            # )
+            parity = (-1) ** bin(rescount >> (i + 1)).count("1")
+            new_parity = new_parity * parity
+    # print(f"parity of {res_str}: {new_parity}")
+
+    return new_parity
 
 
 ## copied over from pDMET_glob.py

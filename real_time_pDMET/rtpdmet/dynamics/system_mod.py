@@ -323,7 +323,7 @@ class system:
 
         for frag in self.frag_list:
             np.set_printoptions(suppress=True)
-            print(f"corr1rdm from system_mod command: \n {np.real(frag.corr1RDM)}")
+            # print(f"corr1rdm from system_mod command: \n {np.real(frag.corr1RDM)}")
             frag.get_iddt_corr1RDM(
                 self.h_site, self.V_site, self.hamtype, self.hubsite_indx, self.gen
             )
