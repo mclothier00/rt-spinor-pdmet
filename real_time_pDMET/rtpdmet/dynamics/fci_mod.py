@@ -170,9 +170,6 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
     if gen:
         corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
     np.set_printoptions(suppress=True)
-    print(f"corr1RDM from get_12rdm: \n {np.real(corr1RDM)}")
-    print(f"CIcoeffs from get_12rdm: \n {np.real(CIcoeffs)}")
-    # exit()
 
     return corr1RDM, corr2RDM
 

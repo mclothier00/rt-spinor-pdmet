@@ -151,19 +151,23 @@ timp = 1.0
 t_implead = 1.0
 tleads = 1.0
 
-h_site_r, V_site_r = make_hams.make_ham_multi_imp_anderson_realspace(
-    Ndots,
-    NL,
-    NR,
-    Vg,
-    U_dyn,
-    timp,
-    t_implead,
-    Vbias_dyn,
-    tleads,
-    boundary,
-    Full_dyn,
-)
+h_site_r = np.asarray([[0.01 / 2, -1], [-1, 0.2]])
+# V_site_r = np.zeros([2, 2, 2, 2])
+V_site_r = 0
+
+# h_site_r, V_site_r = make_hams.make_ham_multi_imp_anderson_realspace(
+#    Ndots,
+#    NL,
+#    NR,
+#    Vg,
+#    U_dyn,
+#    timp,
+#    t_implead,
+#    Vbias_dyn,
+#    tleads,
+#    boundary,
+#    Full_dyn,
+# )
 
 # run dynamics
 if gen:

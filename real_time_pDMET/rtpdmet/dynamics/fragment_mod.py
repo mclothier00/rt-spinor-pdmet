@@ -25,6 +25,8 @@ class fragment:
             # total number of sites (or basis functions if restricted) in total system
             self.Nele = Nele
             # total number of electrons in total system
+            self.Nbasis = self.Nsites
+            # number of basis functions in total system
 
             self.Ncore = int(Nele / 2) - self.Nimp
             # Number of core orbitals in fragment
@@ -57,6 +59,8 @@ class fragment:
             # total number of sites (or basis functions if restricted) in total system
             self.Nele = Nele
             # total number of electrons in total system
+            self.Nbasis = 2 * self.Nsites
+            # number of basis functions in total system
 
             self.Ncore = int(Nele) - self.Nimp
             # Number of core orbitals in fragment
@@ -373,7 +377,6 @@ class fragment:
                         utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
                     ),
                 )
-
                 h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
                 self.h_emb_halfcore += 0.5 * core_int
 

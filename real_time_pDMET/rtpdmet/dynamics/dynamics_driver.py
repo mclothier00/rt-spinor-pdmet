@@ -552,7 +552,7 @@ class dynamics_driver:
 
         # Print correlated density in the site basis
         cnt = 0
-        corrdens = np.zeros(self.tot_system.Nsites)
+        corrdens = np.zeros(self.tot_system.Nbasis)
         for frag in self.tot_system.frag_list:
             corrdens[cnt : cnt + frag.Nimp] = np.copy(
                 np.diag(np.real(frag.corr1RDM[: frag.Nimp]))
@@ -564,7 +564,7 @@ class dynamics_driver:
 
         # Print output data
         writing_outfile = time.time()
-        output = np.zeros((12 + self.tot_system.Nsites))
+        output = np.zeros((12 + self.tot_system.Nbasis))
         output[0] = current_time
         output[1] = self.tot_system.DMET_E
         output[2] = self.tot_system.DMET_Nele
@@ -572,7 +572,10 @@ class dynamics_driver:
         output[4] = np.real(np.trace(self.tot_system.frag_list[0].corr1RDM))
         output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_list[0].corr2RDM))
         output[6] = np.linalg.norm(self.tot_system.frag_list[0].CIcoeffs) ** 2
-        output[7] = np.linalg.norm(self.tot_system.frag_list[0].rotmat[:, 3]) ** 2
+        # output[7] = np.linalg.norm(self.tot_system.frag_list[0].rotmat[:, 3]) ** 2
+        # NOTE:PUT BACK TO 3 AFTER TESTING 2 SITES!
+        output[7] = np.linalg.norm(self.tot_system.frag_list[0].rotmat[:, 1]) ** 2
+
         # self.tot_system.get_nat_orbs()
         if np.allclose(
             self.tot_system.glob1RDM,
@@ -583,9 +586,9 @@ class dynamics_driver:
             output[8] = 1
         else:
             output[8] = 0
-        output[9 : 9 + self.tot_system.Nsites] = np.copy(self.tot_system.NOevals)
-        output[10 + self.tot_system.Nsites] = np.copy(np.real(self.max_diag_global))
-        output[11 + self.tot_system.Nsites] = np.copy(np.imag(self.max_diag_global))
+        output[9 : 9 + self.tot_system.Nbasis] = np.copy(self.tot_system.NOevals)
+        output[10 + self.tot_system.Nbasis] = np.copy(np.real(self.max_diag_global))
+        output[11 + self.tot_system.Nbasis] = np.copy(np.imag(self.max_diag_global))
 
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()

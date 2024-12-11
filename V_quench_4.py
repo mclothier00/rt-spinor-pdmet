@@ -157,19 +157,27 @@ hamtype = 0
 # print(f"before transition: \n {V_site_r}")
 # run dynamics
 if gen:
-    h_site, V_site = make_hams.make_ham_multi_imp_anderson_realspace_spinor(
-        Ndots,
-        NL,
-        NR,
-        Vg_dyn,
-        U_dyn,
-        timp,
-        t_implead,
-        Vbias_dyn,
-        tleads,
-        boundary,
-        Full_dyn,
+    # h_site, V_site = make_hams.make_ham_multi_imp_anderson_realspace_spinor(
+    #    Ndots,
+    #    NL,
+    #    NR,
+    #    Vg_dyn,
+    #    U_dyn,
+    #    timp,
+    #    t_implead,
+    #    Vbias_dyn,
+    #    tleads,
+    #    boundary,
+    #    Full_dyn,
+    # )
+
+    Vb = 0.01 / 2
+
+    h_site = np.asarray(
+        [[Vb, 0, -1, 0], [0, Vb, 0, -1], [-1, 0, 0.2, 0], [0, -1, 0, 0.2]]
     )
+
+    V_site = np.zeros([4, 4, 4, 4])
 
     dynamics = dynamic_driver.dynamics_driver(
         h_site,
