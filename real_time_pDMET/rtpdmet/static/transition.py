@@ -57,8 +57,17 @@ def rtor_transition(
         # corr1, corr2 = fci_mod.get_corr12RDM(
         #    tot_system.frag_list[i].CIcoeffs, Nsites, Nele, gen=False
         # )
-        # print(corr1)
+
+        # NOTE: matches the fragment call
+        Nimp = 1
+        corr1, corr2 = fci_mod.get_corr12RDM(
+            tot_system.frag_list[i].CIcoeffs, 2 * Nimp, (Nimp + Nimp), gen=False
+        )
+        print(f"new_coeff: \n {tot_system.frag_list[i].CIcoeffs}")
+        print(f"new corr1: \n {corr1}")
+        # print(f"new corr2: \n {corr2}")
         # exit()
+
         # NOTE: TEMP, remove
         # frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=False)
         # tot_system.frag_list[i].rotmat = frag_i.get_rotmat(
@@ -142,10 +151,15 @@ def rtog_transition(
         tot_system.frag_list[i].CIcoeffs = to_gen_coeff(
             Nsites, Nsites, (Nsites * 2), nalpha, nbeta, the_dmet.frag_list[i].CIcoeffs
         )
+
+        Nimp = 4
         corr1, corr2 = fci_mod.get_corr12RDM(
-            tot_system.frag_list[i].CIcoeffs, tot_system.Nbasis, Nele, gen=True
+            tot_system.frag_list[i].CIcoeffs, 2 * Nimp, Nimp, gen=True
         )
-        # print(corr1)
+
+        print(f"new_coeff: \n {tot_system.frag_list[i].CIcoeffs.real}")
+        print(f"new corr1: \n {corr1.real}")
+        # print(f"new corr2: \n {corr2}")
         # exit()
 
     print(
@@ -229,8 +243,6 @@ def to_gen_coeff(norb_alpha, norb_beta, norb_gen, nalpha, nbeta, coeffs):
             matrix_elements[i][1], matrix_elements[i][2], norb_alpha, norb_beta
         )
 
-    # print(f"new_coeff: \n {new_coeff}")
-    # exit()
     return new_coeff
 
 
@@ -250,17 +262,15 @@ def coeff_parity_change(alphastr, betastr, nalpha, nbeta):
     # if element in beta string is 1, determines parity
     new_parity = 1
 
-    for i, bit in enumerate(reversed(res_str[:nbeta])):
+    # NOTE: is this alphastr or rest of full string?
+    for i, bit in enumerate(beta_str[::-1]):
         if bit == "1":
-            rescount = int(res_str[(i + 1) :], 2)
-            rescount = alphastr
-            # print(
-            #    f"whats actually getting counted for {bin(resstr)} for {i}: {bin(rescount >> (i+1))}"
-            # )
-            parity = (-1) ** bin(rescount >> (i + 1)).count("1")
+            print(
+                f"whats actually getting counted for {bin(resstr)} for {i}: {bin(alphastr >> (i+1))}"
+            )
+            parity = (-1) ** bin(alphastr >> (i + 1)).count("1")
             new_parity = new_parity * parity
-    # print(f"parity of {res_str}: {new_parity}")
-
+    print(f"parity of {res_str}: {new_parity}")
     return new_parity
 
 

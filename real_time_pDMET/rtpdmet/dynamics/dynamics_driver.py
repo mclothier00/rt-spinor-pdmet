@@ -223,14 +223,11 @@ class dynamics_driver:
 
     #####################################################################
     def update_ham(self, curr_time):
-        ## NOTE: need to think about how laser interacts with spin states; current
-        ## equations do not take this into account
         laser_pulse = (
             self.A_nott
             * np.exp(-((curr_time - self.t_nott) ** 2) / (2 * self.t_d**2))
             * math.cos(self.omega * (curr_time - self.t_nott))
         )
-        Nimp = np.shape(self.tot_system.hubsite_indx)[0]
         self.tot_system.h_site = make_hams.make_ham_multi_imp_anderson_realspace_laser(
             self.tot_system.Nsites,
             self.U,
@@ -568,6 +565,7 @@ class dynamics_driver:
         output[0] = current_time
         output[1] = self.tot_system.DMET_E
         output[2] = self.tot_system.DMET_Nele
+        # NOTE: for generalized, these may be wrong
         output[3] = np.real(np.trace(self.tot_system.mf1RDM))
         output[4] = np.real(np.trace(self.tot_system.frag_list[0].corr1RDM))
         output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_list[0].corr2RDM))
@@ -606,7 +604,6 @@ class dynamics_driver:
         fmt_str = "%20.8e"
         self.tot_system.get_DMET_E(self.nproc)
         self.tot_system.get_DMET_Nele()
-        print(self.gen)
 
         cnt = 0
 
@@ -625,7 +622,6 @@ class dynamics_driver:
 
         if self.gen:
             corrdens = np.zeros(2 * self.tot_system.Nsites)
-            # not sure what this does? any changes need to be made??
             for frag in self.tot_system.frag_list:
                 corrdens[cnt : cnt + frag.Nimp] = np.diag(
                     np.real(frag.corr1RDM[: frag.Nimp])
@@ -638,23 +634,26 @@ class dynamics_driver:
             self.file_corrdens.flush()
 
     #####################################################################
-    def import_check(self, tol):
-        old_MF = np.copy(self.tot_system.mf1RDM)
-        old_global = np.copy(self.tot_system.glob1RDM)
-        self.tot_system.get_frag_corr1RDM()
-        self.tot_system.get_glob1RDM()
-        self.tot_system.get_nat_orbs()
-        self.tot_system.get_new_mf1RDM(round(self.tot_system.Nele / 2))
-        check = print(np.allclose(old_MF, self.tot_system.mf1RDM, tol))
-        check_glob = print(np.allclose(old_global, self.tot_system.glob1RDM, tol))
-        if check is False:
-            print("MF calculation doesnt agree up to the ", tol)
-            print(old_MF - self.tot_system.mf1RDM)
-            quit()
-        if check_glob is False:
-            print("Global calculation doesnt agree up to the ", tol)
-            print(old_global - self.tot_system.glob1RDM)
-            quit()
+
+    # not currently used
+
+    # def import_check(self, tol):
+    #    old_MF = np.copy(self.tot_system.mf1RDM)
+    #    old_global = np.copy(self.tot_system.glob1RDM)
+    #    self.tot_system.get_frag_corr1RDM()
+    #    self.tot_system.get_glob1RDM()
+    #    self.tot_system.get_nat_orbs()
+    #    self.tot_system.get_new_mf1RDM(round(self.tot_system.Nele / 2))
+    #    check = print(np.allclose(old_MF, self.tot_system.mf1RDM, tol))
+    #    check_glob = print(np.allclose(old_global, self.tot_system.glob1RDM, tol))
+    #    if check is False:
+    #        print("MF calculation doesnt agree up to the ", tol)
+    #        print(old_MF - self.tot_system.mf1RDM)
+    #        quit()
+    #    if check_glob is False:
+    #        print("Global calculation doesnt agree up to the ", tol)
+    #        print(old_global - self.tot_system.glob1RDM)
+    #        quit()
 
 
 #####################################################################

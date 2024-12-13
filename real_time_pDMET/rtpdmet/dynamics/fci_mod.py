@@ -7,8 +7,6 @@ import pyscf.fci
 from pyscf import gto, scf, ao2mo
 #####################################################################
 
-# not changed
-
 
 def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
     # Subroutine to perform groundstate FCI calculation using pyscf
@@ -163,6 +161,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
                 CIcoeffs, Norbs, Nele
             )
             corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
+
     # Notation for generalized 1RDM is dm_pq = <|p^+ q|>
     # Notation for generalized 2RDM is dm_pq,rs = <|p^+ q r^+ s|>
     # This would be equivalent to (p_dag r_dag s q) in chemists notation, so equal to restricted notation

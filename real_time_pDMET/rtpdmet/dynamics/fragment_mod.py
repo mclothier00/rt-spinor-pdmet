@@ -1,4 +1,4 @@
-# Define a class for a fragment,
+#        # Nimp = np.shape(self.tot_system.hubsite_indx)[0] Define a class for a fragment,
 # including all quantities specific to a given fragment
 import numpy as np
 import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
@@ -84,53 +84,6 @@ class fragment:
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites * 2
 
-            # for 'block diagonal' indexing
-            # self.imprange = np.append(
-            #    np.arange(0, int(self.Nimp / 2)),
-            #    np.arange(self.Nsites, self.Nsites + int(self.Nimp / 2)),
-            # )
-            # self.virtrange = np.append(
-            #    np.arange(int(self.Nimp / 2), int(self.Nimp / 2) + int(self.Nvirt / 2)),
-            #    np.arange(
-            #        self.Nsites + int(self.Nimp / 2),
-            #        self.Nsites + int(self.Nvirt / 2) + int(self.Nimp / 2),
-            #    ),
-            # )
-            # self.bathrange = np.append(
-            #    np.arange(
-            #        int(self.Nimp / 2) + int(self.Nvirt / 2),
-            #        2 * int(self.Nimp / 2) + int(self.Nvirt / 2),
-            #    ),
-            #    np.arange(
-            #        int(self.Nimp / 2) + int(self.Nvirt / 2) + self.Nsites,
-            #        2 * int(self.Nimp / 2) + int(self.Nvirt / 2) + self.Nsites,
-            #    ),
-            # )
-            # self.corerange = np.append(
-            #    np.arange(2 * int(self.Nimp / 2) + int(self.Nvirt / 2), self.Nsites),
-            #    np.arange(
-            #        2 * int(self.Nimp / 2) + int(self.Nvirt / 2) + self.Nsites,
-            #        self.Nsites * 2,
-            #    ),
-            # )
-
-            # self.last_imp = np.array(
-            #    [int(self.Nimp / 2), int(self.Nimp / 2) + self.Nsites]
-            # )
-            # self.last_virt = np.array(
-            #    [
-            #        int(self.Nimp / 2) + int(self.Nvirt / 2),
-            #        int(self.Nimp / 2) + int(self.Nvirt / 2) + self.Nsites,
-            #    ]
-            # )
-            # self.last_bath = np.array(
-            #    [
-            #        2 * int(self.Nimp / 2) + int(self.Nvirt / 2),
-            #        2 * int(self.Nimp / 2) + int(self.Nvirt / 2) + self.Nsites,
-            #   ]
-            # )
-            # self.last_core = np.array([self.Nsites, self.Nsites * 2])
-
     #####################################################################
 
     # needs to be edited and tested (indexing)
@@ -146,8 +99,6 @@ class fragment:
             # remove rows/columns corresponding to impurity sites from mf 1RDM
             mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
             mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
-            # NOTE: blackberries
-            # print(f"adjusted mf1RDM: \n {mf1RDM}")
 
             # diagonalize environment part of 1RDM to obtain embedding
             # (virtual, bath, core) orbitals
@@ -446,17 +397,17 @@ class fragment:
                 # General hamiltonian, V_emb currently
                 # ( impurities, bath, core ) ^ 4
                 V_emb = utils.rot2el_chem(V_site, rotmat_small)
-            elif hamtype == 1:
-                # Hubbard hamiltonian
-                # remove core states from rotation matrix
-                rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
-                self.V_emb = V_site * np.einsum(
-                    "ap,cp,pb,pd->abcd",
-                    utils.adjoint(rotmat_vsmall),
-                    utils.adjoint(rotmat_vsmall),
-                    rotmat_vsmall,
-                    rotmat_vsmall,
-                )
+            # elif hamtype == 1:
+            # Hubbard hamiltonian
+            # remove core states from rotation matrix
+            #    rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
+            #    self.V_emb = V_site * np.einsum(
+            #        "ap,cp,pb,pd->abcd",
+            #        utils.adjoint(rotmat_vsmall),
+            #        utils.adjoint(rotmat_vsmall),
+            #        rotmat_vsmall,
+            #        rotmat_vsmall,
+            #    )
 
             # augment the impurity/bath 1e- terms from contribution of coulomb
             # and exchange terms btwn impurity/bath and core
@@ -478,22 +429,23 @@ class fragment:
                         - 0.5 * V_emb[: 2 * self.Nimp, core, core, : 2 * self.Nimp]
                     )
 
-            # NOTE: this will be an issue; need a fully collapsed V_site to work; ignoring for now
-            elif hamtype == 1:
-                # Hubbard hamiltonian
-                core_int = V_site * np.einsum(
-                    "ap,pb,p->ab",
-                    utils.adjoint(rotmat_vsmall),
-                    rotmat_vsmall,
-                    np.einsum(
-                        "pe,ep->p",
-                        rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                        utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                    ),
-                )
+            # NOTE: need a fully collapsed V_site to work; ignoring for now
 
-                h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
-                self.h_emb_halfcore += 0.5 * core_int
+            # elif hamtype == 1:
+            # Hubbard hamiltonian
+            #    core_int = V_site * np.einsum(
+            #        "ap,pb,p->ab",
+            #        utils.adjoint(rotmat_vsmall),
+            #        rotmat_vsmall,
+            #        np.einsum(
+            #            "pe,ep->p",
+            #            rotmat_small[hubsite_indx, 2 * self.Nimp :],
+            #            utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+            #        ),
+            #    )
+
+            #    h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
+            #    self.h_emb_halfcore += 0.5 * core_int
 
             # Calculate the energy associated with core-core interactions,
             # setting it numerically to a real number since it always will be
@@ -510,6 +462,7 @@ class fragment:
                         )
 
             # NOTE: temporarily not using
+
             # if hamtype == 1:
             # Hubbard hamiltonian
             #    vec = np.einsum(
@@ -535,14 +488,12 @@ class fragment:
         utils.printarray(self.h_emb, "output_halffrag.txt")
         f = open("output_halffrag.txt", "a")
         f.write(
-            f"Vemb after shrinking: \n {self.V_emb[0, 0, 0, 0]} \n Vemb shape: {self.V_emb.shape}"
+            f"Vemb after shrinking: \n {self.V_emb[0,0,0,0]} \n Vemb shape: {self.V_emb.shape}"
         )
         f.close()
         # utils.printarray(self.V_emb, "output_halffrag.txt")
 
     #####################################################################
-
-    # not changed
 
     def add_mu_Hemb(self, mu):
         # Subroutine to add a chemical potential, mu,
@@ -552,33 +503,44 @@ class fragment:
 
     #####################################################################
 
-    # not changed
+    # is this ever used? edited but not tested because I don't think it is
 
-    def solve_GS(self):
-        # Use the embedding hamiltonian to solve for the FCI ground-state
-        self.CIcoeffs = fci_mod.FCI_GS(
-            self.h_emb, self.V_emb, self.Ecore, 2 * self.Nimp, (self.Nimp, self.Nimp)
-        )
+    # def solve_GS(self):
+    # Use the embedding hamiltonian to solve for the FCI ground-state
+    #    if not self.gen:
+    #        self.CIcoeffs = fci_mod.FCI_GS(
+    #            self.h_emb,
+    #            self.V_emb,
+    #            self.Ecore,
+    #            2 * self.Nimp,
+    #            (self.Nimp, self.Nimp),
+    #        )
+    #    if self.gen:
+    #        self.CIcoeffs = fci_mod.FCI_GS(
+    #            self.h_emb,
+    #            self.V_emb,
+    #            self.Ecore,
+    #            2 * self.Nimp,
+    #            self.Nimp,
+    #            gen=True,
+    #        )
 
     #####################################################################
 
-    # NOTE: PING not sure if how I've coded gen works!! also not sure that this is used...
+    # not currently used...
 
-    def get_corr1RDM(self):
-        # Subroutine to get the FCI 1RDM
-        if not self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
-            )
-        if self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nele, gen=True
-            )
+    # def get_corr1RDM(self):
+    # Subroutine to get the FCI 1RDM
+    #    if not self.gen:
+    #        self.corr1RDM = fci_mod.get_corr1RDM(
+    #            self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
+    #        )
+    #    if self.gen:
+    #        self.corr1RDM = fci_mod.get_corr1RDM(
+    #            self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
+    #        )
 
     #####################################################################
-
-    # NOTE: PING, not sure about Nele? Why (Nimp, Nimp) instead of
-    #       (Nele / 2, Nele / 2); ASK OR CHECK!!
 
     def get_corr12RDM(self):
         # Subroutine to get the FCI 1RDM and 2RDM
@@ -608,9 +570,8 @@ class fragment:
             ] += corr1RDM_virt
 
         if self.gen:
-            # NOTE: beginning of the problem is here; check that the rest of the equations do what I want them to do as well
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nele, gen=True
+                self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
             )
             self.full_corr1RDM = np.zeros([2 * self.Nsites, 2 * self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
@@ -653,23 +614,23 @@ class fragment:
 
     #####################################################################
 
-    # not changed
+    # is this used?
 
-    def static_corr_calc(
-        self, mf1RDM, mu, h_site, V_site, hamtype=0, hubsite_indx=None
-    ):
-        # Subroutine to perform all steps of the static correlated calculation
-        # 1) get rotation matrix to embedding basis
-        self.get_rotmat(mf1RDM)
-        # 2) use rotation matrix to compute embedding hamiltonian
-        self.get_Hemb(h_site, V_site, hamtype, hubsite_indx)
-        # 3) add chemical potential to
-        # only impurity sites of embedding hamiltonian
-        self.add_mu_Hemb(mu)
-        # 4) perform corrleated calculation using embedding hamiltonian
-        self.solve_GS()
-        # 5) calculate correlated 1RDM
-        self.get_corr1RDM()
+    # def static_corr_calc(
+    #    self, mf1RDM, mu, h_site, V_site, hamtype=0, hubsite_indx=None
+    # ):
+    # Subroutine to perform all steps of the static correlated calculation
+    # 1) get rotation matrix to embedding basis
+    #    self.get_rotmat(mf1RDM)
+    # 2) use rotation matrix to compute embedding hamiltonian
+    #    self.get_Hemb(h_site, V_site, hamtype, hubsite_indx)
+    # 3) add chemical potential to
+    # only impurity sites of embedding hamiltonian
+    #    self.add_mu_Hemb(mu)
+    # 4) perform corrleated calculation using embedding hamiltonian
+    #    self.solve_GS()
+    # 5) calculate correlated 1RDM
+    #    self.get_corr1RDM()
 
     #####################################################################
 
@@ -749,8 +710,8 @@ class fragment:
             # Hubbard hamiltonian
             rotmat_Hub = self.rotmat[hubsite_indx, :]
 
-        # Form inactive Fock matrix
         if not gen:
+            # Form inactive Fock matrix
             if hamtype == 0:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
@@ -823,6 +784,7 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
+
                 # print(
                 #    f"genF when b in i/b: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), genFmat)))}"
                 # )
@@ -850,6 +812,7 @@ class fragment:
                 #    f"generalized Fock: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), genFmat)))}"
                 # )
                 # exit()
+                # print(f"generalized Fock: \n {np.real(genFmat)}")
 
         if gen:
             if hamtype == 0 or hamtype == 1:
@@ -882,8 +845,10 @@ class fragment:
             actrange = np.concatenate((self.imprange, self.bathrange))
             if hamtype == 0 or hamtype == 1:
                 # General hamiltonian
+                # NOTE: why is actrange[:, None] not switched to align with l?
+                #   what's the point of making it a column vector?
                 tmp = V_MO[:, :, actrange[:, None], actrange] - np.einsum(
-                    "iklj->ijlk", V_MO[:, actrange, actrange[:, None], :]
+                    "iklj->ijlk", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
 
@@ -913,21 +878,13 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
-                # print(f"genF when j in i/b: \n {np.real(genFmat)}")
-                # print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
-                # print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
-
-                genFmat[actrange, :] += np.einsum(
+                temp_V = V_MO - np.einsum("imlk->iklm", V_MO)
+                genFmat[actrange, :] += 0.5 * np.einsum(
                     "iklm,jklm->ji",
-                    V_MO[:, actrange[:, None, None], actrange[:, None], actrange],
-                    self.corr2RDM,
-                )
-                temp_V = V_MO - np.einsum("aedc->acde", V_MO)
-                genFmat[actrange, :] += np.einsum(
-                    "imlk,jklm->ji",
                     temp_V[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
                 )
+                np.set_printoptions(precision=8)
                 # print(f"generalized Fock: \n {np.real(genFmat)}")
                 # exit()
 
@@ -956,26 +913,19 @@ class fragment:
         f = open("output_halffrag.txt", "a")
         f.write("\n generalized Fock matrix \n")
         f.close()
-        utils.printarray(np.real(genFmat), "output_halffrag.txt")
+        utils.printarray(np.real(genFmat), "output_halffrag.txt", long_fmt=True)
         # temp. delete later:
         self.genFmat = genFmat
 
         self.iddt_corr1RDM = np.transpose(genFmat) - np.conjugate(genFmat)
 
-        # NOTE: blackberries
-        # np.set_printoptions(precision=4, suppress=True)
-        # if not gen:
-        # print(
-        #    f"iddt_corr1RDM: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2),self.iddt_corr1RDM)))}"
-        # )
-        # if gen:
-        # print(f"iddt_corr1RDM: \n {np.real(self.iddt_corr1RDM)}")
+        # print(f"time dependency of corr1RDM: \n {self.iddt_corr1RDM}")
 
-        # exit()
         f = open("output_halffrag.txt", "a")
         f.write("TD of correlated 1RDM: \n")
         f.close()
-        utils.printarray(self.iddt_corr1RDM, "output_halffrag.txt")
+        utils.printarray(self.iddt_corr1RDM, "output_halffrag.txt", long_fmt=True)
+        # exit()
 
     #####################################################################
 
