@@ -48,7 +48,7 @@ boundary = False  # non-periodic hamiltonian
 
 # dynamics variables
 delt = 0.001
-Nstep = 2500
+Nstep = 5000
 Nprint = 10
 init_time = 0.0
 # dG = 1e-5

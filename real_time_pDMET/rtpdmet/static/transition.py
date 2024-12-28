@@ -54,26 +54,6 @@ def rtor_transition(
         tot_system.frag_list[i].rotmat = the_dmet.frag_list[i].rotmat
         tot_system.frag_list[i].CIcoeffs = the_dmet.frag_list[i].CIcoeffs
 
-        # corr1, corr2 = fci_mod.get_corr12RDM(
-        #    tot_system.frag_list[i].CIcoeffs, Nsites, Nele, gen=False
-        # )
-
-        # NOTE: matches the fragment call
-        Nimp = 1
-        corr1, corr2 = fci_mod.get_corr12RDM(
-            tot_system.frag_list[i].CIcoeffs, 2 * Nimp, (Nimp + Nimp), gen=False
-        )
-        print(f"new_coeff: \n {tot_system.frag_list[i].CIcoeffs}")
-        print(f"new corr1: \n {corr1}")
-        # print(f"new corr2: \n {corr2}")
-        # exit()
-
-        # NOTE: TEMP, remove
-        # frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=False)
-        # tot_system.frag_list[i].rotmat = frag_i.get_rotmat(
-        #    tot_system.mf1RDM, gen=False
-        # )[0]
-
     return tot_system
 
 
@@ -97,9 +77,6 @@ def rtog_transition(
     transition_time = time.time()
 
     # changing hamiltonian and 1RDM from restricted to generalized
-    # NOTE: if new hamiltonian is created to introduce dynamics (as done in Dariia's examples),
-    #       this is redundant. I'm leaving it in in case dynamics are initialized by something other
-    #       than a change in the Hamiltonian
     h_site = np.kron(np.eye(2), h_site_r)
     V_site = utils.block_tensor(V_site_r)
     h_site = utils.reshape_rtog_matrix(h_site)
@@ -127,7 +104,6 @@ def rtog_transition(
     )
 
     tot_system.Nbasis = 2 * Nsites
-    # print(f"initial global 1rdm: {the_dmet.glob1RDM}")
     tot_system.glob1RDM = utils.reshape_rtog_matrix(
         np.kron(np.eye(2), 0.5 * the_dmet.glob1RDM)
     )
@@ -135,32 +111,34 @@ def rtog_transition(
         np.kron(np.eye(2), 0.5 * the_dmet.mf1RDM)
     )
 
-    tot_system.NOevals, tot_system.NOevecs = get_nat_orbs(tot_system.glob1RDM)
+    tot_system.NOevecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), the_dmet.NOevecs))
+
+    tot_system.NOevals = np.diag(
+        np.dot(
+            tot_system.NOevecs.conjugate().transpose(),
+            np.dot(tot_system.glob1RDM, tot_system.NOevecs),
+        )
+    )
 
     tot_system.frag_list = []
-    nbeta = Nele // 2
-    nalpha = Nele - nbeta
     for i in range(Nfrag):
         frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=True)
         tot_system.frag_list.append(frag_i)
-        tot_system.frag_list[i].rotmat = frag_i.get_rotmat(tot_system.mf1RDM, gen=True)[
-            0
-        ]
-        # NOTE: need to recheck this! I don't think its any different between "block diag"
-        #       and the new notation, but double check!!!
+        tot_system.frag_list[i].rotmat = utils.reshape_rtog_matrix(
+            np.kron(np.eye(2), the_dmet.frag_list[i].rotmat)
+        )
+
+        nbeta = frag_i.Nimp // 2
+        nalpha = frag_i.Nimp - nbeta
+
         tot_system.frag_list[i].CIcoeffs = to_gen_coeff(
-            Nsites, Nsites, (Nsites * 2), nalpha, nbeta, the_dmet.frag_list[i].CIcoeffs
+            frag_i.Nimp,
+            frag_i.Nimp,
+            (frag_i.Nimp * 2),
+            nalpha,
+            nbeta,
+            the_dmet.frag_list[i].CIcoeffs,
         )
-
-        Nimp = 4
-        corr1, corr2 = fci_mod.get_corr12RDM(
-            tot_system.frag_list[i].CIcoeffs, 2 * Nimp, Nimp, gen=True
-        )
-
-        print(f"new_coeff: \n {tot_system.frag_list[i].CIcoeffs.real}")
-        print(f"new corr1: \n {corr1.real}")
-        # print(f"new corr2: \n {corr2}")
-        # exit()
 
     print(
         "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
@@ -265,12 +243,12 @@ def coeff_parity_change(alphastr, betastr, nalpha, nbeta):
     # NOTE: is this alphastr or rest of full string?
     for i, bit in enumerate(beta_str[::-1]):
         if bit == "1":
-            print(
-                f"whats actually getting counted for {bin(resstr)} for {i}: {bin(alphastr >> (i+1))}"
-            )
+            # print(
+            #    f"whats actually getting counted for {bin(resstr)} for {i}: {bin(alphastr >> (i+1))}"
+            # )
             parity = (-1) ** bin(alphastr >> (i + 1)).count("1")
             new_parity = new_parity * parity
-    print(f"parity of {res_str}: {new_parity}")
+    # print(f"parity of {res_str}: {new_parity}")
     return new_parity
 
 

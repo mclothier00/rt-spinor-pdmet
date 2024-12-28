@@ -28,7 +28,7 @@ for i in range(Nfrag):
 # hamtype = 0
 
 # simplified tight-binding form of 2-electron terms in the embedding Hamiltonian
-hamtype = 1
+hamtype = 0
 
 mubool = True
 muhistory = True
@@ -49,7 +49,7 @@ boundary = False  # non-periodic hamiltonian
 delt = 0.001
 # Nstep = 10000
 # Nprint = 10
-Nstep = 2500
+Nstep = 5000
 Nprint = 10
 init_time = 0.0
 dG = 1e-5

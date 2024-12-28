@@ -1,4 +1,3 @@
-#        # Nimp = np.shape(self.tot_system.hubsite_indx)[0] Define a class for a fragment,
 # including all quantities specific to a given fragment
 import numpy as np
 import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
@@ -86,8 +85,6 @@ class fragment:
 
     #####################################################################
 
-    # needs to be edited and tested (indexing)
-
     def get_rotmat(self, mf1RDM, gen=False):
         """
         Subroutine to generate rotation matrix from site to embedding basis
@@ -166,8 +163,6 @@ class fragment:
             # diagonalize environment part of 1RDM to obtain embedding
             # (virtual, bath, core) orbitals
             evals, evecs = np.linalg.eigh(mf1RDM)
-            # print(f"small R: \n {evecs}")
-            # print(f"eignvalues: {evals}")
 
             # NOTE: blackberries; temporary check of reshaped R
             # permutation = [0, 3, 2, 1]
@@ -242,16 +237,15 @@ class fragment:
         # print(f"new rotation matrix: \n {rotmat}")
         # blackbirds singing in the dead of night
 
-        f = open("output_halffrag.txt", "a")
-        f.write("\n new rotation matrix \n")
-        f.close()
-        utils.printarray(rotmat, "output_halffrag.txt")
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n new rotation matrix \n")
+        #    f.close()
+        #    utils.printarray(rotmat.real, "output_halffrag.txt")
 
         return rotmat, env1RDM_evals
 
     #####################################################################
-
-    # was editing before change of indexing; needs to be edited in general
 
     def get_Hemb(self, h_site, V_site, hamtype=0, hubsite_indx=None, gen=False):
         """
@@ -429,8 +423,6 @@ class fragment:
                         - 0.5 * V_emb[: 2 * self.Nimp, core, core, : 2 * self.Nimp]
                     )
 
-            # NOTE: need a fully collapsed V_site to work; ignoring for now
-
             # elif hamtype == 1:
             # Hubbard hamiltonian
             #    core_int = V_site * np.einsum(
@@ -449,7 +441,6 @@ class fragment:
 
             # Calculate the energy associated with core-core interactions,
             # setting it numerically to a real number since it always will be
-            # NOTE: not sure if these are correct for same reason as above
             Ecore = 0
             for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                 Ecore += h_emb[core1, core1]
@@ -460,8 +451,6 @@ class fragment:
                             V_emb[core1, core1, core2, core2]
                             - V_emb[core1, core2, core2, core1]
                         )
-
-            # NOTE: temporarily not using
 
             # if hamtype == 1:
             # Hubbard hamiltonian
@@ -482,16 +471,16 @@ class fragment:
                     : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
                 ]
 
-        f = open("output_halffrag.txt", "a")
-        f.write("\n hemb after shrinking \n")
-        f.close()
-        utils.printarray(self.h_emb, "output_halffrag.txt")
-        f = open("output_halffrag.txt", "a")
-        f.write(
-            f"Vemb after shrinking: \n {self.V_emb[0,0,0,0]} \n Vemb shape: {self.V_emb.shape}"
-        )
-        f.close()
-        # utils.printarray(self.V_emb, "output_halffrag.txt")
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n hemb after shrinking \n")
+        #    f.close()
+        #    utils.printarray(self.h_emb.real, "output_halffrag.txt")
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write(
+        #        f"Vemb after shrinking: \n {self.V_emb[0,0,0,0]} \n Vemb shape: {self.V_emb.shape}"
+        #    )
+        #    f.close()
 
     #####################################################################
 
@@ -500,45 +489,6 @@ class fragment:
         # to only the impurity sites of embedding Hamiltonian
         for i in range(self.Nimp):
             self.h_emb[i, i] += mu
-
-    #####################################################################
-
-    # is this ever used? edited but not tested because I don't think it is
-
-    # def solve_GS(self):
-    # Use the embedding hamiltonian to solve for the FCI ground-state
-    #    if not self.gen:
-    #        self.CIcoeffs = fci_mod.FCI_GS(
-    #            self.h_emb,
-    #            self.V_emb,
-    #            self.Ecore,
-    #            2 * self.Nimp,
-    #            (self.Nimp, self.Nimp),
-    #        )
-    #    if self.gen:
-    #        self.CIcoeffs = fci_mod.FCI_GS(
-    #            self.h_emb,
-    #            self.V_emb,
-    #            self.Ecore,
-    #            2 * self.Nimp,
-    #            self.Nimp,
-    #            gen=True,
-    #        )
-
-    #####################################################################
-
-    # not currently used...
-
-    # def get_corr1RDM(self):
-    # Subroutine to get the FCI 1RDM
-    #    if not self.gen:
-    #        self.corr1RDM = fci_mod.get_corr1RDM(
-    #            self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
-    #        )
-    #    if self.gen:
-    #        self.corr1RDM = fci_mod.get_corr1RDM(
-    #            self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
-    #        )
 
     #####################################################################
 
@@ -568,7 +518,6 @@ class fragment:
             self.full_corr1RDM[
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
-
         if self.gen:
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
@@ -589,16 +538,11 @@ class fragment:
                 np.zeros((self.Nvirt, corr1RDM_virt.shape[0])),
                 1,
             )
-
             self.full_corr1RDM[
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
-            # NOTE: PING why does it start from the top left corner?? Is that not
-            #       part of the impurity region??
 
     #####################################################################
-
-    # not changed
 
     def eigvec_MF_check(self, mf1RDM):
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
@@ -613,28 +557,6 @@ class fragment:
         print("difference between diagonalized and identity:", diag - identity)
 
     #####################################################################
-
-    # is this used?
-
-    # def static_corr_calc(
-    #    self, mf1RDM, mu, h_site, V_site, hamtype=0, hubsite_indx=None
-    # ):
-    # Subroutine to perform all steps of the static correlated calculation
-    # 1) get rotation matrix to embedding basis
-    #    self.get_rotmat(mf1RDM)
-    # 2) use rotation matrix to compute embedding hamiltonian
-    #    self.get_Hemb(h_site, V_site, hamtype, hubsite_indx)
-    # 3) add chemical potential to
-    # only impurity sites of embedding hamiltonian
-    #    self.add_mu_Hemb(mu)
-    # 4) perform corrleated calculation using embedding hamiltonian
-    #    self.solve_GS()
-    # 5) calculate correlated 1RDM
-    #    self.get_corr1RDM()
-
-    #####################################################################
-
-    # currently changing, NEED TO CHECK EQ!!! PING
 
     def get_frag_E(self):
         """
@@ -721,6 +643,9 @@ class fragment:
                 IFmat -= np.einsum(
                     "accb->ab", V_MO[:, self.corerange[:, None], self.corerange, :]
                 )
+                # print(f"rotmat: {self.rotmat}")
+                # print(f"h_site: {h_site}")
+                # print(f"IFmat: \n {IFmat}")
 
             elif hamtype == 1:
                 # Hubbard hamiltonian
@@ -733,6 +658,8 @@ class fragment:
                 IFmat += V_site * np.einsum(
                     "ap,pb,p->ab", utils.adjoint(rotmat_Hub), rotmat_Hub, tmp
                 )
+                # print(f"h_site: {h_site}")
+                # print(f"IFmat: \n {IFmat}")
 
             # Form active Fock matrix
             actrange = np.concatenate((self.imprange, self.bathrange))
@@ -758,6 +685,8 @@ class fragment:
                         "ap,pb,p->ab", utils.adjoint(rotmat_Hub), rotmat_Hub, tmp
                     )
                 )
+                # print(f"AFmat: \n {AFmat}")
+                # print(f"AFmat: \n {AFmat_temp}")
 
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0:
@@ -769,11 +698,16 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
+                # print(f"active range: {actrange}")
+                # print(f"corr1RDM: \n {self.corr1RDM}")
+                # print(f"generalized F: \n {genFmat}")
+                # print(f"corr1RDM: \n {self.corr1RDM}")
                 genFmat[actrange, :] += np.einsum(
                     "acde,bcde->ba",
                     V_MO[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
                 )
+                # print(f"generalized Fock: \n {genFmat}")
 
             elif hamtype == 1:
                 # Hubbard hamiltonian
@@ -784,20 +718,6 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
-
-                # print(
-                #    f"genF when b in i/b: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), genFmat)))}"
-                # )
-                # print(
-                #    f"inactive fock: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), IFmat[:, actrange])))}"
-                # )
-                # print(
-                #    f"correlated 1rdm: \n {0.5 * np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), self.corr1RDM)))}"
-                # )
-                # print(f"genF when j in i/b: \n {np.real(genFmat)}")
-                # print(f"inactive fock: \n {np.real(IFmat[:, actrange])}")
-                # print(f"correlated 1rdm: \n {np.real(self.corr1RDM)}")
-
                 tmp = np.einsum(
                     "dp,pc,pe,bcde->pb",
                     utils.adjoint(rotmat_Hub[:, actrange]),
@@ -808,11 +728,6 @@ class fragment:
                 genFmat[actrange, :] += V_site * np.transpose(
                     np.dot(utils.adjoint(rotmat_Hub), tmp)
                 )
-                # print(
-                #    f"generalized Fock: \n {np.real(utils.reshape_rtog_matrix(np.kron(np.eye(2), genFmat)))}"
-                # )
-                # exit()
-                # print(f"generalized Fock: \n {np.real(genFmat)}")
 
         if gen:
             if hamtype == 0 or hamtype == 1:
@@ -824,22 +739,9 @@ class fragment:
                 IFmat -= np.einsum(
                     "ikkj->ij", V_MO[:, self.corerange[:, None], self.corerange, :]
                 )
+
+                # print(f"h_site: {h_site}")
                 # print(f"inactive Fock: \n {np.real(IFmat)}")
-
-            # NOTE: NOT SURE WHAT TO DO HERE, so commenting out until I can verify
-            #       simpler approach; will have to remove "or hamtype == 1"
-
-            # elif hamtype == 1:
-            # Hubbard hamiltonian
-            #    IFmat = utils.rot1el(h_site, self.rotmat)
-            #    tmp = np.einsum(
-            #        "pc,cp->p",
-            #        rotmat_Hub[:, self.corerange],
-            #        utils.adjoint(rotmat_Hub[:, self.corerange]),
-            #    )
-            #    IFmat += V_site * np.einsum(
-            #        "ap,pb,p->ab", utils.adjoint(rotmat_Hub), rotmat_Hub, tmp
-            #    )
 
             # Form active Fock matrix
             actrange = np.concatenate((self.imprange, self.bathrange))
@@ -851,20 +753,6 @@ class fragment:
                     "iklj->ijlk", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
-
-            # elif hamtype == 1:
-            #    # Hubbard hamiltonian
-            #    tmp = np.einsum(
-            #        "pc,cd,dp->p",
-            #        rotmat_Hub[:, actrange],
-            #        self.corr1RDM,
-            #        utils.adjoint(rotmat_Hub[:, actrange]),
-            #    )
-            #    AFmat = (
-            #        0.5
-            #        * V_site
-            #        * np.einsum("ap,pb,p->ab", utils.adjoint(rotmat_Hub), rotmat_Hub, tmp)
-            #    )
 
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0 or hamtype == 1:
@@ -879,57 +767,35 @@ class fragment:
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
                 temp_V = V_MO - np.einsum("imlk->iklm", V_MO)
+                # print(f"active range: {actrange}")
+                # print(f"corr1RDM: \n {self.corr1RDM}")
+                # print(f"generalized Fock: \n {np.real(genFmat)}")
                 genFmat[actrange, :] += 0.5 * np.einsum(
                     "iklm,jklm->ji",
                     temp_V[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
                 )
-                np.set_printoptions(precision=8)
                 # print(f"generalized Fock: \n {np.real(genFmat)}")
-                # exit()
-
-            # elif hamtype == 1:
-            # Hubbard hamiltonian
-            #    genFmat = np.zeros([self.Nsites, self.Nsites], dtype=complex)
-            #    genFmat[self.corerange, :] = np.transpose(
-            #        2 * (IFmat[:, self.corerange] + AFmat[:, self.corerange])
-            #    )
-            #    genFmat[actrange, :] = np.transpose(
-            #        np.dot(IFmat[:, actrange], self.corr1RDM)
-            #    )
-            #    tmp = np.einsum(
-            #        "dp,pc,pe,bcde->pb",
-            #        utils.adjoint(rotmat_Hub[:, actrange]),
-            #        rotmat_Hub[:, actrange],
-            #        rotmat_Hub[:, actrange],
-            #        self.corr2RDM,
-            #    )
-            #    genFmat[actrange, :] += V_site * np.transpose(
-            #        np.dot(utils.adjoint(rotmat_Hub), tmp)
-            #    )
 
         # Calculate i times H commutator portion of time-dependence of corr1RDM
-
-        f = open("output_halffrag.txt", "a")
-        f.write("\n generalized Fock matrix \n")
-        f.close()
-        utils.printarray(np.real(genFmat), "output_halffrag.txt", long_fmt=True)
-        # temp. delete later:
-        self.genFmat = genFmat
-
         self.iddt_corr1RDM = np.transpose(genFmat) - np.conjugate(genFmat)
 
-        # print(f"time dependency of corr1RDM: \n {self.iddt_corr1RDM}")
+        # temp, delete after debugging:
+        self.genFmat = genFmat
 
-        f = open("output_halffrag.txt", "a")
-        f.write("TD of correlated 1RDM: \n")
-        f.close()
-        utils.printarray(self.iddt_corr1RDM, "output_halffrag.txt", long_fmt=True)
-        # exit()
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n generalized Fock matrix \n")
+        #    f.close()
+        #    utils.printarray(genFmat.real, "output_halffrag.txt", long_fmt=True)
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("TD of correlated 1RDM: \n")
+        #    f.close()
+        #    utils.printarray(
+        #        self.iddt_corr1RDM.real, "output_halffrag.txt", long_fmt=True
+        #    )
 
     #####################################################################
-
-    # currently changing
 
     def get_Xmat(self, mf1RDM, ddt_mf1RDM):
         # Subroutine to calculate the X-matrix to propagate embedding orbitals
@@ -1035,9 +901,10 @@ class fragment:
         )
         self.Xmat = np.triu(self.Xmat) + np.triu(self.Xmat, 1).conjugate().transpose()
 
-        f = open("output_halffrag.txt", "a")
-        f.write("\n X matrix \n")
-        f.close()
-        utils.printarray(self.Xmat, "output_halffrag.txt")
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n X matrix \n")
+        #    f.close()
+        #    utils.printarray(self.Xmat.real, "output_halffrag.txt")
 
     #####################################################################

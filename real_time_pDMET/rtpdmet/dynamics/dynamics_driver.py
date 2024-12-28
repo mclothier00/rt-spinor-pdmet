@@ -8,6 +8,8 @@ import real_time_pDMET.scripts.utils as utils
 import pickle
 import time
 import math
+
+import os
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
 
 
@@ -74,6 +76,9 @@ class dynamics_driver:
         else:
             self.Vbias = False
         self.gen = gen
+
+        ## FOR DEBUGGING, PING
+        self.printstep = 600
 
         print()
         print("********************************************")
@@ -342,6 +347,31 @@ class dynamics_driver:
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
+            if self.step == self.printstep:
+                f = open("output_halffrag.txt", "a")
+                f.write("\n propagated glob1RDM \n")
+                f.close()
+                utils.printarray(self.tot_system.glob1RDM, "output_halffrag.txt", True)
+
+                f = open("output_halffrag.txt", "a")
+                f.write("\n propagated mf1RDM \n")
+                f.close()
+                utils.printarray(self.tot_system.mf1RDM, "output_halffrag.txt", True)
+
+                f = open("output_halffrag.txt", "a")
+                f.write("\n first propagated rotmat \n")
+                f.close()
+                utils.printarray(
+                    self.tot_system.frag_list[0].rotmat, "output_halffrag.txt", True
+                )
+
+                f = open("output_halffrag.txt", "a")
+                f.write("\n first propagated CIcoeffs \n")
+                f.close()
+                utils.printarray(
+                    self.tot_system.frag_list[0].CIcoeffs, "output_halffrag.txt", True
+                )
+
             # Checks for numerical stability
 
             # check whether two analitically equivalent methods to form
@@ -443,10 +473,11 @@ class dynamics_driver:
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
         )
 
-        f = open("output_halffrag.txt", "a")
-        f.write("\n NOevals (U) \n")
-        f.close()
-        utils.printarray(self.tot_system.NOevecs, "output_halffrag.txt")
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n NOevals (U) \n")
+        #    f.close()
+        #    utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt")
 
         # Calculate embedding hamiltonian
         make_ham = time.time()
@@ -471,9 +502,33 @@ class dynamics_driver:
                 )
             )
 
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of global density matrix \n")
+        #    f.close()
+        #    utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt")
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n G \n")
+        #    f.close()
+        #    utils.printarray(G_site.real, "output_halffrag.txt")
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of NO evals (U dot) \n")
+        #    f.close()
+        #    utils.printarray(ddt_NOevec.real, "output_halffrag.txt")
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of mean field density matrix \n")
+        #    f.close()
+        #    utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt")
+
         # Use change in mf1RDM to calculate X-matrix for each fragment
         make_xmat = time.time()
         self.tot_system.get_frag_Xmat(ddt_mf1RDM)
+
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n X matrix \n")
+        #    f.close()
+        #    utils.printarray(self.tot_system.Xmat.real, "output_halffrag.txt")
 
         change_glob1RDM = ddt_glob1RDM * self.delt
         change_NOevecs = ddt_NOevec * self.delt
@@ -485,14 +540,15 @@ class dynamics_driver:
         td_rotmat_list = []
         for frag in self.tot_system.frag_list:
             change_rotmat_list.append(-1j * self.delt * np.dot(frag.rotmat, frag.Xmat))
-
-            f = open("output_halffrag.txt", "a")
-            f.write("\n TD of rotmat \n")
-            f.close()
             td_rotmat_list.append(-1j * np.dot(frag.rotmat, frag.Xmat))
-            utils.printarray(
-                -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
-            )
+
+            # if self.step == self.printstep:
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n TD of rotmat \n")
+            #    f.close()
+            #    utils.printarray(
+            #        -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
+            #    )
 
         np.savez(
             "4site_dmet_res.npz",
@@ -521,7 +577,16 @@ class dynamics_driver:
         change_CIcoeffs_list = []
 
         for ifrag, frag in enumerate(self.tot_system.frag_list):
-            change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
+            # change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
+
+            ### DELETE AND GO BACK TO ORIGINAL AFTER DEBUGGING
+            tdci = applyham_wrapper(frag, self.delt, self.gen)
+            change_CIcoeffs_list.append(tdci)
+            # if self.step == self.printstep:
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n TD of CI \n")
+            #    f.close()
+            #    utils.printarray(tdci, "output_halffrag.txt")
 
         return (
             change_NOevecs,
@@ -556,6 +621,42 @@ class dynamics_driver:
             )
             cnt += frag.Nimp
         corrdens = np.insert(corrdens, 0, current_time)
+
+        ##### TEMP, just for check for when divergence from restricted result occurs
+        # if not self.gen:
+        #    np.savez(
+        #        os.path.join(
+        #            "density_checks", f"density_res_timestep_{current_time}.npz"
+        #        ),
+        #        corrden=corrdens,
+        #    )
+        # if self.gen:
+        #    gen_corrdens = [corrdens[0]]
+        #    for i in range(1, len(corrdens), 2):
+        #        if i + 1 < len(corrdens):
+        #            gen_corrdens.append(corrdens[i] + corrdens[i + 1])
+        #        else:
+        #            gen_corrdens.append(corrdens[i])
+        #    gen_corrdens = [round(x, 5) for x in gen_corrdens]
+
+        #    data = np.load(
+        #        os.path.join(
+        #            "density_checks", f"density_res_timestep_{current_time}.npz"
+        #        )
+        #    )
+        #    res_den = data["corrden"]
+
+        #    if np.array_equal(gen_corrdens, res_den):
+        #        pass
+        #    else:
+        #        print(f"Density has diverged at timestep {current_time}.")
+        #        print(f"Restricted corrdens: \n {res_den}")
+        #        print(
+        #            f"Generalized corrdens: \n {gen_corrdens} \n and original: \n {corrdens}"
+        #        )
+
+        #####
+
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
         self.file_corrdens.flush()
 
@@ -635,28 +736,7 @@ class dynamics_driver:
 
     #####################################################################
 
-    # not currently used
 
-    # def import_check(self, tol):
-    #    old_MF = np.copy(self.tot_system.mf1RDM)
-    #    old_global = np.copy(self.tot_system.glob1RDM)
-    #    self.tot_system.get_frag_corr1RDM()
-    #    self.tot_system.get_glob1RDM()
-    #    self.tot_system.get_nat_orbs()
-    #    self.tot_system.get_new_mf1RDM(round(self.tot_system.Nele / 2))
-    #    check = print(np.allclose(old_MF, self.tot_system.mf1RDM, tol))
-    #    check_glob = print(np.allclose(old_global, self.tot_system.glob1RDM, tol))
-    #    if check is False:
-    #        print("MF calculation doesnt agree up to the ", tol)
-    #        print(old_MF - self.tot_system.mf1RDM)
-    #        quit()
-    #    if check_glob is False:
-    #        print("Global calculation doesnt agree up to the ", tol)
-    #        print(old_global - self.tot_system.glob1RDM)
-    #        quit()
-
-
-#####################################################################
 def applyham_wrapper(frag, delt, gen=False):
     # Subroutine to call pyscf to apply FCI
     # hamiltonian onto FCI vector in dynamics
@@ -701,10 +781,5 @@ def applyham_wrapper(frag, delt, gen=False):
                 frag.Ecore,
             )
         )
-
-    f = open("output_halffrag.txt", "a")
-    f.write("\n TD of CI \n")
-    f.close()
-    utils.printarray(CIvec, "output_halffrag.txt")
 
     return CIvec

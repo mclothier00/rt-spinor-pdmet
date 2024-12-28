@@ -12,18 +12,6 @@ import time
 
 #####################################################################
 
-# NOTE: this doesn't seem to be used anywhere
-
-
-def get_ddt_mf_NOs(system, G_site):
-    ddt_mf1RDM = -1j * (np.dot(G_site, system.mf1RDM) - np.dot(system.mf1RDM, G_site))
-    ddt_NOevecs = -1j * np.dot(G_site, system.NOevecs)
-
-    return ddt_mf1RDM, ddt_NOevecs
-
-
-#####################################################################
-
 
 def get_ddt_glob(dG, system):
     system.get_frag_iddt_corr1RDM()
@@ -91,23 +79,6 @@ def get_ddt_mf1rdm_serial(dG, system, Nocc):
         )
 
     ddtmf1RDM_check = np.allclose(chk, ddt_mf1RDM, rtol=0, atol=1e-5)
-
-    f = open("output_halffrag.txt", "a")
-    f.write("\n TD of global density matrix \n")
-    f.close()
-    utils.printarray(ddt_glob1RDM, "output_halffrag.txt")
-    f = open("output_halffrag.txt", "a")
-    f.write("\n G \n")
-    f.close()
-    utils.printarray(G_site, "output_halffrag.txt")
-    f = open("output_halffrag.txt", "a")
-    f.write("\n TD of NO evals (U dot) \n")
-    f.close()
-    utils.printarray(ddt_NOevecs, "output_halffrag.txt")
-    f = open("output_halffrag.txt", "a")
-    f.write("\n TD of mean field density matrix \n")
-    f.close()
-    utils.printarray(ddt_mf1RDM, "output_halffrag.txt")
 
     return ddt_glob1RDM, ddt_NOevecs, ddt_mf1RDM, G_site, ddtmf1RDM_check
 

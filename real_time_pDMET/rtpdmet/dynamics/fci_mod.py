@@ -161,14 +161,13 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
                 CIcoeffs, Norbs, Nele
             )
             corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
-
     # Notation for generalized 1RDM is dm_pq = <|p^+ q|>
     # Notation for generalized 2RDM is dm_pq,rs = <|p^+ q r^+ s|>
     # This would be equivalent to (p_dag r_dag s q) in chemists notation, so equal to restricted notation
     # PySCF requires CIcoeffs to be in a spin-blocked configuration
     if gen:
+        # Nele = 2
         corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
-    np.set_printoptions(suppress=True)
 
     return corr1RDM, corr2RDM
 

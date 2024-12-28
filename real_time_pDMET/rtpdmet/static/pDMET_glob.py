@@ -81,7 +81,7 @@ class static_pdmet:
 
         # Calculate an initial mean-field Hamiltonian
 
-        print("Calculating initial mean-field Haamiltonian")
+        print("Calculating initial mean-field Hamiltonian")
         if hamtype == 0:
             if mf1RDM is None:
                 mf1RDM = self.initialize_RHF(h_site, V_site)
@@ -100,8 +100,6 @@ class static_pdmet:
                 # mf1RDM = self.initialize_UHF(h_site, V_site)
             else:
                 self.old_glob1RDM = np.copy(mf1RDM)
-
-        self.V_site = self.U
 
         self.mf1RDM = mf1RDM
 
