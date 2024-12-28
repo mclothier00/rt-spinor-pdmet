@@ -6,7 +6,7 @@ import sys
 
 
 def RHF(h, V, Norbs, Nele):
-    if(isinstance(Nele, tuple)):
+    if isinstance(Nele, tuple):
         Nele = sum(Nele)
 
     mol = gto.M()
@@ -21,11 +21,13 @@ def RHF(h, V, Norbs, Nele):
     mf.kernel()
     RDM = mf.make_rdm1()
     return RDM
+
+
 ###########################################################
 
 
 def FCI_GS(h, V, U, Norbs, Nele):
-    if(isinstance(Nele, tuple)):
+    if isinstance(Nele, tuple):
         Nele = sum(Nele)
     # Define PySCF molecule
     mol = gto.M()
@@ -35,7 +37,7 @@ def FCI_GS(h, V, U, Norbs, Nele):
     mf.get_hcore = lambda *args: h
 
     mf.get_ovlp = lambda *args: np.eye(Norbs)
-        
+
     mf._eri = ao2mo.restore(8, V, Norbs)
     # taking advantage of symmetry in 2e term
     # (assuming orbitals are real - 8fold symmetry)
@@ -55,13 +57,15 @@ def FCI_GS(h, V, U, Norbs, Nele):
     # used in DMET (because now they are in orbital basis)
 
     CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
-        CIcoeffs, Norbs, Nele, codes.adjoint(mf.mo_coeff))
+        CIcoeffs, Norbs, Nele, codes.adjoint(mf.mo_coeff)
+    )
     return CIcoeffs, E_FCI
+
+
 ###########################################################
 
 
 def get_corr1RDM(CIcoeffs, Norbs, Nele):
-
     # subroutine to get the FCI 1RDM, (rho_pq = < c_q^dag c_p >)
     # C = RC +i IC => can rewrite:
     # PySCF uses only dencity amtricies for real numbers,
@@ -70,25 +74,26 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele):
     # + i<Rpsi|~|Ipsi> - i<Ipsi|~|Rpsi>
     # transition density matrix  = any <a | ~ | b>
 
-    if(np.iscomplexobj(CIcoeffs)):
+    if np.iscomplexobj(CIcoeffs):
         Re_CIcoeffs = np.copy(CIcoeffs.real)
         Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
         corr1RDM = 1j * pyscf.fci.direct_spin1.trans_rdm1(
-            Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele)
+            Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele
+        )
 
         corr1RDM -= 1j * pyscf.fci.direct_spin1.trans_rdm1(
-            Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele)
+            Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele
+        )
 
-        corr1RDM += pyscf.fci.direct_spin1.make_rdm1(
-            Re_CIcoeffs, Norbs, Nele)
-        corr1RDM += pyscf.fci.direct_spin1.make_rdm1(
-            Im_CIcoeffs, Norbs, Nele)
+        corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Re_CIcoeffs, Norbs, Nele)
+        corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Im_CIcoeffs, Norbs, Nele)
     else:
-        corr1RDM = pyscf.fci.direct_spin1.make_rdm1(
-            CIcoeffs, Norbs, Nele)
+        corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
 
     return corr1RDM
+
+
 ###########################################################
 
 
@@ -97,38 +102,35 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele):
     # Notation for 1RDM is rho_pq = < c_q^dag c_p >
     # Notation for 2RDM is gamma_prqs = < c_p^dag c_q^dag c_s c_r >
 
-    if(np.iscomplexobj(CIcoeffs)):
-
+    if np.iscomplexobj(CIcoeffs):
         Re_CIcoeffs = np.copy(CIcoeffs.real)
         Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
         corr1RDM, corr2RDM = pyscf.fci.direct_spin1.trans_rdm12(
-            Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele)
+            Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele
+        )
 
-        corr1RDM = corr1RDM*1j
-        corr2RDM = corr2RDM*1j
+        corr1RDM = corr1RDM * 1j
+        corr2RDM = corr2RDM * 1j
 
         tmp1, tmp2 = pyscf.fci.direct_spin1.trans_rdm12(
-            Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele)
+            Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele
+        )
 
         corr1RDM -= 1j * tmp1
         corr2RDM -= 1j * tmp2
 
-        tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(
-            Re_CIcoeffs, Norbs, Nele)
+        tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(Re_CIcoeffs, Norbs, Nele)
 
         corr1RDM += tmp1
         corr2RDM += tmp2
 
-        tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(
-            Im_CIcoeffs, Norbs, Nele)
+        tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(Im_CIcoeffs, Norbs, Nele)
 
         corr1RDM += tmp1
         corr2RDM += tmp2
 
     else:
-
-        corr1RDM, corr2RDM = pyscf.fci.direct_spin1.make_rdm12(
-            CIcoeffs, Norbs, Nele)
+        corr1RDM, corr2RDM = pyscf.fci.direct_spin1.make_rdm12(CIcoeffs, Norbs, Nele)
 
     return corr1RDM, corr2RDM

@@ -1,112 +1,202 @@
 import time
 import numpy as np
 import real_time_pDMET.rtpdmet.dynamics.system_mod as system_mod
-import real_time_pDMET.rtpdmet.dynamics.system_mod_spinor as system_mod_spinor
 import real_time_pDMET.rtpdmet.dynamics.fragment_mod as fragment_mod_dynamic
-import real_time_pDMET.rtpdmet.dynamics.fragment_mod_spinor as fragment_mod_dynamic_spinor
-import real_time_pDMET.rtpdmet.static.fragment_mod as fragment_mod
-#import rt_dmet_toedit.rtpdmet.static.pDMET_glob as pdmet_glob
+import real_time_pDMET.scripts.utils as utils
+
+# import rt_dmet_toedit.rtpdmet.static.pDMET_glob as pdmet_glob
 from pyscf import gto, scf, ao2mo, fci
 import itertools
+import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
 
-def transition(
-        the_dmet, Nsites, Nele, Nfrag, impindx, h_site,
-        V_site, hamtype, hubsite_indx, periodic):
+
+def rtor_transition(
+    the_dmet,
+    Nsites,
+    Nele,
+    Nfrag,
+    impindx,
+    h_site,
+    V_site,
+    hamtype,
+    hubsite_indx,
+    periodic,
+):
+    print(
+        "Transitioning from restricted static calculation to restricted dynamic calculation."
+    )
+
     transition_time = time.time()
 
     mf1RDM = the_dmet.mf1RDM
     tot_system = system_mod.system(
-        Nsites, Nele, Nfrag, impindx, h_site, V_site,
-        hamtype, mf1RDM, hubsite_indx, periodic)
+        Nsites,
+        Nele,
+        Nfrag,
+        impindx,
+        h_site,
+        V_site,
+        hamtype,
+        mf1RDM,
+        hubsite_indx,
+        periodic,
+    )
     tot_system.glob1RDM = the_dmet.glob1RDM
     tot_system.mf1RDM = the_dmet.mf1RDM
     tot_system.NOevecs = the_dmet.NOevecs
     tot_system.NOevals = the_dmet.NOevals
     tot_system.frag_list = []
+    tot_system.Nbasis = Nsites  # for Hubbard
     for i in range(Nfrag):
         tot_system.frag_list.append(
-            fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele))
+            fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele)
+        )
         tot_system.frag_list[i].rotmat = the_dmet.frag_list[i].rotmat
         tot_system.frag_list[i].CIcoeffs = the_dmet.frag_list[i].CIcoeffs
+
     return tot_system
 
 
 # NOTE: TEST THIS, many functions are new
 def rtog_transition(
-        the_dmet, Nsites, Nele, Nfrag, impindx, h_site_r,
-        V_site_r, hamtype, hubsite_indx, periodic):
+    the_dmet,
+    Nsites,
+    Nele,
+    Nfrag,
+    impindx,
+    h_site_r,
+    V_site_r,
+    hamtype,
+    hubsite_indx,
+    periodic,
+):
+    print(
+        "Transitioning from restricted static calculation to generalized dynamic calculation."
+    )
 
     transition_time = time.time()
-    mf1RDM_r = the_dmet.mf1RDM
 
     # changing hamiltonian and 1RDM from restricted to generalized
-    # NOTE: if new hamiltonian is created to introduce dynamics (as done in Dariia's examples),
-    #       this is redundant. I'm leaving it in in case dynamics are initialized by something other
-    #       than a change in the Hamiltonian
     h_site = np.kron(np.eye(2), h_site_r)
-    V_site = block_tensor(V_site_r)
+    V_site = utils.block_tensor(V_site_r)
+    h_site = utils.reshape_rtog_matrix(h_site)
+    V_site = utils.reshape_rtog_tensor(V_site)
 
-    mf1RDM = np.kron(np.eye(2), 0.5*mf1RDM_r)
-
-    # changing impindx to reflect spinors in block diagonal form
-    # ex: ([0, 1], [2, 3]) --> ([0, 1, 4, 5], [2, 3, 6, 7])
-    
-    # currently in spin block indexing
+    # changing impindx to reflect spinors indexed via sites [ababab...]
+    # ex: sites: ([0, 1], [2, 3]) --> ([0, 1, 2, 3], [4, 5, 6, 7])
     impindx = spinor_impindx(Nsites, Nfrag)
 
-    # NOTE: also possibly redundant, for same reason as h_site and V_site. implementing anyway
     hubsite_indx = spinor_hubsite(hubsite_indx, Nsites)
 
-    tot_system = system_mod_spinor.system(
-        Nsites, Nele, Nfrag, impindx, h_site, V_site,
-        hamtype, mf1RDM, hubsite_indx, periodic)
-    
-    tot_system.glob1RDM = np.kron(np.eye(2), 0.5*the_dmet.glob1RDM)
-    tot_system.mf1RDM = mf1RDM
-    tot_system.NOevals, tot_system.NOevecs = get_nat_orbs(tot_system.glob1RDM)
+    mf1RDM = the_dmet.mf1RDM
+    tot_system = system_mod.system(
+        Nsites,
+        Nele,
+        Nfrag,
+        impindx,
+        h_site,
+        V_site,
+        hamtype,
+        mf1RDM,
+        hubsite_indx,
+        periodic,
+        gen=True,
+    )
+
+    tot_system.Nbasis = 2 * Nsites
+    tot_system.glob1RDM = utils.reshape_rtog_matrix(
+        np.kron(np.eye(2), 0.5 * the_dmet.glob1RDM)
+    )
+    tot_system.mf1RDM = utils.reshape_rtog_matrix(
+        np.kron(np.eye(2), 0.5 * the_dmet.mf1RDM)
+    )
+
+    tot_system.NOevecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), the_dmet.NOevecs))
+
+    tot_system.NOevals = np.diag(
+        np.dot(
+            tot_system.NOevecs.conjugate().transpose(),
+            np.dot(tot_system.glob1RDM, tot_system.NOevecs),
+        )
+    )
 
     tot_system.frag_list = []
-    nbeta = Nele//2
-    nalpha = Nele - nbeta
     for i in range(Nfrag):
-        frag_i = fragment_mod_dynamic_spinor.fragment(impindx[i], Nsites, Nele)
+        frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=True)
         tot_system.frag_list.append(frag_i)
-        tot_system.frag_list[i].rotmat = frag_i.get_rotmat(mf1RDM)[0]
-        tot_system.frag_list[i].CIcoeffs = to_gen_coeff(Nsites, Nsites, (Nsites*2), nalpha, nbeta, the_dmet.frag_list[i].CIcoeffs) 
+        tot_system.frag_list[i].rotmat = utils.reshape_rtog_matrix(
+            np.kron(np.eye(2), the_dmet.frag_list[i].rotmat)
+        )
 
-    print('currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM')
+        nbeta = frag_i.Nimp // 2
+        nalpha = frag_i.Nimp - nbeta
+
+        tot_system.frag_list[i].CIcoeffs = to_gen_coeff(
+            frag_i.Nimp,
+            frag_i.Nimp,
+            (frag_i.Nimp * 2),
+            nalpha,
+            nbeta,
+            the_dmet.frag_list[i].CIcoeffs,
+        )
+
+    print(
+        "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
+    )
+
+    # for hard-coded checks; have to manually adjust number of fragment arrays
+    glob1rdm = tot_system.glob1RDM
+    mf1rdm = tot_system.mf1RDM
+    NOevecs = tot_system.NOevecs
+    # currently only saves for two fragments
+    rotmat_0 = tot_system.frag_list[0].rotmat
+    rotmat_1 = tot_system.frag_list[1].rotmat
+    CIcoeff_0 = tot_system.frag_list[0].CIcoeffs
+    CIcoeff_1 = tot_system.frag_list[1].CIcoeffs
+
+    np.savez(
+        "matrices.npz",
+        glob1rdm=glob1rdm,
+        mf1rdm=mf1rdm,
+        NOevecs=NOevecs,
+        rotmat_0=rotmat_0,
+        rotmat_1=rotmat_1,
+        CIcoeff_0=CIcoeff_0,
+        CIcoeff_1=CIcoeff_1,
+    )
 
     return tot_system
 
-### NOTE: will need a utog_transition:
-# def utog_transition...
-
-
 
 def concat_strings(alphastr, betastr, norb_alpha, norb_beta):
-
     matrix_elements = []
 
-    for i in range(len(alphastr)): 
+    for i in range(len(alphastr)):
         for j in range(len(betastr)):
-    
+            det_info = []
+
             # convert binary numbers to strings and remove prefix
             alpha_str = bin(alphastr[i])[2:]
             beta_str = bin(betastr[j])[2:]
-        
+
             # adds leading zeros so both strings are of the same length
             alpha_str = alpha_str.zfill(max(norb_alpha, norb_beta))
             beta_str = beta_str.zfill(max(norb_alpha, norb_beta))
-        
+
             # concatenate strings
             matrix_str = "".join(i for j in zip(beta_str, alpha_str) for i in j)
-            matrix_elements.append(int('0b' + matrix_str, 2))
-    
+            det_info.append(int("0b" + matrix_str, 2))
+
+            # add alpha and beta strings to list matrix_elements
+            det_info.append(alphastr[i])
+            det_info.append(betastr[j])
+
+            matrix_elements.append(det_info)
+
     return matrix_elements
 
 
 def to_gen_coeff(norb_alpha, norb_beta, norb_gen, nalpha, nbeta, coeffs):
-
     nelec = nalpha + nbeta
 
     # spinor indices
@@ -116,7 +206,7 @@ def to_gen_coeff(norb_alpha, norb_beta, norb_gen, nalpha, nbeta, coeffs):
     alphastr = fci.cistring.make_strings(np.arange(norb_alpha), nalpha)
     betastr = fci.cistring.make_strings(np.arange(norb_beta), nbeta)
 
-    # matrix elements 
+    # matrix elements
 
     matrix_elements = concat_strings(alphastr, betastr, norb_alpha, norb_beta)
 
@@ -125,13 +215,45 @@ def to_gen_coeff(norb_alpha, norb_beta, norb_gen, nalpha, nbeta, coeffs):
     coeffs = np.matrix.flatten(coeffs)
 
     for i in range(len(coeffs)):
-        index = fci.cistring.str2addr(norb_gen, nelec, matrix_elements[i])
+        index = fci.cistring.str2addr(norb_gen, nelec, matrix_elements[i][0])
         new_coeff[index] = coeffs[i]
+        new_coeff[index] = coeffs[i] * coeff_parity_change(
+            matrix_elements[i][1], matrix_elements[i][2], norb_alpha, norb_beta
+        )
 
     return new_coeff
 
 
+def coeff_parity_change(alphastr, betastr, nalpha, nbeta):
+    # convert binary numbers to strings and remove prefix
+    alpha_str = bin(alphastr)[2:]
+    beta_str = bin(betastr)[2:]
+
+    # adds leading zeros so both strings are of the same length
+    alpha_str = alpha_str.zfill(max(nalpha, nbeta))
+    beta_str = beta_str.zfill(max(nalpha, nbeta))
+
+    # combines alpha and beta string into one restricted string
+    res_str = beta_str + alpha_str
+    resstr = int(res_str, 2)
+
+    # if element in beta string is 1, determines parity
+    new_parity = 1
+
+    # NOTE: is this alphastr or rest of full string?
+    for i, bit in enumerate(beta_str[::-1]):
+        if bit == "1":
+            # print(
+            #    f"whats actually getting counted for {bin(resstr)} for {i}: {bin(alphastr >> (i+1))}"
+            # )
+            parity = (-1) ** bin(alphastr >> (i + 1)).count("1")
+            new_parity = new_parity * parity
+    # print(f"parity of {res_str}: {new_parity}")
+    return new_parity
+
+
 ## copied over from pDMET_glob.py
+
 
 def initialize_GHF(Nele, h_site, V_site):
     print("Mf 1RDM is initialized with GHF")
@@ -150,104 +272,68 @@ def initialize_GHF(Nele, h_site, V_site):
     return mfRDM
 
 
-## NOTE: currently not sure if this correctly handles symmetries!! something we need
-## to consider
-def block_tensor(a):
-    ## creates a "block diagonal" tensor from a given tensor
-
-    shape1, shape2, shape3, shape4 = np.shape(a)
-    ten_block = np.zeros((shape1*2, shape2*2, shape3*2, shape4*2))
-    ten_block[:shape1, :shape2, :shape3, :shape4] = a[:, :, :, :]
-    ten_block[shape1:, shape2:, shape3:, shape4:] = a[:, :, :, :]
-
-    return ten_block
-
-
-def spinor_impindx(Nsites, Nfrag, spinblock=True):
+def spinor_impindx(Nsites, Nfrag, spinblock=False):
     ## creates a new impindx based on spinor (or unrestricted) orbitals
 
     impindx = []
 
-    if spinblock == True:
+    if spinblock:
         # spinor, aaaabbbb configuration
-        Nimp = int(Nsites/Nfrag)
+        Nimp = int(Nsites / Nfrag)
         for i in range(Nfrag):
-            impindx.append(np.concatenate((np.arange(i*Nimp, (i+1)*Nimp), np.arange(i*Nimp+Nsites, (i+1)*Nimp+Nsites))))
+            impindx.append(
+                np.concatenate(
+                    (
+                        np.arange(i * Nimp, (i + 1) * Nimp),
+                        np.arange(i * Nimp + Nsites, (i + 1) * Nimp + Nsites),
+                    )
+                )
+            )
     else:
         # spinor, abababab configuration
-        gNimp = int((Nsites*2)/Nfrag)
+        gNimp = int((Nsites * 2) / Nfrag)
         for i in range(Nfrag):
-            impindx.append(np.arange(i*gNimp, (i+1)*gNimp))
+            impindx.append(np.arange(i * gNimp, (i + 1) * gNimp))
 
-    return impindx 
+    return impindx
 
 
 def spinor_hubsite(hubsite_indx, Nsites):
-    ## converts a hubsite_indx to spinor (or unrestricted) indices 
-    ## NOTE: currently only created for spin blocked indexing
+    ## converts a hubsite_indx to spinor (or unrestricted) indices
 
     spinor_hubsite_indx = []
-    
+
+    for i in range(len(hubsite_indx)):
+        spinor_hubsite_indx.append(hubsite_indx[i] * 2)
+        spinor_hubsite_indx.append(hubsite_indx[i] * 2 + 1)
+
+    spinor_hubsite_indx = np.asarray(spinor_hubsite_indx)
+
+    return spinor_hubsite_indx
+
+
+def spinor_hubsite_block(hubsite_indx, Nsites):
+    ## converts a hubsite_indx to spinor (or unrestricted) indices
+    ## when in spin block form
+
+    spinor_hubsite_indx = []
+
     for i in range(len(hubsite_indx)):
         spinor_hubsite_indx.append(hubsite_indx[i])
         spinor_hubsite_indx.append(hubsite_indx[i] + Nsites)
-    
-    spinor_hubsite_indx = np.array(spinor_hubsite_indx)
+
+    spinor_hubsite_indx = np.asarray(spinor_hubsite_indx)
 
     return spinor_hubsite_indx
+
+
+# NOTE: CHECK THIS
 
 
 def get_nat_orbs(glob1RDM):
     # Subroutine to obtain natural orbitals of global 1RDM
     NOevals, NOevecs = np.linalg.eigh(glob1RDM)
-    
     # Re-order such that eigenvalues are in descending order
     NOevals = np.flip(NOevals)
     NOevecs = np.flip(NOevecs, 1)
-    
     return NOevals, NOevecs
-
-
-### may not need these; spin staggered indices 
-
-def reshape_rtog_matrix(a):
-    ## reshape a block diagonal matrix a to a generalized form with 1a,1b,2a,2b, etc.
-
-    num_rows, num_cols = a.shape
-    block_indices = np.arange(num_cols)
-    spin_block_size = int(num_cols/2)
-    
-    alpha_block = block_indices[:spin_block_size]
-    beta_block = block_indices[spin_block_size:]
-    
-    indices = [list(itertools.chain(i))
-                for i in zip(alpha_block, beta_block)]
-    
-    indices = np.asarray(indices).reshape(-1)
-
-    new_a = a[:, indices]
-
-    return new_a
-
-
-def reshape_rtog_tensor(a):
-    ## reshape a block diagonal tensor a to a generalized form with columns as 1a,1b,2a,2b, etc.
-
-    num_rows, num_cols, dim1, dim2 = a.shape
-    block_indices = np.arange(num_cols)
-    spin_block_size = int(num_cols/2)
-    
-    alpha_block = block_indices[:spin_block_size]
-    beta_block = block_indices[spin_block_size:]
-    
-    indices = [list(itertools.chain(i))
-                for i in zip(alpha_block, beta_block)]
-
-    indices = np.asarray(indices).reshape(-1)
-
-    new_a = a[:, :, :, indices]
-
-    return new_a
-
-
-

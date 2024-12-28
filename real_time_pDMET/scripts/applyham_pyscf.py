@@ -15,44 +15,65 @@ from pyscf.fci import cistring
 
 #####################################################################
 
-## NOTE: need to add additional function to check dimensions and sned to spinor
-## if in spinor basis?
+
 def apply_ham_pyscf_check(
-        CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
-    '''
-     subroutine that checks if the hamiltonian is real or complex
-     and then calls the appropriate subroutine to apply the
-     hamiltonian to a vector of CI coefficients using pyscf
-    '''
-    if(numpy.iscomplexobj(hmat) and numpy.iscomplexobj(Vmat)):
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, gen=False, fctr=0.5
+):
+    """
+    subroutine that checks if the hamiltonian is real or complex
+    and then calls the appropriate subroutine to apply the
+    hamiltonian to a vector of CI coefficients using pyscf
+    """
 
-        # Complex hamiltonian
-        CIcoeffs = apply_ham_pyscf_complex(
-            CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr)
+    if not gen:
+        if numpy.iscomplexobj(hmat) and numpy.iscomplexobj(Vmat):
+            # Complex restricted hamiltonian
+            CIcoeffs = apply_ham_pyscf_complex(
+                CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr
+            )
 
-    elif(not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat)):
+        if not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
+            # Real restricted hamiltonian
+            CIcoeffs = apply_ham_pyscf_real(
+                CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr
+            )
 
-        # Real hamiltonian
-        CIcoeffs = apply_ham_pyscf_real(
-            CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr)
+        else:
+            print("ERROR: the 1e- integrals and 2e- integrals in")
+            print("applyham_pyscf.apply_ham_pyscf_check")
+            print("are NOT both real nor both complex")
+            exit()
 
-    else:
+    elif gen:
+        if numpy.iscomplexobj(hmat) and numpy.iscomplexobj(Vmat):
+            # Complex generalized hamiltonian
+            CIcoeffs = apply_ham_pyscf_spinor(
+                CIcoeffs, hmat, Vmat, (nalpha + nbeta), norbs, Econst, fctr
+            )
 
-        print('ERROR: the 1e- integrals and 2e- integrals in')
-        print('applyham_pyscf.apply_ham_pyscf_check')
-        print('are NOT both real nor both complex')
-        exit()
+        elif not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
+            # Real generalized hamiltonian
+            CIcoeffs = apply_ham_pyscf_spinor(
+                CIcoeffs, hmat, Vmat, (nalpha + nbeta), norbs, Econst, fctr
+            )
+
+        else:
+            print("ERROR: the 1e- integrals and 2e- integrals in")
+            print("applyham_pyscf.apply_ham_pyscf_check")
+            print("are NOT both real nor both complex")
+            exit()
+
     return CIcoeffs
+
+
 #####################################################################
 
-## NOTE: needs to take in a 1d fci array, not 2d.
 
-def apply_ham_pyscf_spinor(
-        CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=1.0):
-    '''
+def apply_ham_pyscf_spinor(CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=0.5):
+    """
     NOTE: This subroutine calls the PySCF fci solver for DHF or GHF,
-     which can handle a complex Hamiltonian in a spinor basis. However, 
-     both hmat and Vmat must be either both complex or both real. This 
+     which can handle a complex Hamiltonian in a spinor basis. However,
+     both hmat and Vmat must be either both complex or both real. This
      subroutine calls PySCF to apply a hamiltonian to a vector
      of CI coefficients.
      CIcoeffs is a 1d-array containing the CI coefficients in which
@@ -62,66 +83,88 @@ def apply_ham_pyscf_spinor(
      Vmat is the 2e- integrals and are given in chemistry notation.
      Econst is a constant energy contribution to the Hamiltonian.
      fctr is the factor in front of the 2e- terms
-     when defining the hamiltonian; because this is a spinor basis, 
+     when defining the hamiltonian; because this is a spinor basis,
      this is set to 1.0.
-     NOTE: Currently only accepts hamiltonians and norbs in dimensionality 
-     of the spin-generalized formalism. 
-     '''
-    
-    Vmat = pyscf.fci.fci_dhf_slow.absorb_h1e(
-        hmat, Vmat, norbs, nelec, fctr)
+     NOTE: Currently only accepts hamiltonians and norbs in dimensionality
+     of the spin-generalized formalism.
+    """
 
-    # this errors out as it wants a single vector, not a matrix or list of vectors
-    # april 24 NOTE: this should just work now...
-    temp = pyscf.fci.fci_dhf_slow.contract_2e(
-        Vmat, CIcoeffs, norbs, nelec)
+    Vmat = pyscf.fci.fci_dhf_slow.absorb_h1e(hmat, Vmat, norbs, nelec, fctr)
 
-    CIcoeffs = temp + Econst*CIcoeffs
+    temp = pyscf.fci.fci_dhf_slow.contract_2e(Vmat, CIcoeffs, norbs, nelec)
 
-#    row, col = CIcoeffs.shape
-#    temp = numpy.zeros((row, col))
-#    print(f'original CI coefficient matrix: \n {CIcoeffs}')
-#    print(f'CI vector: {CIcoeffs[:,0]}')
-#    
-#    for i in range(0, row):
-#        CI_vec = CIcoeffs[i, :]
-#        temp[i, :] = pyscf.fci.fci_dhf_slow.contract_2e(
-#            Vmat, CI_vec, norbs, nelec)
-#    print(f'shape of temp: {temp.shape}')
-#    CIcoeffs = temp + Econst*CIcoeffs
-    print('apply_ham_pyscf_spinor completed with no errors')
-    exit()
+    CIcoeffs = temp + Econst * CIcoeffs
+
     return CIcoeffs
+
+
 #####################################################################
+
 
 def apply_ham_pyscf_fully_complex(
-        CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
-    '''
-     subroutine that uses the apply_ham_pyscf_nosym
-     subroutine below to apply a complex hamiltonian
-     to a complex set of CI coefficients -
-     also works if some subset are real, it's just slower
-    '''
-    CIcoeffs = (apply_ham_pyscf_nosym(
-        numpy.copy(CIcoeffs.real), numpy.copy(hmat.real),
-        numpy.copy(Vmat.real), nalpha, nbeta, norbs, Econst, fctr)
-                - apply_ham_pyscf_nosym(
-                    numpy.copy(CIcoeffs.imag), numpy.copy(hmat.imag),
-                    numpy.copy(Vmat.imag), nalpha, nbeta, norbs, 0.0, fctr)
-                + 1j*(apply_ham_pyscf_nosym(
-                    numpy.copy(CIcoeffs.imag), numpy.copy(hmat.real),
-                    numpy.copy(Vmat.real), nalpha, nbeta, norbs, Econst, fctr)
-                      + apply_ham_pyscf_nosym(
-                          numpy.copy(CIcoeffs.real), numpy.copy(hmat.imag),
-                          numpy.copy(Vmat.imag), nalpha, nbeta,
-                          norbs, 0.0, fctr)))
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5
+):
+    """
+    subroutine that uses the apply_ham_pyscf_nosym
+    subroutine below to apply a complex hamiltonian
+    to a complex set of CI coefficients -
+    also works if some subset are real, it's just slower
+    """
+
+    CIcoeffs = (
+        apply_ham_pyscf_nosym(
+            numpy.copy(CIcoeffs.real),
+            numpy.copy(hmat.real),
+            numpy.copy(Vmat.real),
+            nalpha,
+            nbeta,
+            norbs,
+            Econst,
+            fctr,
+        )
+        - apply_ham_pyscf_nosym(
+            numpy.copy(CIcoeffs.imag),
+            numpy.copy(hmat.imag),
+            numpy.copy(Vmat.imag),
+            nalpha,
+            nbeta,
+            norbs,
+            0.0,
+            fctr,
+        )
+        + 1j
+        * (
+            apply_ham_pyscf_nosym(
+                numpy.copy(CIcoeffs.imag),
+                numpy.copy(hmat.real),
+                numpy.copy(Vmat.real),
+                nalpha,
+                nbeta,
+                norbs,
+                Econst,
+                fctr,
+            )
+            + apply_ham_pyscf_nosym(
+                numpy.copy(CIcoeffs.real),
+                numpy.copy(hmat.imag),
+                numpy.copy(Vmat.imag),
+                nalpha,
+                nbeta,
+                norbs,
+                0.0,
+                fctr,
+            )
+        )
+    )
+
     return CIcoeffs
+
+
 #####################################################################
 
 
-def apply_ham_pyscf_real(
-        CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
-    '''
+def apply_ham_pyscf_real(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
+    """
     NOTE: THIS SUBROUTINE ASSUMES THAT THE
      HAMILTONIAN IS SYMMETRIC (HERMITIAN AND REAL)
      AND IS CALLING PYSCF TO APPLY THE HAMILTONIAN
@@ -135,21 +178,21 @@ def apply_ham_pyscf_real(
      Econst is a constant energy contribution to the hamiltonian
      fctr is the factor in front of the 2e- terms
      when defining the hamiltonian
-     '''
-    Vmat = pyscf.fci.direct_spin1.absorb_h1e(
-        hmat, Vmat, norbs, (nalpha, nbeta), fctr)
-    temp = pyscf.fci.direct_spin1.contract_2e(
-        Vmat, CIcoeffs, norbs, (nalpha, nbeta))
-    CIcoeffs = temp + Econst*CIcoeffs
+    """
+    Vmat = pyscf.fci.direct_spin1.absorb_h1e(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+    temp = pyscf.fci.direct_spin1.contract_2e(Vmat, CIcoeffs, norbs, (nalpha, nbeta))
+    CIcoeffs = temp + Econst * CIcoeffs
 
     return CIcoeffs
+
+
 #####################################################################
 
 # NOTE: this is edited for print statements; switch back to normal after testing
 
-def apply_ham_pyscf_nosym(
-        CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
-    '''
+
+def apply_ham_pyscf_nosym(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
+    """
     NOTE: THIS SUBROUTINE MAKES NO ASSUMPTION ABOUT THE SYMMETRY OF
     THE HAMILTONIAN, BUT CI COEFFICIENTS AND HAMILTONIAN MUST BE REAL
     AND IS CALLING PYSCF TO APPLY THE HAMILTONIAN
@@ -162,30 +205,38 @@ def apply_ham_pyscf_nosym(
     the 2e- integrals, Vmat, are given in chemistry notation
     Econst is a constant energy contribution to the hamiltonian
     fctr is the factor in front of the 2e- terms when defining the hamiltonian
-    '''
-    print(f'original CI coefficients: {CIcoeffs.shape}')
-    
+    """
+    # print(f"CIcoeffs from beginning of apply_ham_nosym: \n {CIcoeffs}")
     Vmat_new = pyscf.fci.direct_nosym.absorb_h1e(
-        hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+        hmat, Vmat, norbs, (nalpha, nbeta), fctr
+    )
     temp = pyscf.fci.direct_nosym.contract_2e(
-        Vmat_new, CIcoeffs, norbs, (nalpha, nbeta))
-    CIcoeffs_new = temp + Econst*CIcoeffs
+        Vmat_new, CIcoeffs, norbs, (nalpha, nbeta)
+    )
+    CIcoeffs_new = temp + Econst * CIcoeffs
 
-    print(f'CI coefficients after applyhams: \n {CIcoeffs_new}')
-    nelec = nalpha + nbeta
+    # print(f"V from direct_nosym: \n {Vmat_new}")
+    # print(f"temp from contract_2e: \n {temp}")
+    # print(f"CIcoeffs from nosym: \n {CIcoeffs_new}")
+    # print(f"CI coefficients after applyhams: \n {CIcoeffs_new}")
+    # nelec = nalpha + nbeta
 
-    CIgeneral = apply_ham_pyscf_spinor(
-        CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=1.0)
-    print(f'CI coefficients after general applyhams: \n {CIgeneral}')
-
-    exit()
+    # CIgeneral = apply_ham_pyscf_spinor(
+    #    CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=1.0
+    # )
+    # print(f"CI coefficients after general applyhams: \n {CIgeneral}")
+    # print("ending at apply_ham_pyscf_nosym")
+    # exit()
     return CIcoeffs_new
+
+
 #####################################################################
 
 
 def apply_ham_pyscf_complex(
-        CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):
-    '''
+    CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5
+):
+    """
     NOTE: THIS SUBROUTINE ALLOWS FOR COMPLEX HAMILTONIAN,
     BUT ONLY REAL CI COEFFICIENTS
     AND IS USING THE SUBROUTINES IN THIS MODULE TO APPLY THE HAMILTONIAN
@@ -198,19 +249,19 @@ def apply_ham_pyscf_complex(
     the 2e- integrals, Vmat, are given in chemistry notation
     Econst is a constant energy contribution to the hamiltonian
     fctr is the factor in front of the 2e- terms when defining the hamiltonian
-    '''
-    Vmat = absorb_h1e_complex(
-        hmat, Vmat, norbs, (nalpha, nbeta), fctr)
-    temp = contract_2e_complex(
-        Vmat, CIcoeffs, norbs, (nalpha, nbeta))
-    CIcoeffs = temp + Econst*CIcoeffs
+    """
+    Vmat = absorb_h1e_complex(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
+    temp = contract_2e_complex(Vmat, CIcoeffs, norbs, (nalpha, nbeta))
+    CIcoeffs = temp + Econst * CIcoeffs
 
     return CIcoeffs
+
+
 #####################################################################
 
 
 def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
-    '''
+    """
     version of the pyscf subroutine contract_2e
     which allows for complex orbitals
     still assumes real CI coefficients
@@ -218,7 +269,7 @@ def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
     other changes from pyscf have been noted
     subroutine follows logic of
     eqs 11.8.13-11.8.15 in helgaker, jorgensen and olsen
-    '''
+    """
 
     neleca, nelecb = nelec
     if link_index is None:
@@ -243,7 +294,7 @@ def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
     # following line assumes the symmetry
     # that g[p,q,r,s]=g[r,s,p,q] in chemists notation
     # this symmetry holds for real and complex orbitals
-    t1 = numpy.dot(g2e.reshape(norb*norb, -1), t1.reshape(norb*norb, -1))
+    t1 = numpy.dot(g2e.reshape(norb * norb, -1), t1.reshape(norb * norb, -1))
     t1 = t1.reshape(norb, norb, na, nb)
 
     # data type of ci1 is now complex
@@ -259,6 +310,8 @@ def contract_2e_complex(g2e, fcivec, norb, nelec, link_index=None):
                 ci1[k, str0] += sign * t1[i, a, k, str1]
 
     return ci1
+
+
 #####################################################################
 
 
@@ -267,15 +320,14 @@ def absorb_h1e_complex(h1e, eri, norb, nelec, fac=1):
     # following 11.8.8 in helgaker, jorgensen and olsen
     # allows for no assumption about symmetry of 1 and 2 e- terms
 
-    '''Modify 2e Hamiltonian to include 1e Hamiltonian contribution.
-    '''
+    """Modify 2e Hamiltonian to include 1e Hamiltonian contribution."""
     if not isinstance(nelec, (int, numpy.integer)):
         nelec = sum(nelec)
     # eri = eri.copy()
     # h2e = pyscf.ao2mo.restore(1, eri, norb)
     h2e = eri.copy()
-    f1e = h1e - numpy.einsum('jiik->jk', h2e) * .5
-    f1e = f1e * (1./nelec)
+    f1e = h1e - numpy.einsum("jiik->jk", h2e) * 0.5
+    f1e = f1e * (1.0 / nelec)
     for k in range(norb):
         h2e[k, k, :, :] += f1e
         h2e[:, :, k, k] += f1e
