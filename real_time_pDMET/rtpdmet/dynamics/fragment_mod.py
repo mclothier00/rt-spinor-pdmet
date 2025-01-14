@@ -61,9 +61,9 @@ class fragment:
             self.Nbasis = 2 * self.Nsites
             # number of basis functions in total system
 
-            self.Ncore = int(Nele) - self.Nimp
+            self.Ncore = 2 * (int(Nele/2) - int(self.Nimp/2))
             # Number of core orbitals in fragment
-            self.Nvirt = (Nsites * 2) - 2 * self.Nimp - self.Ncore
+            self.Nvirt = 2 * Nsites - 2 * self.Nimp - self.Ncore
             # Number of virtual orbitals in fragment
 
             self.gen = True
@@ -82,6 +82,8 @@ class fragment:
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites * 2
+
+
 
     #####################################################################
 
@@ -518,6 +520,7 @@ class fragment:
             self.full_corr1RDM[
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
+
         if self.gen:
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
@@ -637,6 +640,7 @@ class fragment:
             if hamtype == 0:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
+                # print(f"IFmat: \n {IFmat}")
                 IFmat += 2.0 * np.einsum(
                     "abcc->ab", V_MO[:, :, self.corerange[:, None], self.corerange]
                 )
@@ -669,6 +673,7 @@ class fragment:
                     "acdb->abdc", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("cd,abdc->ab", self.corr1RDM, tmp)
+                # print(f"AFmat: \n {AFmat}")
 
             elif hamtype == 1:
                 # Hubbard hamiltonian
@@ -733,6 +738,7 @@ class fragment:
             if hamtype == 0 or hamtype == 1:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
+                # print(f"inactive Fock: \n {np.real(IFmat)}")
                 IFmat += np.einsum(
                     "ijkk->ij", V_MO[:, :, self.corerange[:, None], self.corerange]
                 )
@@ -753,6 +759,7 @@ class fragment:
                     "iklj->ijlk", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
+                # print(f"active Fock: \n {np.real(AFmat)}")
 
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0 or hamtype == 1:
