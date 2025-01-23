@@ -852,10 +852,9 @@ def make_ham_multi_imp_anderson_realspace_mag(
     # Add magnetic field terms
     # NOTE: EDIT THIS; currently bad imitation of mag_x
     Nsp = int(hmat.shape[0] / 2)
-    hmat[:Nsp, Nsp:] = m
-    hmat[Nsp:, :Nsp] = m
-    print(hmat)
-    exit()
+    for i in range(Nsp):
+        hmat[i, i+Nsp] = m
+        hmat[i+Nsp, i] = m
 
     # ovlp = mf.get_ovlp()
     # hcore = mf.get_hcore()

@@ -13,8 +13,8 @@ gen = False
 # NR = 30
 # Ndots = 1
 # Nimp = 3 # fragment size
-NL = 2
-NR = 1
+NL = 3
+NR = 2
 Ndots = 1
 Nimp = 2  # fragment size
 Nsites = NL + NR + Ndots
@@ -28,7 +28,7 @@ for i in range(Nfrag):
 # hamtype = 0
 
 # simplified tight-binding form of 2-electron terms in the embedding Hamiltonian
-hamtype = 1
+hamtype = 0
 
 mubool = True
 muhistory = True
@@ -47,7 +47,7 @@ boundary = False  # non-periodic hamiltonian
 
 # dynamics variables
 delt = 0.001
-Nstep = 10000
+Nstep = 2000
 Nprint = 10
 init_time = 0.0
 dG = 1e-5
@@ -56,8 +56,8 @@ nproc = 1
 integrator = "rk4"
 
 # dynamic hamiltonian parameters
-Full_dyn = False  # currently, must be false for restricted
-U_dyn = 5.0
+Full_dyn = True  # currently, must be false for restricted
+U_dyn = 0.2
 Vg_dyn = 0.0
 Vbias_dyn = 0.0
 laser_dyn = False
@@ -89,7 +89,6 @@ h_site_r, V_site_r = make_hams.make_ham_multi_imp_anderson_realspace(
     boundary,
     Full_static,
 )
-
 
 # run static calculation
 static = static_driver.static_pdmet(

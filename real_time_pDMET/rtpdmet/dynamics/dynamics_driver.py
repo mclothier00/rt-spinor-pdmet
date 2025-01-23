@@ -78,7 +78,7 @@ class dynamics_driver:
         self.gen = gen
 
         ## FOR DEBUGGING, PING
-        self.printstep = 600
+        self.printstep = 0
 
         print()
         print("********************************************")
@@ -136,6 +136,10 @@ class dynamics_driver:
             self.file_laser = open("laser.dat", "w")
         if self.Vbias:
             self.file_current = open("current.dat", "w")
+        if self.gen:
+            self.file_spinx = open("spin_x.dat", "w")
+            self.file_spiny = open("spin_y.dat", "w")
+            self.file_spinz = open("spin_z.dat", "w")
 
         self.max_diagonalG = 0
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
@@ -309,6 +313,22 @@ class dynamics_driver:
             self.tot_system.NOevecs = init_NOevecs + 1.0 * l3
             self.tot_system.glob1RDM = init_glob1RDM + 1.0 * n3
             self.tot_system.mf1RDM = init_mf1RDM + 1.0 * p3
+            np.set_printoptions(
+                precision=9, formatter={"complex": "{: 0.10f}+{: 0.10f}j".format}
+            )
+            # if not self.gen:
+            # print(f'NOevecs: \n {self.tot_system.NOevecs}')
+            # print(f'glob1RDM: \n {self.tot_system.glob1RDM * 0.5}')
+            # print(f'mf1RDM: \n {self.tot_system.mf1RDM * 0.5}')
+            # print(f'glob1RDM TD: \n {n3}')
+            # exit()
+            # if self.gen:
+            # print('running reshape matrix?')
+            # print(f'NOevecs: \n {self.tot_system.NOevecs}')
+            # print(f'glob1RDM: \n {self.tot_system.glob1RDM}')
+            # print(f'glob1RDM TD: \n {n3}')
+            # print(f'mf1RDM: \n {self.tot_system.mf1RDM}')
+            # exit()
             for cnt, frag in enumerate(self.tot_system.frag_list):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 * k3_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 1.0 * m3_list[cnt]
@@ -473,11 +493,12 @@ class dynamics_driver:
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
         )
 
-        # if self.step == self.printstep:
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n NOevals (U) \n")
-        #    f.close()
-        #    utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt")
+        if self.step == self.printstep:
+            f = open("output_halffrag.txt", "a")
+            f.write(f"printstep: {self.printstep}")
+            f.write("\n NOevals (U) \n")
+            f.close()
+            utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt", True)
 
         # Calculate embedding hamiltonian
         make_ham = time.time()
@@ -502,33 +523,27 @@ class dynamics_driver:
                 )
             )
 
-        # if self.step == self.printstep:
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of global density matrix \n")
-        #    f.close()
-        #    utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt")
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n G \n")
-        #    f.close()
-        #    utils.printarray(G_site.real, "output_halffrag.txt")
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of NO evals (U dot) \n")
-        #    f.close()
-        #    utils.printarray(ddt_NOevec.real, "output_halffrag.txt")
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of mean field density matrix \n")
-        #    f.close()
-        #    utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt")
+        if self.step == self.printstep:
+            f = open("output_halffrag.txt", "a")
+            f.write("\n TD of global density matrix \n")
+            f.close()
+            utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt", True)
+            f = open("output_halffrag.txt", "a")
+            f.write("\n G \n")
+            f.close()
+            utils.printarray(G_site.real, "output_halffrag.txt", True)
+            f = open("output_halffrag.txt", "a")
+            f.write("\n TD of NO evals (U dot) \n")
+            f.close()
+            utils.printarray(ddt_NOevec.real, "output_halffrag.txt", True)
+            f = open("output_halffrag.txt", "a")
+            f.write("\n TD of mean field density matrix \n")
+            f.close()
+            utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt", True)
 
         # Use change in mf1RDM to calculate X-matrix for each fragment
         make_xmat = time.time()
         self.tot_system.get_frag_Xmat(ddt_mf1RDM)
-
-        # if self.step == self.printstep:
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n X matrix \n")
-        #    f.close()
-        #    utils.printarray(self.tot_system.Xmat.real, "output_halffrag.txt")
 
         change_glob1RDM = ddt_glob1RDM * self.delt
         change_NOevecs = ddt_NOevec * self.delt
@@ -542,13 +557,13 @@ class dynamics_driver:
             change_rotmat_list.append(-1j * self.delt * np.dot(frag.rotmat, frag.Xmat))
             td_rotmat_list.append(-1j * np.dot(frag.rotmat, frag.Xmat))
 
-            # if self.step == self.printstep:
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n TD of rotmat \n")
-            #    f.close()
-            #    utils.printarray(
-            #        -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
-            #    )
+            if self.step == self.printstep:
+                f = open("output_halffrag.txt", "a")
+                f.write("\n TD of rotmat \n")
+                f.close()
+                utils.printarray(
+                    -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
+                )
 
         np.savez(
             "4site_dmet_res.npz",
@@ -582,11 +597,11 @@ class dynamics_driver:
             ### DELETE AND GO BACK TO ORIGINAL AFTER DEBUGGING
             tdci = applyham_wrapper(frag, self.delt, self.gen)
             change_CIcoeffs_list.append(tdci)
-            # if self.step == self.printstep:
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n TD of CI \n")
-            #    f.close()
-            #    utils.printarray(tdci, "output_halffrag.txt")
+            if self.step == self.printstep:
+                f = open("output_halffrag.txt", "a")
+                f.write("\n TD of CI \n")
+                f.close()
+                utils.printarray(tdci, "output_halffrag.txt", True)
 
         return (
             change_NOevecs,
@@ -598,6 +613,7 @@ class dynamics_driver:
         )
 
     #####################################################################
+
     def print_data(self, current_time):
         # Subroutine to calculate and print-out observables of interest
 
@@ -621,44 +637,72 @@ class dynamics_driver:
             )
             cnt += frag.Nimp
         corrdens = np.insert(corrdens, 0, current_time)
+        np.set_printoptions(precision=6)
 
-        ##### TEMP, just for check for when divergence from restricted result occurs
-        # if not self.gen:
-        #    np.savez(
-        #        os.path.join(
-        #            "density_checks", f"density_res_timestep_{current_time}.npz"
-        #        ),
-        #        corrden=corrdens,
-        #    )
-        # if self.gen:
-        #    gen_corrdens = [corrdens[0]]
-        #    for i in range(1, len(corrdens), 2):
-        #        if i + 1 < len(corrdens):
-        #            gen_corrdens.append(corrdens[i] + corrdens[i + 1])
-        #        else:
-        #            gen_corrdens.append(corrdens[i])
-        #    gen_corrdens = [round(x, 5) for x in gen_corrdens]
+        if not self.gen:
+            with open("corrdens_res.txt", "a") as f:
+                print(f"corrdens at step {current_time}: \n {corrdens[1:]}", file=f)
 
-        #    data = np.load(
-        #        os.path.join(
-        #            "density_checks", f"density_res_timestep_{current_time}.npz"
-        #        )
-        #    )
-        #    res_den = data["corrden"]
-
-        #    if np.array_equal(gen_corrdens, res_den):
-        #        pass
-        #    else:
-        #        print(f"Density has diverged at timestep {current_time}.")
-        #        print(f"Restricted corrdens: \n {res_den}")
-        #        print(
-        #            f"Generalized corrdens: \n {gen_corrdens} \n and original: \n {corrdens}"
-        #        )
-
-        #####
+        if self.gen:
+            new_corrdens = [
+                corrdens[1:][i] + corrdens[1:][i + 1]
+                for i in range(0, len(corrdens[1:]), 2)
+            ]
+            new_corrdens = np.array(new_corrdens)
+            with open("corrdens_gen.txt", "a") as f:
+                print(f"corrdens at step {current_time}: \n {new_corrdens}", file=f)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
         self.file_corrdens.flush()
+
+        if self.gen:
+            sites_x = []
+            sites_y = []
+            sites_z = []
+
+            for site in range(self.tot_system.Nsites):
+                spin_x = 0
+                spin_y = 0
+                spin_z = 0
+
+                ovlp = np.eye(self.tot_system.Nsites * 2)
+                den = utils.reshape_gtor_matrix(self.tot_system.mf1RDM)
+
+                spin_x = (
+                    np.sum(
+                        den[(site + self.tot_system.Nsites), site]
+                        + den[site, (site + self.tot_system.Nsites)]
+                    )
+                    * ovlp[site, site]
+                )
+                spin_y = (
+                    1j
+                    * (
+                        den[(site + self.tot_system.Nsites), site]
+                        - den[site, (site + self.tot_system.Nsites)]
+                    )
+                    * ovlp[site, site]
+                )
+                spin_z = (
+                    den[site, site]
+                    - den[
+                        (site + self.tot_system.Nsites), (site + self.tot_system.Nsites)
+                    ]
+                ) * ovlp[site, site]
+
+                sites_x.append(spin_x)
+                sites_y.append(spin_y)
+                sites_z.append(spin_z)
+
+            with open("spin_x.dat", "a") as f:
+                self.file_spinx.write(f"{current_time} \t {sites_x} \n")
+                self.file_spinx.flush()
+            with open("spin_y.dat", "a") as f:
+                self.file_spiny.write(f"{current_time} \t {sites_y} \n")
+                self.file_spiny.flush()
+            with open("spin_z.dat", "a") as f:
+                self.file_spinz.write(f"{current_time} \t {sites_z} \n")
+                self.file_spinz.flush()
 
         # Print output data
         writing_outfile = time.time()
@@ -698,8 +742,6 @@ class dynamics_driver:
         file_system.close()
 
     #####################################################################
-
-    # currently editing, have not checked (added factor of two)
 
     def print_just_dens(self, current_time):
         fmt_str = "%20.8e"

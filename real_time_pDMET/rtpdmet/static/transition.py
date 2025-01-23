@@ -57,7 +57,6 @@ def rtor_transition(
     return tot_system
 
 
-# NOTE: TEST THIS, many functions are new
 def rtog_transition(
     the_dmet,
     Nsites,

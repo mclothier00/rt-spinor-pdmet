@@ -50,7 +50,7 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
             CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
         )
-        print(f"CIcoeffs after transformation: {CIcoeffs}")
+        # print(f"CIcoeffs after transformation: {CIcoeffs}")
 
     if gen:
         # NOTE: HF det should be the most dominant det in FCI exp.,

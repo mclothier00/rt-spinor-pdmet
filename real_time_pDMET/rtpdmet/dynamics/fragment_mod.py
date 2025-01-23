@@ -83,8 +83,6 @@ class fragment:
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites * 2
 
-
-
     #####################################################################
 
     def get_rotmat(self, mf1RDM, gen=False):
@@ -239,7 +237,7 @@ class fragment:
         # print(f"new rotation matrix: \n {rotmat}")
         # blackbirds singing in the dead of night
 
-        # if self.step == self.printstep:
+        #if self.step == self.printstep:
         #    f = open("output_halffrag.txt", "a")
         #    f.write("\n new rotation matrix \n")
         #    f.close()
@@ -473,7 +471,7 @@ class fragment:
                     : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
                 ]
 
-        # if self.step == self.printstep:
+        #if self.step == self.printstep:
         #    f = open("output_halffrag.txt", "a")
         #    f.write("\n hemb after shrinking \n")
         #    f.close()
@@ -520,7 +518,6 @@ class fragment:
             self.full_corr1RDM[
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
-
         if self.gen:
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
@@ -640,7 +637,6 @@ class fragment:
             if hamtype == 0:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
-                # print(f"IFmat: \n {IFmat}")
                 IFmat += 2.0 * np.einsum(
                     "abcc->ab", V_MO[:, :, self.corerange[:, None], self.corerange]
                 )
@@ -648,8 +644,8 @@ class fragment:
                     "accb->ab", V_MO[:, self.corerange[:, None], self.corerange, :]
                 )
                 # print(f"rotmat: {self.rotmat}")
-                # print(f"h_site: {h_site}")
-                # print(f"IFmat: \n {IFmat}")
+                #print(f"h_site: \n {h_site}")
+                #print(f"IFmat: \n {IFmat}")
 
             elif hamtype == 1:
                 # Hubbard hamiltonian
@@ -673,8 +669,8 @@ class fragment:
                     "acdb->abdc", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("cd,abdc->ab", self.corr1RDM, tmp)
-                # print(f"AFmat: \n {AFmat}")
-
+                #print(f"AFmat: \n {AFmat}")
+            
             elif hamtype == 1:
                 # Hubbard hamiltonian
                 tmp = np.einsum(
@@ -700,19 +696,22 @@ class fragment:
                 genFmat[self.corerange, :] = np.transpose(
                     2 * (IFmat[:, self.corerange] + AFmat[:, self.corerange])
                 )
+                #print(f"corerange: \n {self.corerange}")
+                #print(f"invovled part of IFmat: \n {IFmat[:, self.corerange]}")
+                #print(f"generalized F: \n {np.real(genFmat)}")
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
                 # print(f"active range: {actrange}")
                 # print(f"corr1RDM: \n {self.corr1RDM}")
-                # print(f"generalized F: \n {genFmat}")
+                #print(f"generalized F: \n {np.real(genFmat)}")
                 # print(f"corr1RDM: \n {self.corr1RDM}")
                 genFmat[actrange, :] += np.einsum(
                     "acde,bcde->ba",
                     V_MO[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
                 )
-                # print(f"generalized Fock: \n {genFmat}")
+                #print(f"generalized Fock: \n {np.real(genFmat)}")
 
             elif hamtype == 1:
                 # Hubbard hamiltonian
@@ -738,7 +737,6 @@ class fragment:
             if hamtype == 0 or hamtype == 1:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
-                # print(f"inactive Fock: \n {np.real(IFmat)}")
                 IFmat += np.einsum(
                     "ijkk->ij", V_MO[:, :, self.corerange[:, None], self.corerange]
                 )
@@ -746,8 +744,8 @@ class fragment:
                     "ikkj->ij", V_MO[:, self.corerange[:, None], self.corerange, :]
                 )
 
-                # print(f"h_site: {h_site}")
-                # print(f"inactive Fock: \n {np.real(IFmat)}")
+                #print(f"h_site: {h_site}")
+                #print(f"inactive Fock: \n {np.real(IFmat)}")
 
             # Form active Fock matrix
             actrange = np.concatenate((self.imprange, self.bathrange))
@@ -759,8 +757,8 @@ class fragment:
                     "iklj->ijlk", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
-                # print(f"active Fock: \n {np.real(AFmat)}")
-
+                #print(f"active Fock: \n {np.real(AFmat)}")
+            
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0 or hamtype == 1:
                 # General hamiltonian
@@ -769,6 +767,9 @@ class fragment:
                 genFmat[self.corerange, :] = np.transpose(
                     IFmat[:, self.corerange] + AFmat[:, self.corerange]
                 )
+                #print(f"corerange: \n {self.corerange}")
+                #print(f"invovled part of IFmat: \n {IFmat[:, self.corerange]}")
+                #print(f"generalized Fock: \n {np.real(genFmat)}")
                 # if j in impurity/bath:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
@@ -776,13 +777,13 @@ class fragment:
                 temp_V = V_MO - np.einsum("imlk->iklm", V_MO)
                 # print(f"active range: {actrange}")
                 # print(f"corr1RDM: \n {self.corr1RDM}")
-                # print(f"generalized Fock: \n {np.real(genFmat)}")
+                #print(f"generalized Fock: \n {np.real(genFmat)}")
                 genFmat[actrange, :] += 0.5 * np.einsum(
                     "iklm,jklm->ji",
                     temp_V[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
                 )
-                # print(f"generalized Fock: \n {np.real(genFmat)}")
+                #print(f"generalized Fock: \n {np.real(genFmat)}")
 
         # Calculate i times H commutator portion of time-dependence of corr1RDM
         self.iddt_corr1RDM = np.transpose(genFmat) - np.conjugate(genFmat)
@@ -790,7 +791,7 @@ class fragment:
         # temp, delete after debugging:
         self.genFmat = genFmat
 
-        # if self.step == self.printstep:
+        #if self.step == self.printstep:
         #    f = open("output_halffrag.txt", "a")
         #    f.write("\n generalized Fock matrix \n")
         #    f.close()
@@ -908,7 +909,7 @@ class fragment:
         )
         self.Xmat = np.triu(self.Xmat) + np.triu(self.Xmat, 1).conjugate().transpose()
 
-        # if self.step == self.printstep:
+        #if self.step == self.printstep:
         #    f = open("output_halffrag.txt", "a")
         #    f.write("\n X matrix \n")
         #    f.close()

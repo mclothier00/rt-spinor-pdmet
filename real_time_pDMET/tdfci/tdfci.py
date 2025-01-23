@@ -52,6 +52,11 @@ class tdfci:
         # Define output files
         self.file_output = open("output.dat", "wb")
         self.file_corrdens = open("corr_density.dat", "wb")
+        if self.gen:
+            self.file_spindens = open("spin_density.dat", "wb")
+            self.file_spinx = open("spin_x.dat", "w")
+            self.file_spiny = open("spin_y.dat", "w")
+            self.file_spinz = open("spin_z.dat", "w")
 
     #####################################################################
 
@@ -170,6 +175,47 @@ class tdfci:
             file.write(f"from generalized: \n {corr1RDM} \n")
             file.close()
 
+            sites_x = []
+            sites_y = []
+            sites_z = []
+
+            Nsp = int(self.Nsites / 2)
+
+            for site in range(Nsp):
+                spin_x = 0
+                spin_y = 0
+                spin_z = 0
+
+                ovlp = np.eye(self.Nsites)
+                den = corr1RDM
+
+                spin_x = (
+                    np.sum(den[(site + Nsp), site] + den[site, (site + Nsp)])
+                    * ovlp[site, site]
+                )
+                spin_y = (
+                    1j
+                    * (den[(site + Nsp), site] - den[site, (site + Nsp)])
+                    * ovlp[site, site]
+                )
+                spin_z = (den[site, site] - den[(site + Nsp), (site + Nsp)]) * ovlp[
+                    site, site
+                ]
+
+                sites_x.append(spin_x)
+                sites_y.append(spin_y)
+                sites_z.append(spin_z)
+
+            with open("spin_x.dat", "a") as f:
+                self.file_spinx.write(f"{current_time} \t {sites_x} \n")
+                self.file_spinx.flush()
+            with open("spin_y.dat", "a") as f:
+                self.file_spiny.write(f"{current_time} \t {sites_y} \n")
+                self.file_spiny.flush()
+            with open("spin_z.dat", "a") as f:
+                self.file_spinz.write(f"{current_time} \t {sites_z} \n")
+                self.file_spinz.flush()
+
             # Calculate total energy
             Etot = fci_mod.get_FCI_E(
                 self.h_site,
@@ -192,17 +238,26 @@ class tdfci:
 
         # ####### PRINT OUT EVERYTHING #######
 
+        diagcorr1RDM = np.real(np.diag(corr1RDM))
+
         # Print correlated density in the site basis
         if not self.gen:
-            corrdens = np.real(np.diag(corr1RDM))
+            corrdens = diagcorr1RDM
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
-            corrdens = np.real(np.diag(corr1RDM))
-            corrdens = corrdens.reshape(-1, 2).sum(axis=1)
+            corrdens = diagcorr1RDM.reshape(-1, 2).sum(axis=1)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
         self.file_corrdens.flush()
+
+        # Print spin density if generalized
+        if self.gen:
+            spindens = diagcorr1RDM
+            spindens = np.insert(diagcorr1RDM, 0, current_time)
+
+        np.savetxt(self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str)
+        self.file_spindens.flush()
 
         # Print output data
         output = np.zeros(3)
