@@ -1,0 +1,86 @@
+
+***************************************
+         INITIALIZING PDMET          
+***************************************
+
+Calculating initial mean-field Hamiltonian
+Mf 1RDM is initialized with RHF
+converged SCF energy = -6.98791841486987
+
+***************************************
+    BEGIN STATIC PDMET CALCULATION     
+***************************************
+
+Iteration: 0
+
+converged SCF energy = -4.00938967728505
+converged SCF energy = -5.03566786632769
+converged SCF energy = -4.00938967728505
+total electrons: 6.000000000000002
+chemical potential fitting is unnecessary
+trace of global RDM 6.000000000000001
+
+Iteration: 1
+
+converged SCF energy = -4.00938967728506
+converged SCF energy = -5.03566786632769
+converged SCF energy = -4.00938967728506
+total electrons: 6.000000000000016
+chemical potential fitting is unnecessary
+trace of global RDM 6.000000000000016
+
+***************************************
+    FINISH STATIC PDMET CALCULATION    
+***************************************
+
+Final DMET energy = -6.987918414869888
+Energy per site for U= 0.0 is: -1.1646530691449815
+DMET calculation succesfully converged in 1 iterations
+Final difference in global 1RDM = 9.658101181907438e-15
+
+total_time 0.4813871000005747
+Transitioning from restricted static calculation to generalized dynamic calculation.
+currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM
+Finished transition, beginning dynamics.
+
+********************************************
+     SET-UP REAL-TIME DMET CALCULATION       
+********************************************
+
+[2 3]
+
+********************************************
+     BEGIN REAL-TIME DMET CALCULATION       
+********************************************
+
+Writing data at step  20 and time 0.002 for RT-pDMET calculation
+Writing data at step  40 and time 0.004 for RT-pDMET calculation
+Writing data at step  60 and time 0.006 for RT-pDMET calculation
+Writing data at step  80 and time 0.008 for RT-pDMET calculation
+Writing data at step  100 and time 0.01 for RT-pDMET calculation
+Writing data at step  120 and time 0.012 for RT-pDMET calculation
+Writing data at step  140 and time 0.014 for RT-pDMET calculation
+Writing data at step  160 and time 0.016 for RT-pDMET calculation
+Writing data at step  180 and time 0.018000000000000002 for RT-pDMET calculation
+Writing data at step  200 and time 0.02 for RT-pDMET calculation
+Writing data at step  220 and time 0.022000000000000002 for RT-pDMET calculation
+Writing data at step  240 and time 0.024 for RT-pDMET calculation
+Writing data at step  260 and time 0.026000000000000002 for RT-pDMET calculation
+Writing data at step  280 and time 0.028 for RT-pDMET calculation
+Writing data at step  300 and time 0.030000000000000002 for RT-pDMET calculation
+Writing data at step  320 and time 0.032 for RT-pDMET calculation
+Writing data at step  340 and time 0.034 for RT-pDMET calculation
+Writing data at step  360 and time 0.036000000000000004 for RT-pDMET calculation
+Writing data at step  380 and time 0.038 for RT-pDMET calculation
+Writing data at step  400 and time 0.04 for RT-pDMET calculation
+Writing data at step  420 and time 0.042 for RT-pDMET calculation
+Writing data at step  440 and time 0.044000000000000004 for RT-pDMET calculation
+Writing data at step  460 and time 0.046 for RT-pDMET calculation
+Writing data at step  480 and time 0.048 for RT-pDMET calculation
+Writing data at step  500 and time 0.05 for RT-pDMET calculation
+
+********************************************
+       END REAL-TIME DMET CALCULATION       
+********************************************
+
+--- 103.94227242469788 seconds ---

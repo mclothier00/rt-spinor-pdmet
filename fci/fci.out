@@ -1,0 +1,33 @@
+WARNING: Currently GS FCI coefficients are not in final embedding basis.
+converged SCF energy = -6.98791841486987
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+BEGIN REAL-TIME FCI CALCULATION
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Writing data at step  0 and time 0.0 for TDFCI calculation
+Writing data at step  50 and time 0.005 for TDFCI calculation
+Writing data at step  100 and time 0.01 for TDFCI calculation
+Writing data at step  150 and time 0.015000000000000001 for TDFCI calculation
+Writing data at step  200 and time 0.02 for TDFCI calculation
+Writing data at step  250 and time 0.025 for TDFCI calculation
+Writing data at step  300 and time 0.030000000000000002 for TDFCI calculation
+Writing data at step  350 and time 0.035 for TDFCI calculation
+Writing data at step  400 and time 0.04 for TDFCI calculation
+Writing data at step  450 and time 0.045000000000000005 for TDFCI calculation
+Writing data at step  500 and time 0.05 for TDFCI calculation
+Writing data at step  550 and time 0.055 for TDFCI calculation
+Writing data at step  600 and time 0.060000000000000005 for TDFCI calculation
+Writing data at step  650 and time 0.065 for TDFCI calculation
+Writing data at step  700 and time 0.07 for TDFCI calculation
+Writing data at step  750 and time 0.075 for TDFCI calculation
+Writing data at step  800 and time 0.08 for TDFCI calculation
+Writing data at step  850 and time 0.085 for TDFCI calculation
+Writing data at step  900 and time 0.09000000000000001 for TDFCI calculation
+Writing data at step  950 and time 0.095 for TDFCI calculation
+Writing data at step  1000 and time 0.1 for TDFCI calculation
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+END REAL-TIME FCI CALCULATION
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+

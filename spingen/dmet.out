@@ -1,0 +1,168 @@
+
+***************************************
+         INITIALIZING PDMET          
+***************************************
+
+Calculating initial mean-field Hamiltonian
+Mf 1RDM is initialized with RHF
+converged SCF energy = -6.98791841486987
+
+***************************************
+    BEGIN STATIC PDMET CALCULATION     
+***************************************
+
+Iteration: 0
+
+converged SCF energy = -4.00938967728505
+converged SCF energy = -5.03566786632769
+converged SCF energy = -4.00938967728505
+total electrons: 6.000000000000002
+chemical potential fitting is unnecessary
+trace of global RDM 6.000000000000001
+
+Iteration: 1
+
+converged SCF energy = -4.00938967728506
+converged SCF energy = -5.03566786632769
+converged SCF energy = -4.00938967728506
+total electrons: 6.000000000000016
+chemical potential fitting is unnecessary
+trace of global RDM 6.000000000000016
+
+***************************************
+    FINISH STATIC PDMET CALCULATION    
+***************************************
+
+Final DMET energy = -6.987918414869888
+Energy per site for U= 0.0 is: -1.1646530691449815
+DMET calculation succesfully converged in 1 iterations
+Final difference in global 1RDM = 9.658101181907438e-15
+
+total_time 2.0528297999990173
+Transitioning from restricted static calculation to generalized dynamic calculation.
+currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM
+Finished transition, beginning dynamics.
+
+********************************************
+     SET-UP REAL-TIME DMET CALCULATION       
+********************************************
+
+[3 4]
+
+********************************************
+     BEGIN REAL-TIME DMET CALCULATION       
+********************************************
+
+Writing data at step  20 and time 0.002 for RT-pDMET calculation
+Writing data at step  40 and time 0.004 for RT-pDMET calculation
+Writing data at step  60 and time 0.006 for RT-pDMET calculation
+Writing data at step  80 and time 0.008 for RT-pDMET calculation
+Writing data at step  100 and time 0.01 for RT-pDMET calculation
+Writing data at step  120 and time 0.012 for RT-pDMET calculation
+Writing data at step  140 and time 0.014 for RT-pDMET calculation
+Writing data at step  160 and time 0.016 for RT-pDMET calculation
+Writing data at step  180 and time 0.018000000000000002 for RT-pDMET calculation
+Writing data at step  200 and time 0.02 for RT-pDMET calculation
+Writing data at step  220 and time 0.022000000000000002 for RT-pDMET calculation
+Writing data at step  240 and time 0.024 for RT-pDMET calculation
+Writing data at step  260 and time 0.026000000000000002 for RT-pDMET calculation
+Writing data at step  280 and time 0.028 for RT-pDMET calculation
+Writing data at step  300 and time 0.030000000000000002 for RT-pDMET calculation
+Writing data at step  320 and time 0.032 for RT-pDMET calculation
+Writing data at step  340 and time 0.034 for RT-pDMET calculation
+Writing data at step  360 and time 0.036000000000000004 for RT-pDMET calculation
+ 
+NUMERICAL STABILITY WARNING: missmatch between global 1RDM and its propagated egenvectors;
+                            off-diagonal terms of global 1RDM diagonalized with NOs are 
+                            greater than a tollerance threshold dG
+
+discrepancy threshold dG= 1e-05 at time 0.037000000000000005
+
+Writing data at step  380 and time 0.038 for RT-pDMET calculation
+Writing data at step  400 and time 0.04 for RT-pDMET calculation
+Writing data at step  420 and time 0.042 for RT-pDMET calculation
+Writing data at step  440 and time 0.044000000000000004 for RT-pDMET calculation
+Writing data at step  460 and time 0.046 for RT-pDMET calculation
+Writing data at step  480 and time 0.048 for RT-pDMET calculation
+Writing data at step  500 and time 0.05 for RT-pDMET calculation
+Writing data at step  520 and time 0.052000000000000005 for RT-pDMET calculation
+Writing data at step  540 and time 0.054 for RT-pDMET calculation
+Writing data at step  560 and time 0.056 for RT-pDMET calculation
+Writing data at step  580 and time 0.058 for RT-pDMET calculation
+Writing data at step  600 and time 0.060000000000000005 for RT-pDMET calculation
+Writing data at step  620 and time 0.062 for RT-pDMET calculation
+Writing data at step  640 and time 0.064 for RT-pDMET calculation
+Writing data at step  660 and time 0.066 for RT-pDMET calculation
+Writing data at step  680 and time 0.068 for RT-pDMET calculation
+Writing data at step  700 and time 0.07 for RT-pDMET calculation
+Writing data at step  720 and time 0.07200000000000001 for RT-pDMET calculation
+Writing data at step  740 and time 0.07400000000000001 for RT-pDMET calculation
+Writing data at step  760 and time 0.076 for RT-pDMET calculation
+Writing data at step  780 and time 0.078 for RT-pDMET calculation
+Writing data at step  800 and time 0.08 for RT-pDMET calculation
+Writing data at step  820 and time 0.082 for RT-pDMET calculation
+Writing data at step  840 and time 0.084 for RT-pDMET calculation
+Writing data at step  860 and time 0.08600000000000001 for RT-pDMET calculation
+Writing data at step  880 and time 0.08800000000000001 for RT-pDMET calculation
+Writing data at step  900 and time 0.09000000000000001 for RT-pDMET calculation
+Writing data at step  920 and time 0.092 for RT-pDMET calculation
+Writing data at step  940 and time 0.094 for RT-pDMET calculation
+Writing data at step  960 and time 0.096 for RT-pDMET calculation
+Writing data at step  980 and time 0.098 for RT-pDMET calculation
+Writing data at step  1000 and time 0.1 for RT-pDMET calculation
+Writing data at step  1020 and time 0.10200000000000001 for RT-pDMET calculation
+Writing data at step  1040 and time 0.10400000000000001 for RT-pDMET calculation
+Writing data at step  1060 and time 0.10600000000000001 for RT-pDMET calculation
+Writing data at step  1080 and time 0.108 for RT-pDMET calculation
+Writing data at step  1100 and time 0.11 for RT-pDMET calculation
+Writing data at step  1120 and time 0.112 for RT-pDMET calculation
+Writing data at step  1140 and time 0.114 for RT-pDMET calculation
+Writing data at step  1160 and time 0.116 for RT-pDMET calculation
+Writing data at step  1180 and time 0.11800000000000001 for RT-pDMET calculation
+Writing data at step  1200 and time 0.12000000000000001 for RT-pDMET calculation
+Writing data at step  1220 and time 0.12200000000000001 for RT-pDMET calculation
+Writing data at step  1240 and time 0.124 for RT-pDMET calculation
+Writing data at step  1260 and time 0.126 for RT-pDMET calculation
+Writing data at step  1280 and time 0.128 for RT-pDMET calculation
+Writing data at step  1300 and time 0.13 for RT-pDMET calculation
+Writing data at step  1320 and time 0.132 for RT-pDMET calculation
+Writing data at step  1340 and time 0.134 for RT-pDMET calculation
+Writing data at step  1360 and time 0.136 for RT-pDMET calculation
+Writing data at step  1380 and time 0.138 for RT-pDMET calculation
+Writing data at step  1400 and time 0.14 for RT-pDMET calculation
+Writing data at step  1420 and time 0.14200000000000002 for RT-pDMET calculation
+Writing data at step  1440 and time 0.14400000000000002 for RT-pDMET calculation
+Writing data at step  1460 and time 0.14600000000000002 for RT-pDMET calculation
+Writing data at step  1480 and time 0.14800000000000002 for RT-pDMET calculation
+Writing data at step  1500 and time 0.15 for RT-pDMET calculation
+Writing data at step  1520 and time 0.152 for RT-pDMET calculation
+Writing data at step  1540 and time 0.154 for RT-pDMET calculation
+Writing data at step  1560 and time 0.156 for RT-pDMET calculation
+Writing data at step  1580 and time 0.158 for RT-pDMET calculation
+Writing data at step  1600 and time 0.16 for RT-pDMET calculation
+Writing data at step  1620 and time 0.162 for RT-pDMET calculation
+Writing data at step  1640 and time 0.164 for RT-pDMET calculation
+Writing data at step  1660 and time 0.166 for RT-pDMET calculation
+Writing data at step  1680 and time 0.168 for RT-pDMET calculation
+Writing data at step  1700 and time 0.17 for RT-pDMET calculation
+Writing data at step  1720 and time 0.17200000000000001 for RT-pDMET calculation
+Writing data at step  1740 and time 0.17400000000000002 for RT-pDMET calculation
+Writing data at step  1760 and time 0.17600000000000002 for RT-pDMET calculation
+Writing data at step  1780 and time 0.17800000000000002 for RT-pDMET calculation
+Writing data at step  1800 and time 0.18000000000000002 for RT-pDMET calculation
+Writing data at step  1820 and time 0.182 for RT-pDMET calculation
+Writing data at step  1840 and time 0.184 for RT-pDMET calculation
+Writing data at step  1860 and time 0.186 for RT-pDMET calculation
+Writing data at step  1880 and time 0.188 for RT-pDMET calculation
+Writing data at step  1900 and time 0.19 for RT-pDMET calculation
+Writing data at step  1920 and time 0.192 for RT-pDMET calculation
+Writing data at step  1940 and time 0.194 for RT-pDMET calculation
+Writing data at step  1960 and time 0.196 for RT-pDMET calculation
+Writing data at step  1980 and time 0.198 for RT-pDMET calculation
+Writing data at step  2000 and time 0.2 for RT-pDMET calculation
+
+********************************************
+       END REAL-TIME DMET CALCULATION       
+********************************************
+
+--- 461.81148195266724 seconds ---

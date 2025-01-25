@@ -1,0 +1,38 @@
+WARNING: Currently GS FCI coefficients are not in final embedding basis.
+converged SCF energy = -4.47213595499958
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+BEGIN REAL-TIME FCI CALCULATION
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Writing data at step  0 and time 0.0 for TDFCI calculation
+Writing data at step  20 and time 0.002 for TDFCI calculation
+Writing data at step  40 and time 0.004 for TDFCI calculation
+Writing data at step  60 and time 0.006 for TDFCI calculation
+Writing data at step  80 and time 0.008 for TDFCI calculation
+Writing data at step  100 and time 0.01 for TDFCI calculation
+Writing data at step  120 and time 0.012 for TDFCI calculation
+Writing data at step  140 and time 0.014 for TDFCI calculation
+Writing data at step  160 and time 0.016 for TDFCI calculation
+Writing data at step  180 and time 0.018000000000000002 for TDFCI calculation
+Writing data at step  200 and time 0.02 for TDFCI calculation
+Writing data at step  220 and time 0.022000000000000002 for TDFCI calculation
+Writing data at step  240 and time 0.024 for TDFCI calculation
+Writing data at step  260 and time 0.026000000000000002 for TDFCI calculation
+Writing data at step  280 and time 0.028 for TDFCI calculation
+Writing data at step  300 and time 0.030000000000000002 for TDFCI calculation
+Writing data at step  320 and time 0.032 for TDFCI calculation
+Writing data at step  340 and time 0.034 for TDFCI calculation
+Writing data at step  360 and time 0.036000000000000004 for TDFCI calculation
+Writing data at step  380 and time 0.038 for TDFCI calculation
+Writing data at step  400 and time 0.04 for TDFCI calculation
+Writing data at step  420 and time 0.042 for TDFCI calculation
+Writing data at step  440 and time 0.044000000000000004 for TDFCI calculation
+Writing data at step  460 and time 0.046 for TDFCI calculation
+Writing data at step  480 and time 0.048 for TDFCI calculation
+Writing data at step  500 and time 0.05 for TDFCI calculation
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+END REAL-TIME FCI CALCULATION
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
