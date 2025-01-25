@@ -690,9 +690,9 @@ class dynamics_driver:
                     ]
                 ) * ovlp[site, site]
 
-                sites_x.append(spin_x)
-                sites_y.append(spin_y)
-                sites_z.append(spin_z)
+                sites_x.append(np.real(spin_x))
+                sites_y.append(np.real(spin_y))
+                sites_z.append(np.real(spin_z))
 
             with open("spin_x.dat", "a") as f:
                 self.file_spinx.write(f"{current_time} \t {sites_x} \n")

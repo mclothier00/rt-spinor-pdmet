@@ -187,7 +187,8 @@ class tdfci:
                 spin_z = 0
 
                 ovlp = np.eye(self.Nsites)
-                den = corr1RDM
+                den0 = corr1RDM
+                den = utils.reshape_gtor_matrix(den0)
 
                 spin_x = (
                     np.sum(den[(site + Nsp), site] + den[site, (site + Nsp)])
