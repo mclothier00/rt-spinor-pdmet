@@ -6,6 +6,7 @@
 import real_time_pDMET.scripts.utils as utils
 import numpy as np
 import multiprocessing as multproc
+from mpi4py import MPI
 
 import time
 
@@ -85,58 +86,41 @@ def get_ddt_mf1rdm_serial(dG, system, Nocc):
 
 #####################################################################
 
-# currently editing, but not yet checking
-
 
 def calc_iddt_glob1RDM(system):
     # Subroutine to calculate i times
     # time dependence of global 1RDM forcing anti-hermiticity
     if not system.gen:
-        rotmat_unpck = np.zeros(
-            [system.Nsites, system.Nsites, system.Nsites], dtype=complex
-        )
-        iddt_corr1RDM_unpck = np.zeros([system.Nsites, system.Nsites], dtype=complex)
+        iddt_glob1RDM = np.zeros([system.Nsites, system.Nsites], dtype=complex)
 
-        for q in range(system.Nsites):
-            # fragment for site q
-            frag = system.frag_list[system.site_to_frag_list[q]]
+        for i, frag in enumerate(system.frag_in_rank):
+            tmp = 0.5 * np.dot(
+                frag.rotmat, np.dot(frag.iddt_corr1RDM, frag.rotmat.conj().T)
+            )
+            for site in frag.impindx:
+                iddt_glob1RDM[site, :] += tmp[site, :]
+                iddt_glob1RDM[:, site] += tmp[:, site]
 
-            # index within fragment corresponding to site q -
-            # note that q is an impurity orbital
-            qimp = system.site_to_impindx[q]
-
-            # unpack rotation matrix
-            rotmat_unpck[:, :, q] = np.copy(frag.rotmat)
-
-            # unpack necessary portion of iddt_corr1RDM
-            iddt_corr1RDM_unpck[:, q] = np.copy(frag.iddt_corr1RDM[:, qimp])
+        true_iddt_glob1RDM = np.zeros([system.Nsites, system.Nsites], dtype=complex)
+        MPI.COMM_WORLD.Allreduce(iddt_glob1RDM, true_iddt_glob1RDM, op=MPI.SUM)
 
     if system.gen:
-        rotmat_unpck = np.zeros(
-            [2 * system.Nsites, 2 * system.Nsites, 2 * system.Nsites], dtype=complex
-        )
-        iddt_corr1RDM_unpck = np.zeros(
+        iddt_glob1RDM = np.zeros([2 * system.Nsites, 2 * system.Nsites], dtype=complex)
+
+        for i, frag in enumerate(system.frag_in_rank):
+            tmp = 0.5 * np.dot(
+                frag.rotmat, np.dot(frag.iddt_corr1RDM, frag.rotmat.conj().T)
+            )
+            for site in frag.impindx:
+                iddt_glob1RDM[site, :] += tmp[site, :]
+                iddt_glob1RDM[:, site] += tmp[:, site]
+
+        true_iddt_glob1RDM = np.zeros(
             [2 * system.Nsites, 2 * system.Nsites], dtype=complex
         )
+        MPI.COMM_WORLD.Allreduce(iddt_glob1RDM, true_iddt_glob1RDM, op=MPI.SUM)
 
-        for q in range(2 * system.Nsites):
-            # fragment for site q
-            frag = system.frag_list[system.site_to_frag_list[q]]
-
-            # index within fragment corresponding to site q -
-            # note that q is an impurity orbital
-            qimp = system.site_to_impindx[q]
-
-            # unpack rotation matrix
-            rotmat_unpck[:, :, q] = np.copy(frag.rotmat)
-
-            # unpack necessary portion of iddt_corr1RDM
-            iddt_corr1RDM_unpck[:, q] = np.copy(frag.iddt_corr1RDM[:, qimp])
-
-    # calculate intermediate matrix
-    tmp = np.einsum("paq,aq->pq", rotmat_unpck, iddt_corr1RDM_unpck)
-
-    return 0.5 * (tmp - tmp.conj().T)
+    return true_iddt_glob1RDM
 
 
 #####################################################################

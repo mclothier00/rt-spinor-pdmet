@@ -9,14 +9,13 @@ import real_time_pDMET.rtpdmet.static.transition as transition_driver
 import real_time_pDMET.scripts.make_hams as make_hams
 import real_time_pDMET.rtpdmet.dynamics.dynamics_driver as dynamic_driver
 import real_time_pDMET.scripts.utils as utils
-import static_bfield as static_bfield
 
 
 # restricted or generalized
 gen = True
 
 # set up system and static pdmet parameters
-NL = 3
+NL = 1
 NR = 2
 Ndots = 1
 Nimp = 2  # fragment size
@@ -50,8 +49,8 @@ boundary = False  # non-periodic hamiltonian
 
 # dynamics variables
 delt = 0.0001
-Nstep = 2000
-Nprint = 20
+Nstep = 10000
+Nprint = 50
 init_time = 0.0
 dG = 1e-5
 dX = 1e-9

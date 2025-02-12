@@ -28,7 +28,7 @@ Vg = 0.0
 Full = True
 
 delt = 0.0001
-Nstep = 1000
+Nstep = 10000
 Nprint = 50
 boundary = False
 

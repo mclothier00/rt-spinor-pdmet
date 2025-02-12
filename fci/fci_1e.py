@@ -15,8 +15,8 @@ import static_bfield as static_bfield
 
 # NOTE: generalized TDFCI with generalized static FCI calculation
 
-NL = 2
-NR = 1
+NL = 3
+NR = 2
 Ndots = 1
 Nsites = NL + NR + Ndots
 Nele = Nsites
@@ -28,7 +28,7 @@ Vg = 0.0
 Full = True
 
 delt = 0.0001
-Nstep = 1000
+Nstep = 10000
 Nprint = 50
 boundary = False
 

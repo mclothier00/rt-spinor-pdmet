@@ -8,7 +8,7 @@ import real_time_pDMET.scripts.utils as utils
 import pickle
 import time
 import math
-
+from mpi4py import MPI
 import os
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
 
@@ -145,11 +145,32 @@ class dynamics_driver:
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
         # self.corrdens_old += 1
 
-        # Paralelization is under development
+        # Parallelization
 
-        # start_pool = time.time()
-        # self.frag_pool = multproc.Pool(nproc)
-        # print("time to from pool", time.time()-start_pool)
+        comm = MPI.COMM_WORLD
+        self.rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        frag_per_rank = []
+        for i in range(size):
+            frag_per_rank.append([])
+
+        if self.rank == 0:
+            # print("FRAG LIST LENGTH: ", len(self.tot_system.frag_list))
+            for i, frag in enumerate(self.tot_system.frag_list):
+                #    print("FRAG LIST INDEX: ", i)
+                #    print("About to start comm.send")
+                frag_per_rank[i % size].append(frag)
+                self.tot_system.frag_list = None
+            self.tot_system.frag_in_rank = frag_per_rank[0]
+            for r, frag in enumerate(frag_per_rank):
+                if r != 0:
+                    comm.send(frag, dest=r)
+            # print("FRAG PER RANK LENGTH RANK 0: ", len(frag_in_rank))
+        else:
+            self.tot_system.frag_in_rank = comm.recv(source=0)
+            self.tot_system.frag_list = None
+            # print("FRAG IN RANK LENGTH RANK 1: ", len(frag_in_rank))
 
     #####################################################################
     def kernel(self):
@@ -168,32 +189,33 @@ class dynamics_driver:
         for step in range(self.Nstep):
             # Print data
             self.step = step
-            if step == 0:
-                self.print_just_dens(current_time)
-                sys.stdout.flush()
+            if self.rank == 0:
+                if step == 0:
+                    self.print_just_dens(current_time)
+                    sys.stdout.flush()
 
-            if (np.mod(step, self.Nprint) == 0) and step > 1:
-                print(
-                    "Writing data at step ",
-                    step,
-                    "and time",
-                    current_time,
-                    "for RT-pDMET calculation",
-                )
-                self.print_data(current_time)
-                sys.stdout.flush()
+                if (np.mod(step, self.Nprint) == 0) and step > 1:
+                    print(
+                        "Writing data at step ",
+                        step,
+                        "and time",
+                        current_time,
+                        "for RT-pDMET calculation",
+                    )
+                    self.print_data(current_time)
+                    sys.stdout.flush()
 
-            # if a trajectory restarted, record data before a 1st step
-            if current_time != 0 and step == 0:
-                print(
-                    "Writing data at step ",
-                    step,
-                    "and time",
-                    current_time,
-                    "for RT-pDMET calculation",
-                )
-                self.print_data(current_time)
-                sys.stdout.flush()
+                # if a trajectory restarted, record data before a 1st step
+                if current_time != 0 and step == 0:
+                    print(
+                        "Writing data at step ",
+                        step,
+                        "and time",
+                        current_time,
+                        "for RT-pDMET calculation",
+                    )
+                    self.print_data(current_time)
+                    sys.stdout.flush()
 
             # Integrate FCI coefficients and rotation matrix for all fragments
             self.integrate(self.nproc, current_time)
@@ -203,24 +225,25 @@ class dynamics_driver:
             sys.stdout.flush()
 
         # Print data at final step regardless of Nprint
-        print(
-            "Writing data at step ",
-            step + 1,
-            "and time",
-            current_time,
-            "for RT-pDMET calculation",
-        )
-        self.print_data(current_time)
-        sys.stdout.flush()
+        if self.rank == 0:
+            print(
+                "Writing data at step ",
+                step + 1,
+                "and time",
+                current_time,
+                "for RT-pDMET calculation",
+            )
+            self.print_data(current_time)
+            sys.stdout.flush()
 
-        # Close output files
-        self.file_output.close()
-        self.file_corrdens.close()
+            # Close output files
+            self.file_output.close()
+            self.file_corrdens.close()
 
-        if self.Vbias:
-            self.file_current.close()
-        if self.laser:
-            self.file_laser.close()
+            if self.Vbias == True:
+                self.file_current.close()
+            if self.laser == True:
+                self.file_laser.close()
 
         # self.frag_pool.close()
         print()
@@ -269,7 +292,7 @@ class dynamics_driver:
 
             init_CIcoeffs_list = []
             init_rotmat_list = []
-            for frag in self.tot_system.frag_list:
+            for frag in self.tot_system.frag_in_rank:
                 init_rotmat_list.append(np.copy(frag.rotmat))
                 init_CIcoeffs_list.append(np.copy(frag.CIcoeffs))
 
@@ -285,7 +308,7 @@ class dynamics_driver:
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
             self.tot_system.mf1RDM = init_mf1RDM + 0.5 * p1
-            for cnt, frag in enumerate(self.tot_system.frag_list):
+            for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k1_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m1_list[cnt]
 
@@ -299,7 +322,7 @@ class dynamics_driver:
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l2
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n2
             self.tot_system.mf1RDM = init_mf1RDM + 0.5 * p2
-            for cnt, frag in enumerate(self.tot_system.frag_list):
+            for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k2_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m2_list[cnt]
 
@@ -329,7 +352,7 @@ class dynamics_driver:
             # print(f'glob1RDM TD: \n {n3}')
             # print(f'mf1RDM: \n {self.tot_system.mf1RDM}')
             # exit()
-            for cnt, frag in enumerate(self.tot_system.frag_list):
+            for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 * k3_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 1.0 * m3_list[cnt]
 
@@ -349,7 +372,7 @@ class dynamics_driver:
             self.tot_system.mf1RDM = init_mf1RDM + 1.0 / 6.0 * (
                 p1 + 2.0 * p2 + 2.0 * p3 + p4
             )
-            for cnt, frag in enumerate(self.tot_system.frag_list):
+            for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 / 6.0 * (
                     k1_list[cnt]
                     + 2.0 * k2_list[cnt]
@@ -367,30 +390,30 @@ class dynamics_driver:
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
-            if self.step == self.printstep:
-                f = open("output_halffrag.txt", "a")
-                f.write("\n propagated glob1RDM \n")
-                f.close()
-                utils.printarray(self.tot_system.glob1RDM, "output_halffrag.txt", True)
+            # if self.step == self.printstep:
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n propagated glob1RDM \n")
+            #    f.close()
+            #    utils.printarray(self.tot_system.glob1RDM, "output_halffrag.txt", True)
 
-                f = open("output_halffrag.txt", "a")
-                f.write("\n propagated mf1RDM \n")
-                f.close()
-                utils.printarray(self.tot_system.mf1RDM, "output_halffrag.txt", True)
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n propagated mf1RDM \n")
+            #    f.close()
+            #    utils.printarray(self.tot_system.mf1RDM, "output_halffrag.txt", True)
 
-                f = open("output_halffrag.txt", "a")
-                f.write("\n first propagated rotmat \n")
-                f.close()
-                utils.printarray(
-                    self.tot_system.frag_list[0].rotmat, "output_halffrag.txt", True
-                )
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n first propagated rotmat \n")
+            #    f.close()
+            #    utils.printarray(
+            #        self.tot_system.frag_list[0].rotmat, "output_halffrag.txt", True
+            #    )
 
-                f = open("output_halffrag.txt", "a")
-                f.write("\n first propagated CIcoeffs \n")
-                f.close()
-                utils.printarray(
-                    self.tot_system.frag_list[0].CIcoeffs, "output_halffrag.txt", True
-                )
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n first propagated CIcoeffs \n")
+            #    f.close()
+            #    utils.printarray(
+            #        self.tot_system.frag_list[0].CIcoeffs, "output_halffrag.txt", True
+            #    )
 
             # Checks for numerical stability
 
@@ -493,19 +516,19 @@ class dynamics_driver:
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
         )
 
-        if self.step == self.printstep:
-            f = open("output_halffrag.txt", "a")
-            f.write(f"printstep: {self.printstep}")
-            f.write("\n NOevals (U) \n")
-            f.close()
-            utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt", True)
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write(f"printstep: {self.printstep}")
+        #    f.write("\n NOevals (U) \n")
+        #    f.close()
+        #    utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt", True)
 
         # Calculate embedding hamiltonian
         make_ham = time.time()
         self.tot_system.get_frag_Hemb()
 
         # Make sure Ecore for each fragment is 0 for dynamics
-        for frag in self.tot_system.frag_list:
+        for frag in self.tot_system.frag_in_rank:
             frag.Ecore = 0.0
 
         # Calculate change in propagated variables
@@ -523,23 +546,23 @@ class dynamics_driver:
                 )
             )
 
-        if self.step == self.printstep:
-            f = open("output_halffrag.txt", "a")
-            f.write("\n TD of global density matrix \n")
-            f.close()
-            utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt", True)
-            f = open("output_halffrag.txt", "a")
-            f.write("\n G \n")
-            f.close()
-            utils.printarray(G_site.real, "output_halffrag.txt", True)
-            f = open("output_halffrag.txt", "a")
-            f.write("\n TD of NO evals (U dot) \n")
-            f.close()
-            utils.printarray(ddt_NOevec.real, "output_halffrag.txt", True)
-            f = open("output_halffrag.txt", "a")
-            f.write("\n TD of mean field density matrix \n")
-            f.close()
-            utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt", True)
+        # if self.step == self.printstep:
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of global density matrix \n")
+        #    f.close()
+        #    utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt", True)
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n G \n")
+        #    f.close()
+        #    utils.printarray(G_site.real, "output_halffrag.txt", True)
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of NO evals (U dot) \n")
+        #    f.close()
+        #    utils.printarray(ddt_NOevec.real, "output_halffrag.txt", True)
+        #    f = open("output_halffrag.txt", "a")
+        #    f.write("\n TD of mean field density matrix \n")
+        #    f.close()
+        #    utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt", True)
 
         # Use change in mf1RDM to calculate X-matrix for each fragment
         make_xmat = time.time()
@@ -553,55 +576,55 @@ class dynamics_driver:
         change_rotmat_list = []
         # NOTE: hardcoded check below, remove later:
         td_rotmat_list = []
-        for frag in self.tot_system.frag_list:
+        for frag in self.tot_system.frag_in_rank:
             change_rotmat_list.append(-1j * self.delt * np.dot(frag.rotmat, frag.Xmat))
             td_rotmat_list.append(-1j * np.dot(frag.rotmat, frag.Xmat))
 
-            if self.step == self.printstep:
-                f = open("output_halffrag.txt", "a")
-                f.write("\n TD of rotmat \n")
-                f.close()
-                utils.printarray(
-                    -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
-                )
+            # if self.step == self.printstep:
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n TD of rotmat \n")
+            #    f.close()
+            #    utils.printarray(
+            #        -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
+            #    )
 
-        np.savez(
-            "4site_dmet_res.npz",
-            rot0=self.tot_system.frag_list[0].rotmat,
-            rot1=self.tot_system.frag_list[1].rotmat,
-            h1emb0=self.tot_system.frag_list[0].h_emb,
-            h1emb1=self.tot_system.frag_list[1].h_emb,
-            genfock0=self.tot_system.frag_list[0].genFmat,
-            genfock1=self.tot_system.frag_list[1].genFmat,
-            td_denfrag0=self.tot_system.frag_list[0].iddt_corr1RDM,
-            td_denfrag1=self.tot_system.frag_list[1].iddt_corr1RDM,
-            td_glob=ddt_glob1RDM,  # CHECK THIS
-            noevecs=self.tot_system.NOevals,  # check this!!
-            gmat=G_site,  # CHECK
-            td_noevecs=ddt_NOevec,
-            td_mf=ddt_mf1RDM,
-            xmat0=self.tot_system.frag_list[0].Xmat,
-            xmat1=self.tot_system.frag_list[1].Xmat,
-            td_rot0=td_rotmat_list[0],
-            td_rot1=td_rotmat_list[1],
-        )
+        # np.savez(
+        #    "4site_dmet_res.npz",
+        #    rot0=self.tot_system.frag_list[0].rotmat,
+        #    rot1=self.tot_system.frag_list[1].rotmat,
+        #    h1emb0=self.tot_system.frag_list[0].h_emb,
+        #    h1emb1=self.tot_system.frag_list[1].h_emb,
+        #    genfock0=self.tot_system.frag_list[0].genFmat,
+        #    genfock1=self.tot_system.frag_list[1].genFmat,
+        #    td_denfrag0=self.tot_system.frag_list[0].iddt_corr1RDM,
+        #    td_denfrag1=self.tot_system.frag_list[1].iddt_corr1RDM,
+        #    td_glob=ddt_glob1RDM,  # CHECK THIS
+        #    noevecs=self.tot_system.NOevals,  # check this!!
+        #    gmat=G_site,  # CHECK
+        #    td_noevecs=ddt_NOevec,
+        #    td_mf=ddt_mf1RDM,
+        #    xmat0=self.tot_system.frag_list[0].Xmat,
+        #    xmat1=self.tot_system.frag_list[1].Xmat,
+        #    td_rot0=td_rotmat_list[0],
+        #    td_rot1=td_rotmat_list[1],
+        # )
 
         # Calculate change in CI coefficients in parallel
 
         no_paralel_start = time.time()
         change_CIcoeffs_list = []
 
-        for ifrag, frag in enumerate(self.tot_system.frag_list):
-            # change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
+        for ifrag, frag in enumerate(self.tot_system.frag_in_rank):
+            change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
 
             ### DELETE AND GO BACK TO ORIGINAL AFTER DEBUGGING
-            tdci = applyham_wrapper(frag, self.delt, self.gen)
-            change_CIcoeffs_list.append(tdci)
-            if self.step == self.printstep:
-                f = open("output_halffrag.txt", "a")
-                f.write("\n TD of CI \n")
-                f.close()
-                utils.printarray(tdci, "output_halffrag.txt", True)
+            # tdci = applyham_wrapper(frag, self.delt, self.gen)
+            # change_CIcoeffs_list.append(tdci)
+            # if self.step == self.printstep:
+            #    f = open("output_halffrag.txt", "a")
+            #    f.write("\n TD of CI \n")
+            #    f.close()
+            #    utils.printarray(tdci, "output_halffrag.txt", True)
 
         return (
             change_NOevecs,
@@ -631,7 +654,7 @@ class dynamics_driver:
         # Print correlated density in the site basis
         cnt = 0
         corrdens = np.zeros(self.tot_system.Nbasis)
-        for frag in self.tot_system.frag_list:
+        for frag in self.tot_system.frag_in_rank:
             corrdens[cnt : cnt + frag.Nimp] = np.copy(
                 np.diag(np.real(frag.corr1RDM[: frag.Nimp]))
             )
@@ -712,12 +735,12 @@ class dynamics_driver:
         output[2] = self.tot_system.DMET_Nele
         # NOTE: for generalized, these may be wrong
         output[3] = np.real(np.trace(self.tot_system.mf1RDM))
-        output[4] = np.real(np.trace(self.tot_system.frag_list[0].corr1RDM))
-        output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_list[0].corr2RDM))
-        output[6] = np.linalg.norm(self.tot_system.frag_list[0].CIcoeffs) ** 2
-        # output[7] = np.linalg.norm(self.tot_system.frag_list[0].rotmat[:, 3]) ** 2
+        output[4] = np.real(np.trace(self.tot_system.frag_in_rank[0].corr1RDM))
+        output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
+        output[6] = np.linalg.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
+        # output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
         # NOTE:PUT BACK TO 3 AFTER TESTING 2 SITES!
-        output[7] = np.linalg.norm(self.tot_system.frag_list[0].rotmat[:, 1]) ** 2
+        output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 1]) ** 2
 
         # self.tot_system.get_nat_orbs()
         if np.allclose(
@@ -752,7 +775,7 @@ class dynamics_driver:
 
         if not self.gen:
             corrdens = np.zeros(self.tot_system.Nsites)
-            for frag in self.tot_system.frag_list:
+            for frag in self.tot_system.frag_in_rank:
                 corrdens[cnt : cnt + frag.Nimp] = np.diag(
                     np.real(frag.corr1RDM[: frag.Nimp])
                 )
@@ -765,7 +788,7 @@ class dynamics_driver:
 
         if self.gen:
             corrdens = np.zeros(2 * self.tot_system.Nsites)
-            for frag in self.tot_system.frag_list:
+            for frag in self.tot_system.frag_in_rank:
                 corrdens[cnt : cnt + frag.Nimp] = np.diag(
                     np.real(frag.corr1RDM[: frag.Nimp])
                 )
