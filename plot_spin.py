@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, FuncFormatter, ScalarFormatter
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 # site index starting from 1
 
@@ -90,7 +91,83 @@ def plot_multiple_electron_site_den(
     plt.savefig(f"{fig_filename}")
 
 
-def plot_multiple_spin_den(filename_fci, filename_dmet, fig_filename):
+def plot_hf_dmet_spin_den(filename_hf, filename_dmet, fig_filename):
+    table_hf = []
+    openfile = f"{filename_hf}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            table_hf.append(data)
+    table_hf = np.asarray(table_hf)
+
+    table_dmet = []
+    openfile = f"{filename_dmet}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            table_dmet.append(data)
+    table_dmet = np.asarray(table_dmet)
+
+    columns = range(table_hf.shape[1])
+    if columns != range(table_dmet.shape[1]):
+        print("ERROR: Files do not contain the same number of sites.")
+        exit()
+
+    alpha_dmet = columns[1::2]
+    beta_dmet = columns[2::2]
+
+    fig, ax = plt.subplots()
+    for i in range(1, (1 + table_hf.shape[1] // 2)):
+        ax.plot(
+            table_hf[:, 0].astype(complex).real,
+            table_hf[:, i].astype(complex).real,
+            label=f"spin (HF) {i}",
+        )
+
+    for i in alpha_dmet:
+        ax.scatter(
+            table_dmet[:, 0].astype(complex).real,
+            table_dmet[:, i].astype(complex).real,
+            label=f"spin (DMET) {i}",
+            s=10,
+        )
+
+    ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+    ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+
+    ax.set_xlabel("Time (au)")
+    ax.set_ylabel("Site Density")
+    ax.legend()
+    fig.savefig(f"alpha_{fig_filename}")
+
+    fig, ax = plt.subplots()
+    for i in range((1 + table_hf.shape[1] // 2), table_hf.shape[1]):
+        ax.plot(
+            table_hf[:, 0].astype(complex).real,
+            table_hf[:, i].astype(complex).real,
+            label=f"spin (HF) {i}",
+        )
+
+    for i in beta_dmet:
+        ax.scatter(
+            table_dmet[:, 0].astype(complex).real,
+            table_dmet[:, i].astype(complex).real,
+            label=f"spin (DMET) {i}",
+            s=10,
+        )
+
+    ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+    ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+
+    ax.set_xlabel("Time (au)")
+    ax.set_ylabel("Site Density")
+    ax.legend()
+    fig.savefig(f"beta_{fig_filename}")
+
+
+def plot_fci_dmet_spin_den(filename_fci, filename_dmet, fig_filename):
     table_fci = []
     openfile = f"{filename_fci}"
     with open(openfile, "r") as f:
@@ -116,50 +193,146 @@ def plot_multiple_spin_den(filename_fci, filename_dmet, fig_filename):
 
     alpha_site_index = columns[1::2]
     beta_site_index = columns[2::2]
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(beta_site_index)))
 
-    fig, ax = plt.subplots()
-    for i in alpha_site_index:
+    fig, ax = plt.subplots(figsize=(8,6))
+    
+    for i, color in zip(alpha_site_index, colors):
         ax.plot(
             table_fci[:, 0].astype(complex).real,
             table_fci[:, i].astype(complex).real,
-            label=f"spin (HF) {i}",
+            color=color,
         )
         ax.scatter(
-            table_dmet[:, 0].astype(complex).real,
-            table_dmet[:, i].astype(complex).real,
-            label=f"spin (DMET) {i}",
-            s=10,
+            table_dmet[:, 0].astype(complex).real[::5],
+            table_dmet[:, i].astype(complex).real[::5],
+            marker="o",
+            color=color,
+            facecolors='none',
+            edgecolors=color
         )
 
-        ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-        ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        ax.tick_params(axis="both", labelsize=16, width=2)
 
-        ax.set_xlabel("Time (au)")
-        ax.set_ylabel("Site Density")
-        ax.legend()
-        fig.savefig(f"alpha_{fig_filename}")
+        solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="FCI")
+        bubbles_handle = Line2D(
+            [0], [0], color="navy", marker='o', markerfacecolor='none', markeredgecolor='navy', label="RT-pDMET"
+        )
 
-    fig, ax = plt.subplots()
-    for i in beta_site_index:
+        ax.legend(handles=[solid_line_handle, bubbles_handle], fontsize=17, edgecolor="black")
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+
+        ax.set_xlabel("Time (au)", fontsize=17)
+        ax.set_ylabel("'Alpha' Site Density", fontsize=17)
+        fig.savefig(f"alpha_{fig_filename}", dpi=300)
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(beta_site_index, colors):
         ax.plot(
             table_fci[:, 0].astype(complex).real,
             table_fci[:, i].astype(complex).real,
-            label=f"spin (HF) {i}",
+            color=color,
         )
         ax.scatter(
-            table_dmet[:, 0].astype(complex).real,
-            table_dmet[:, i].astype(complex).real,
-            label=f"spin (DMET) {i}",
-            s=10,
+            table_dmet[:, 0].astype(complex).real[::5],
+            table_dmet[:, i].astype(complex).real[::5],
+            marker="o",
+            color=color,
+            facecolors='none',
+            edgecolors=color
         )
 
-        ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-        ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        ax.tick_params(axis="both", labelsize=16, width=2)
 
-        ax.set_xlabel("Time (au)")
-        ax.set_ylabel("Site Density")
-        ax.legend()
-        fig.savefig(f"beta_{fig_filename}")
+        solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="FCI")
+        bubbles_handle = Line2D(
+            [0], [0], color="navy", marker='o', markerfacecolor='none', markeredgecolor='navy', label="RT-pDMET"
+        )
+
+        ax.legend(handles=[solid_line_handle, bubbles_handle], fontsize=17, edgecolor="black")
+        
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+        
+        ax.set_xlabel("Time (au)", fontsize=17)
+        ax.set_ylabel("'Beta' Site Density", fontsize=17)
+        fig.savefig(f"beta_{fig_filename}", dpi=300)
 
 
-plot_site_mag()
+def plot_spin_diff(filename_fci, filename_dmet, fig_filename):
+    table_fci = []
+    openfile = f"{filename_fci}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            table_fci.append(data)
+    table_fci = np.asarray(table_fci)
+
+    table_dmet = []
+    openfile = f"{filename_dmet}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            table_dmet.append(data)
+    table_dmet = np.asarray(table_dmet)
+
+    columns = range(table_fci.shape[1])
+    if columns != range(table_dmet.shape[1]):
+        print("ERROR: Files do not contain the same number of sites.")
+        exit()
+
+    alpha_site_index = columns[1::2]
+    beta_site_index = columns[2::2]
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(beta_site_index)))
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    
+    for i, color in zip(alpha_site_index, colors):
+        ax.plot(
+            table_fci[:, 0].astype(complex).real,
+            (table_fci[:, i].astype(complex).real - table_dmet[:, i].astype(complex).real),
+            color=color,
+        )
+
+        #ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        #ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+        ax.tick_params(axis="both", labelsize=16, width=2)
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+
+        ax.set_xlabel("Time (au)", fontsize=17)
+        ax.set_ylabel("'Alpha' Site Density Error", fontsize=17)
+        fig.savefig(f"alpha_{fig_filename}_error", dpi=300)
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(beta_site_index, colors):
+        ax.plot(
+            table_fci[:, 0].astype(complex).real,
+            (table_fci[:, i].astype(complex).real - table_dmet[:, i].astype(complex).real),
+            color=color,
+        )
+
+        ax.tick_params(axis="both", labelsize=16, width=2)
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(2)
+
+        ax.set_xlabel("Time (au)", fontsize=17)
+        ax.set_ylabel("'Beta' Site Density Error", fontsize=17)
+        fig.savefig(f"beta_{fig_filename}_error.png", dpi=300)
+
+plot_fci_dmet_spin_den("fci_spin.dat", "gen.dat", "Vquench_spin")
+
+plot_spin_diff(
+    "fci_spin.dat", "gen.dat", "Vquench_spin"
+)

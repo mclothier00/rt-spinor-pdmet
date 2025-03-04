@@ -314,7 +314,7 @@ class dynamics_driver:
 
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
-
+        
             # GETTING 2ST SUBSTEP DT
 
             l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(nproc)
@@ -336,9 +336,9 @@ class dynamics_driver:
             self.tot_system.NOevecs = init_NOevecs + 1.0 * l3
             self.tot_system.glob1RDM = init_glob1RDM + 1.0 * n3
             self.tot_system.mf1RDM = init_mf1RDM + 1.0 * p3
-            np.set_printoptions(
-                precision=9, formatter={"complex": "{: 0.10f}+{: 0.10f}j".format}
-            )
+            #np.set_printoptions(
+            #    precision=9, formatter={"complex": "{: 0.10f}+{: 0.10f}j".format}
+            #)
             # if not self.gen:
             # print(f'NOevecs: \n {self.tot_system.NOevecs}')
             # print(f'glob1RDM: \n {self.tot_system.glob1RDM * 0.5}')
@@ -390,30 +390,30 @@ class dynamics_driver:
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
-            # if self.step == self.printstep:
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n propagated glob1RDM \n")
-            #    f.close()
-            #    utils.printarray(self.tot_system.glob1RDM, "output_halffrag.txt", True)
+            if self.step == self.printstep:
+               f = open("output_halffrag.txt", "a")
+               f.write("\n propagated glob1RDM \n")
+               f.close()
+               utils.printarray(self.tot_system.glob1RDM, "output_halffrag.txt", True)
 
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n propagated mf1RDM \n")
-            #    f.close()
-            #    utils.printarray(self.tot_system.mf1RDM, "output_halffrag.txt", True)
+               f = open("output_halffrag.txt", "a")
+               f.write("\n propagated mf1RDM \n")
+               f.close()
+               utils.printarray(self.tot_system.mf1RDM, "output_halffrag.txt", True)
 
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n first propagated rotmat \n")
-            #    f.close()
-            #    utils.printarray(
-            #        self.tot_system.frag_list[0].rotmat, "output_halffrag.txt", True
-            #    )
+               #f = open("output_halffrag.txt", "a")
+               #f.write("\n first propagated rotmat \n")
+               #f.close()
+               #utils.printarray(
+               #    self.tot_system.frag_list[0].rotmat, "output_halffrag.txt", True
+               #)
 
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n first propagated CIcoeffs \n")
-            #    f.close()
-            #    utils.printarray(
-            #        self.tot_system.frag_list[0].CIcoeffs, "output_halffrag.txt", True
-            #    )
+               #f = open("output_halffrag.txt", "a")
+               #f.write("\n first propagated CIcoeffs \n")
+               #f.close()
+               #utils.printarray(
+               #    self.tot_system.frag_list[0].CIcoeffs, "output_halffrag.txt", True
+               #)
 
             # Checks for numerical stability
 
@@ -500,8 +500,6 @@ class dynamics_driver:
 
     #####################################################################
 
-    # currently editing, but not yet checking...
-
     def one_rk_step(self, nproc):
         # Subroutine to calculate one change in a runge-kutta step of any order
         # Using EOM that integrates CI coefficients, rotmat, and MF 1RDM
@@ -516,12 +514,12 @@ class dynamics_driver:
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
         )
 
-        # if self.step == self.printstep:
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write(f"printstep: {self.printstep}")
-        #    f.write("\n NOevals (U) \n")
-        #    f.close()
-        #    utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt", True)
+        if self.step == self.printstep:
+           f = open("output_halffrag.txt", "a")
+           f.write(f"printstep: {self.printstep}")
+           f.write("\n NOevals (U) \n")
+           f.close()
+           utils.printarray(self.tot_system.NOevecs.real, "output_halffrag.txt", True)
 
         # Calculate embedding hamiltonian
         make_ham = time.time()
@@ -546,23 +544,23 @@ class dynamics_driver:
                 )
             )
 
-        # if self.step == self.printstep:
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of global density matrix \n")
-        #    f.close()
-        #    utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt", True)
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n G \n")
-        #    f.close()
-        #    utils.printarray(G_site.real, "output_halffrag.txt", True)
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of NO evals (U dot) \n")
-        #    f.close()
-        #    utils.printarray(ddt_NOevec.real, "output_halffrag.txt", True)
-        #    f = open("output_halffrag.txt", "a")
-        #    f.write("\n TD of mean field density matrix \n")
-        #    f.close()
-        #    utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt", True)
+        if self.step == self.printstep:
+           f = open("output_halffrag.txt", "a")
+           f.write("\n TD of global density matrix \n")
+           f.close()
+           utils.printarray(ddt_glob1RDM.real, "output_halffrag.txt", True)
+           f = open("output_halffrag.txt", "a")
+           f.write("\n G \n")
+           f.close()
+           utils.printarray(G_site.real, "output_halffrag.txt", True)
+           f = open("output_halffrag.txt", "a")
+           f.write("\n TD of NO evals (U dot) \n")
+           f.close()
+           utils.printarray(ddt_NOevec.real, "output_halffrag.txt", True)
+           f = open("output_halffrag.txt", "a")
+           f.write("\n TD of mean field density matrix \n")
+           f.close()
+           utils.printarray(ddt_mf1RDM.real, "output_halffrag.txt", True)
 
         # Use change in mf1RDM to calculate X-matrix for each fragment
         make_xmat = time.time()
@@ -580,13 +578,13 @@ class dynamics_driver:
             change_rotmat_list.append(-1j * self.delt * np.dot(frag.rotmat, frag.Xmat))
             td_rotmat_list.append(-1j * np.dot(frag.rotmat, frag.Xmat))
 
-            # if self.step == self.printstep:
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n TD of rotmat \n")
-            #    f.close()
-            #    utils.printarray(
-            #        -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
-            #    )
+            if self.step == self.printstep:
+               f = open("output_halffrag.txt", "a")
+               f.write("\n TD of rotmat \n")
+               f.close()
+               utils.printarray(
+                   -1j * np.dot(frag.rotmat, frag.Xmat), "output_halffrag.txt"
+               )
 
         # np.savez(
         #    "4site_dmet_res.npz",
@@ -618,13 +616,13 @@ class dynamics_driver:
             change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
 
             ### DELETE AND GO BACK TO ORIGINAL AFTER DEBUGGING
-            # tdci = applyham_wrapper(frag, self.delt, self.gen)
-            # change_CIcoeffs_list.append(tdci)
-            # if self.step == self.printstep:
-            #    f = open("output_halffrag.txt", "a")
-            #    f.write("\n TD of CI \n")
-            #    f.close()
-            #    utils.printarray(tdci, "output_halffrag.txt", True)
+            #tdci = applyham_wrapper(frag, self.delt, self.gen)
+            #change_CIcoeffs_list.append(tdci)
+            #if self.step == self.printstep:
+            #   f = open("output_halffrag.txt", "a")
+            #   f.write("\n TD of CI \n")
+            #   f.close()
+            #   utils.printarray(tdci, "output_halffrag.txt", True)
 
         return (
             change_NOevecs,

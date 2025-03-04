@@ -257,8 +257,8 @@ class tdfci:
             spindens = diagcorr1RDM
             spindens = np.insert(diagcorr1RDM, 0, current_time)
 
-        np.savetxt(self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str)
-        self.file_spindens.flush()
+            np.savetxt(self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str)
+            self.file_spindens.flush()
 
         # Print output data
         output = np.zeros(3)

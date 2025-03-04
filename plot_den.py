@@ -123,9 +123,42 @@ def plot_multiple_spin_den(filename_fci, filename_dmet, fig_filename):
         fig.savefig(f"beta_{fig_filename}")
 
 
-# res_site_index = [1, 2, 3, 4, 5, 6]
-# gen_site_index = [1, 3, 5, 7, 9, 11]
-filename1 = "electron_density_fci.dat"
-filename2 = "electron_density_dmet.dat"
-fig_filename = "spin_density.png"
-plot_multiple_spin_den(filename1, filename2, fig_filename)
+def plot_electron_difference(
+    res_filename, gen_filename, fig_filename, res_site_index, gen_site_index
+):
+    restable = []
+    openfile = f"{res_filename}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            restable.append(data)
+    restable = np.asarray(restable)
+
+    gentable = []
+    openfile = f"{gen_filename}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            gentable.append(data)
+    gentable = np.asarray(gentable)
+
+    plt.figure()
+    for i,j in zip(res_site_index, gen_site_index):
+        plt.plot(
+            restable[:, 0].astype(complex).real,
+            (restable[:, i].astype(complex).real - (gentable[:, i].astype(complex).real + gentable[:, (i + 1)].astype(complex).real)),
+        )
+
+    plt.xlabel("Time (au)")
+    plt.ylabel("Site Density Error")
+    plt.savefig(f"{fig_filename}_error.png")
+
+
+res_site_index = [1, 2, 3, 4]
+gen_site_index = [1, 3, 5, 7]
+filename1 = "res.dat"
+filename2 = "gen.dat"
+fig_filename = "electron_density"
+plot_electron_difference(filename1, filename2, fig_filename, res_site_index, gen_site_index)

@@ -194,7 +194,7 @@ class system:
         # time-dependence of correlated 1RDM for each fragment
         # ie i\tilde{ \dot{ correlated 1RDM } } using notation from notes
         # NOTE: should have 1RDM and 2RDM calculated prior to calling this
-
+       
         for frag in self.frag_in_rank:
             frag.get_iddt_corr1RDM(
                 self.h_site, self.V_site, self.hamtype, self.hubsite_indx, self.gen

@@ -126,10 +126,6 @@ def calc_iddt_glob1RDM(system):
 #####################################################################
 
 
-# currently editing; not yet checking...
-# NOTE: only edit was expansion of 2 * system.Nsites
-
-
 def calc_Gmat(dG, system, iddt_glob1RDM):
     # Subroutine to calculate matrix that
     # governs time-dependence of natural orbitals
