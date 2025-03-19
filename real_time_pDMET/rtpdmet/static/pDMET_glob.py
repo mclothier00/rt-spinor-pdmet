@@ -6,6 +6,7 @@ from pyscf import gto, scf, ao2mo
 from real_time_pDMET.rtpdmet.static.quad_fit import quad_fit_mu
 from math import copysign
 from pyscf import lib
+from mpi4py import MPI
 
 DiisDim = 4
 adiis = lib.diis.DIIS()
@@ -112,7 +113,7 @@ class static_pdmet:
             )
 
         # list that takes site index and gives
-        # fragmnt index corresponding to that site
+        # fragment index corresponding to that site
 
         self.site_to_frag_list = []
         self.site_to_impindx = []
@@ -120,9 +121,44 @@ class static_pdmet:
             for ifrag, array in enumerate(impindx):
                 if i in array:
                     self.site_to_frag_list.append(ifrag)
-                    self.site_to_impindx.append(np.argwhere(array == i)[0][0])
+        self.site_to_impindx.append(np.argwhere(array == i)[0][0])
+
         # output file
         self.file_output = open("output_static.dat", "w")
+
+        # Parallelization
+
+        comm = MPI.COMM_WORLD
+        self.rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        frag_per_rank = []
+        for i in range(size):
+            frag_per_rank.append([])
+
+        self.site_to_frag = []
+
+        if self.rank == 0:
+            for i, frag in enumerate(self.frag_list):
+                frag_per_rank[i % size].append(frag)
+                self.frag_list = None
+            self.frag_in_rank = frag_per_rank[0]
+            for r, frag in enumerate(frag_per_rank):
+                if r != 0:
+                    comm.send(frag, dest=r)
+
+            for frag in self.frag_in_rank:
+                for j in frag.impindx:
+                    self.site_to_frag.append(self.site_to_frag_list[j])
+
+        else:
+            self.frag_in_rank = comm.recv(source=0)
+            self.frag_list = None
+            for frag in self.frag_in_rank:
+                for j in frag.impindx:
+                    self.site_to_frag.append(self.site_to_frag_list[j])
+
+        print(f"rank {self.rank} site_to_frag: {self.site_to_frag}")
 
     ##########################################################
 
@@ -241,7 +277,7 @@ class static_pdmet:
             else:
                 print("No chemical potential fitting is employed")
 
-                for frag in self.frag_list:
+                for frag in self.frag_in_rank:
                     frag.corr_calc(
                         self.mf1RDM,
                         self.h_site,
@@ -253,7 +289,7 @@ class static_pdmet:
                         self.mubool,
                     )
 
-            # constract a global dencity matrix from all impurities
+            # constract a global density matrix from all impurities
             self.get_globalRDM()
 
             # DIIS routine
@@ -307,6 +343,7 @@ class static_pdmet:
         end_time = time.perf_counter()
         total_time = end_time - start_time
         print("total_time", total_time)
+        print(f"mf1RDM: \n {self.mf1RDM}")
         self.file_output.close()
 
     ##########################################################
@@ -383,10 +420,11 @@ class static_pdmet:
 
         # form the global 1RDM forcing hermiticity
         self.globalRDMtrace = 0
+
         for p in range(self.Nsites):
             for q in range(p, self.Nsites):
-                pfrag = self.frag_list[self.site_to_frag_list[p]]
-                qfrag = self.frag_list[self.site_to_frag_list[q]]
+                pfrag = self.frag_in_rank[self.site_to_frag_list[p]]
+                qfrag = self.frag_in_rank[self.site_to_frag_list[q]]
 
                 # index corresponding to the impurity and bath range
                 # in the rotation matrix for each fragment
@@ -414,7 +452,50 @@ class static_pdmet:
                 if p != q:  # forcing Hermiticity
                     self.glob1RDM[q, p] = np.conjugate(self.glob1RDM[p, q])
         trace1RDM = self.glob1RDM.trace()
-        print("trace of global RDM", trace1RDM)
+        #print(f"original: \n {self.glob1RDM}")
+        #print("trace of global RDM", trace1RDM)
+
+        #### NEW MPI CODE, FIRST ATTEMPT ####
+        #glob1RDM = np.zeros([self.Nsites, self.Nsites], dtype=complex)
+
+        #for i, frag in enumerate(self.frag_in_rank):
+        #    tmp = 0.5 * np.dot(frag.rotmat, np.dot(frag.corr1RDM, frag.rotmat.conj().T))
+        #    for site in frag.impindx:
+        #        glob1RDM[site, :] += tmp[site, :]
+        #        glob1RDM[:, site] += tmp[:, site]
+
+        #true_glob1RDM = np.zeros([self.Nsites, self.Nsites], dtype=complex)
+        #MPI.COMM_WORLD.Allreduce(glob1RDM, true_glob1RDM, op=MPI.SUM)
+
+        #print(f"MPI code: {true_glob1RDM}")
+        #exit()
+        #### NEW CODE ####
+        ## NOTE: this will not work due to dimension of corr1RDM
+
+        # rotmat_unpck = np.zeros([self.Nsites, self.Nsites, self.Nsites], dtype=complex)
+        # corr1RDM_unpck = np.zeros([self.Nsites, self.Nsites], dtype=complex)
+        # for q in range(self.Nsites):
+        # fragment for site q
+        #    frag = self.frag_in_rank[self.site_to_frag_list[q]]
+
+        # index within fragment corresponding to site q -
+        # note that q is an impurity orbital
+        #    qimp = self.site_to_impindx[q]
+
+        # unpack rotation matrix
+        #    rotmat_unpck[:, :, q] = np.copy(frag.rotmat)
+
+        #    print(frag.corr1RDM.shape)
+        #    print(corr1RDM_unpck.shape)
+        # unpack necessary portion of iddt_corr1RDM
+        #    corr1RDM_unpck[:, q] = np.copy(frag.corr1RDM[:, qimp])
+
+        # calculate intermediate matrix
+        # tmp = np.einsum("paq,aq->pq", rotmat_unpck, corr1RDM_unpck)
+
+        # glob = 0.5 * (tmp - tmp.conj().T)
+        # print(f"from dynamics code: \n {glob}")
+        # exit()
 
     ##########################################################
 
@@ -592,7 +673,7 @@ class static_pdmet:
 
     def corr_calc_with_mu(self, mu):
         totalNele = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             fragNele = frag.corr_calc(
                 self.mf1RDM,
                 self.h_site,
@@ -611,7 +692,7 @@ class static_pdmet:
 
     def get_Nele(self, mu):
         totalNele = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.add_mu_Hemb(mu)
             frag.solve_GS(self.U)
             frag.get_corr1RDM()
@@ -628,7 +709,7 @@ class static_pdmet:
 
     def just_Nele(self):
         totalNele = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             fragNele = frag.nele_in_frag()
             totalNele += fragNele
         return totalNele
@@ -654,14 +735,14 @@ class static_pdmet:
 
     def get_frag_corr12RDM(self):
         # correlated 1 RDM for each fragment
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_corr12RDM()
 
     ##########################################################
 
     def get_frag_Hemb(self):
         # Hamiltonian for each fragment
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_Hemb(
                 self.h_site, self.V_site, self.U, self.hamtype, self.hubb_indx
             )
@@ -669,7 +750,7 @@ class static_pdmet:
     ##########################################################
 
     def Hemb_add_mu(self, mu):
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.add_mu_Hemb(mu)
 
     ##########################################################
@@ -689,7 +770,7 @@ class static_pdmet:
         np.save("globRDM_static", self.glob1RDM)
         CI = []
         rotmat = []
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             CI.append(np.copy(frag.CIcoeffs))
             rotmat.append(np.copy(frag.rotmat))
         np.save("CI_ststic", CI)
@@ -700,7 +781,7 @@ class static_pdmet:
         self.get_frag_Hemb()
         self.get_frag_corr12RDM()
         self.DMET_E = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_frag_E()
             self.DMET_E += np.real(frag.Efrag)
             # discard what should be numerical error of imaginary part

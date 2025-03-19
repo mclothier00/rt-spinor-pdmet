@@ -123,7 +123,6 @@ class dynamics_driver:
         # If running Hubbard-like model, need an array
         # containing index of all sites that have hubbard U term
         self.tot_system.hubsite_indx = hubsite_indx
-        print(self.tot_system.hubsite_indx)
         if self.tot_system.hamtype == 1 and self.tot_system.hubsite_indx is None:
             print("ERROR: Did not specify an array of sites that have U term")
             print()
@@ -137,9 +136,11 @@ class dynamics_driver:
         if self.Vbias:
             self.file_current = open("current.dat", "w")
         if self.gen:
+            self.file_totspins = open("total_spins.dat", "w")
             self.file_spinx = open("spin_x.dat", "w")
             self.file_spiny = open("spin_y.dat", "w")
             self.file_spinz = open("spin_z.dat", "w")
+
 
         self.max_diagonalG = 0
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
@@ -166,7 +167,7 @@ class dynamics_driver:
             for r, frag in enumerate(frag_per_rank):
                 if r != 0:
                     comm.send(frag, dest=r)
-            # print("FRAG PER RANK LENGTH RANK 0: ", len(frag_in_rank))
+            # print("FRAG PER RANK LENGTH RANK 0: ", len(self.tot_system.frag_in_rank))
         else:
             self.tot_system.frag_in_rank = comm.recv(source=0)
             self.tot_system.frag_list = None
@@ -193,6 +194,7 @@ class dynamics_driver:
                 if step == 0:
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
+                    self.print_just_spins(current_time)
 
                 if (np.mod(step, self.Nprint) == 0) and step > 1:
                     print(
@@ -303,6 +305,8 @@ class dynamics_driver:
 
             # GETTING 1ST SUBSTEP DT
 
+            #self.print_just_spins(current_time)
+
             l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(nproc)
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
@@ -316,7 +320,9 @@ class dynamics_driver:
                 self.update_ham(current_time + 0.5 * self.delt)
         
             # GETTING 2ST SUBSTEP DT
-
+            
+            #self.print_just_spins(current_time)
+            
             l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(nproc)
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l2
@@ -330,6 +336,8 @@ class dynamics_driver:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             # GETTING 3ST SUBSTEP DT
+
+            #self.print_just_spins(current_time)
 
             l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(nproc)
 
@@ -360,6 +368,8 @@ class dynamics_driver:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # GETTING 4ST SUBSTEP DT
+
+            #self.print_just_spins(current_time)
 
             l4, k4_list, m4_list, n4, p4, mfRDM_check = self.one_rk_step(nproc)
 
@@ -677,53 +687,50 @@ class dynamics_driver:
         self.file_corrdens.flush()
 
         if self.gen:
+            # total spin vectors
+            den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
+            ovlp = np.eye(self.tot_system.Nsites)
+
+            magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+            magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+            magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+
+            all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
+            np.savetxt(
+                self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
+            )
+
+            # spin on each site
+
             sites_x = []
             sites_y = []
             sites_z = []
 
-            for site in range(self.tot_system.Nsites):
-                spin_x = 0
-                spin_y = 0
-                spin_z = 0
+            for i in range(self.tot_system.Nsites):
+                ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
+                ovlp[i,i] = 1
 
-                ovlp = np.eye(self.tot_system.Nsites * 2)
-                den = utils.reshape_gtor_matrix(self.tot_system.mf1RDM)
+                site_magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+                site_magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+                site_magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
 
-                spin_x = (
-                    np.sum(
-                        den[(site + self.tot_system.Nsites), site]
-                        + den[site, (site + self.tot_system.Nsites)]
-                    )
-                    * ovlp[site, site]
-                )
-                spin_y = (
-                    1j
-                    * (
-                        den[(site + self.tot_system.Nsites), site]
-                        - den[site, (site + self.tot_system.Nsites)]
-                    )
-                    * ovlp[site, site]
-                )
-                spin_z = (
-                    den[site, site]
-                    - den[
-                        (site + self.tot_system.Nsites), (site + self.tot_system.Nsites)
-                    ]
-                ) * ovlp[site, site]
+                sites_x.append(site_magx.real)
+                sites_y.append(site_magy.real)
+                sites_z.append(site_magz.real)
 
-                sites_x.append(np.real(spin_x))
-                sites_y.append(np.real(spin_y))
-                sites_z.append(np.real(spin_z))
+            sites_x = np.insert(np.array(sites_x), 0, current_time)
+            sites_y = np.insert(np.array(sites_y), 0, current_time)
+            sites_z = np.insert(np.array(sites_z), 0, current_time)
 
-            with open("spin_x.dat", "a") as f:
-                self.file_spinx.write(f"{current_time} \t {sites_x} \n")
-                self.file_spinx.flush()
-            with open("spin_y.dat", "a") as f:
-                self.file_spiny.write(f"{current_time} \t {sites_y} \n")
-                self.file_spiny.flush()
-            with open("spin_z.dat", "a") as f:
-                self.file_spinz.write(f"{current_time} \t {sites_z} \n")
-                self.file_spinz.flush()
+            np.savetxt(
+                self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
+            )
 
         # Print output data
         writing_outfile = time.time()
@@ -761,6 +768,41 @@ class dynamics_driver:
         file_system = open("restart_system.dat", "wb")
         pickle.dump(self.tot_system, file_system)
         file_system.close()
+
+    #####################################################################
+
+    def print_just_spins(self, current_time):
+        fmt_str = "%20.8e"
+        sites_x = []
+        sites_y = []
+        sites_z = []
+            
+        den = utils.reshape_gtor_matrix(self.tot_system.mf1RDM)
+
+        #ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
+        #ovlp[0,0] = 1
+        ovlp = np.eye(self.tot_system.Nsites)
+
+        magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+        magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+        magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+        #print('one step')
+        #print(magx)
+        #print(magy)
+        #print(magz)
+
+        magx = np.insert(np.array(magx.real), 0, current_time)
+        magy = np.insert(np.array(magy.real), 0, current_time)
+        magz = np.insert(np.array(magz.real), 0, current_time)
+        np.savetxt(
+            self.file_spinx, magx.reshape(1, magx.shape[0]), fmt_str
+        )
+        np.savetxt(
+            self.file_spiny, magy.reshape(1, magy.shape[0]), fmt_str
+        )
+        np.savetxt(
+            self.file_spinz, magz.reshape(1, magz.shape[0]), fmt_str
+        )
 
     #####################################################################
 

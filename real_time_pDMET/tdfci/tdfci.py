@@ -57,6 +57,7 @@ class tdfci:
             self.file_spinx = open("spin_x.dat", "w")
             self.file_spiny = open("spin_y.dat", "w")
             self.file_spinz = open("spin_z.dat", "w")
+            self.file_totspins = open("total_spins.dat", "w")
 
     #####################################################################
 
@@ -175,47 +176,51 @@ class tdfci:
             file.write(f"from generalized: \n {corr1RDM} \n")
             file.close()
 
+            # total spin vectors
+            den = utils.reshape_gtor_matrix(corr1RDM)
+            Nsp = int(self.Nsites / 2)
+            ovlp = np.eye(Nsp)
+
+            magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
+            magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
+            magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
+
+            all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
+            np.savetxt(
+                self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
+            )
+
+            # spin on each site
+
             sites_x = []
             sites_y = []
             sites_z = []
 
-            Nsp = int(self.Nsites / 2)
+            for i in range(Nsp):
+                ovlp = np.zeros((Nsp, Nsp))
+                ovlp[i,i] = 1
 
-            for site in range(Nsp):
-                spin_x = 0
-                spin_y = 0
-                spin_z = 0
+                site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
+                site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
+                site_magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
 
-                ovlp = np.eye(self.Nsites)
-                den0 = corr1RDM
-                den = utils.reshape_gtor_matrix(den0)
+                sites_x.append(site_magx.real)
+                sites_y.append(site_magy.real)
+                sites_z.append(site_magz.real)
 
-                spin_x = (
-                    np.sum(den[(site + Nsp), site] + den[site, (site + Nsp)])
-                    * ovlp[site, site]
-                )
-                spin_y = (
-                    1j
-                    * (den[(site + Nsp), site] - den[site, (site + Nsp)])
-                    * ovlp[site, site]
-                )
-                spin_z = (den[site, site] - den[(site + Nsp), (site + Nsp)]) * ovlp[
-                    site, site
-                ]
+            sites_x = np.insert(np.array(sites_x), 0, current_time)
+            sites_y = np.insert(np.array(sites_y), 0, current_time)
+            sites_z = np.insert(np.array(sites_z), 0, current_time)
 
-                sites_x.append(spin_x)
-                sites_y.append(spin_y)
-                sites_z.append(spin_z)
-
-            with open("spin_x.dat", "a") as f:
-                self.file_spinx.write(f"{current_time} \t {sites_x} \n")
-                self.file_spinx.flush()
-            with open("spin_y.dat", "a") as f:
-                self.file_spiny.write(f"{current_time} \t {sites_y} \n")
-                self.file_spiny.flush()
-            with open("spin_z.dat", "a") as f:
-                self.file_spinz.write(f"{current_time} \t {sites_z} \n")
-                self.file_spinz.flush()
+            np.savetxt(
+                self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
+            )
 
             # Calculate total energy
             Etot = fci_mod.get_FCI_E(

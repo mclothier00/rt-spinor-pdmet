@@ -51,8 +51,8 @@ def rtor_transition(
         tot_system.frag_list.append(
             fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele)
         )
-        tot_system.frag_list[i].rotmat = the_dmet.frag_list[i].rotmat
-        tot_system.frag_list[i].CIcoeffs = the_dmet.frag_list[i].CIcoeffs
+        tot_system.frag_list[i].rotmat = the_dmet.frag_in_rank[i].rotmat
+        tot_system.frag_list[i].CIcoeffs = the_dmet.frag_in_rank[i].CIcoeffs
 
     return tot_system
 
@@ -109,6 +109,28 @@ def rtog_transition(
     tot_system.mf1RDM = utils.reshape_rtog_matrix(
         np.kron(np.eye(2), 0.5 * the_dmet.mf1RDM)
     )
+    #tot_system.glob1RDM = np.zeros((Nsites * 2, Nsites * 2))
+    #tot_system.glob1RDM[:Nsites, :Nsites] = the_dmet.glob1RDM
+    #tot_system.mf1RDM = np.zeros((Nsites * 2, Nsites * 2))
+    #tot_system.mf1RDM[:Nsites, :Nsites] = the_dmet.mf1RDM
+    #tot_system.glob1RDM = utils.reshape_rtog_matrix(tot_system.glob1RDM)
+    #tot_system.mf1RDM = utils.reshape_rtog_matrix(tot_system.mf1RDM)
+
+    #magx = np.sum((tot_system.glob1RDM[:tot_system.Nsites, tot_system.Nsites:] + tot_system.glob1RDM[tot_system.Nsites:, :tot_system.Nsites]) * np.eye(4))
+    #magy = 1j * np.sum((tot_system.glob1RDM[:tot_system.Nsites, tot_system.Nsites:] - tot_system.glob1RDM[tot_system.Nsites:, :tot_system.Nsites]) * np.eye(4))
+    #magz = np.sum((tot_system.glob1RDM[:tot_system.Nsites, :tot_system.Nsites] - tot_system.glob1RDM[tot_system.Nsites:, tot_system.Nsites:]) * np.eye(4)) 
+    #print('from global matrix:')
+    #print(magx)
+    #print(magy)
+    #print(magz)
+
+    #magx = np.sum((tot_system.mf1RDM[:tot_system.Nsites, tot_system.Nsites:] + tot_system.mf1RDM[tot_system.Nsites:, :tot_system.Nsites]) * np.eye(4))
+    #magy = 1j * np.sum((tot_system.mf1RDM[:tot_system.Nsites, tot_system.Nsites:] - tot_system.mf1RDM[tot_system.Nsites:, :tot_system.Nsites]) * np.eye(4))
+    #magz = np.sum((tot_system.mf1RDM[:tot_system.Nsites, :tot_system.Nsites] - tot_system.mf1RDM[tot_system.Nsites:, tot_system.Nsites:]) * np.eye(4)) 
+    #print('from MF matrix:')
+    #print(magx)
+    #print(magy)
+    #print(magz)
 
     tot_system.NOevecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), the_dmet.NOevecs))
 
@@ -123,9 +145,13 @@ def rtog_transition(
     for i in range(Nfrag):
         frag_i = fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele, gen=True)
         tot_system.frag_list.append(frag_i)
-        tot_system.frag_list[i].rotmat = utils.reshape_rtog_matrix(
-            np.kron(np.eye(2), the_dmet.frag_list[i].rotmat)
-        )
+        #tot_system.frag_list[i].rotmat = utils.reshape_rtog_matrix(
+        #   np.kron(np.eye(2), the_dmet.frag_in_rank[i].rotmat)
+        #)
+
+        tot_system.frag_list[i].rotmat = np.zeros((Nsites * 2, Nsites * 2))
+        tot_system.frag_list[i].rotmat[:Nsites, :Nsites] = the_dmet.frag_in_rank[i].rotmat
+
 
         nbeta = frag_i.Nimp // 2
         nalpha = frag_i.Nimp - nbeta
@@ -136,7 +162,7 @@ def rtog_transition(
             (frag_i.Nimp * 2),
             nalpha,
             nbeta,
-            the_dmet.frag_list[i].CIcoeffs,
+            the_dmet.frag_in_rank[i].CIcoeffs,
         )
 
     print(

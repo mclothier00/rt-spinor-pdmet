@@ -4,9 +4,6 @@ from matplotlib.ticker import MaxNLocator, FuncFormatter, ScalarFormatter
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-# site index starting from 1
-
-
 def plot_site_mag():
     files = ["spin_x.dat", "spin_y.dat", "spin_z.dat"]
 
@@ -43,6 +40,65 @@ def plot_site_mag():
             fig.savefig("mag_y.png")
         if i == 2:
             fig.savefig("mag_z.png")
+
+
+def plot_mag():
+    magx = []
+    magy = []
+    magz = []
+    
+    with open("spin_x.dat", "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            magx.append(data)
+
+    with open("spin_y.dat", "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            magy.append(data)
+
+    with open("spin_z.dat", "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            magz.append(data)
+
+    magx = np.asarray(magx, dtype=float)
+    magy = np.asarray(magy, dtype=float)
+    magz = np.asarray(magz, dtype=float)
+    
+    fig, ax = plt.subplots()
+   
+    ax.plot(
+        magx[:, 0],
+        magx[:, 1],
+        label=f"Mag x",
+        color='firebrick',
+    )
+    ax.plot(
+        magy[:, 0],
+        magy[:, 1],
+        label=f"Mag y",
+        color='cornflowerblue',
+    )
+    ax.plot(
+        magz[:, 0],
+        magz[:, 1],
+        label=f"Mag z",
+        color='forestgreen',
+    )
+
+    ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+    ax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+    ax.xaxis.set_major_locator(MaxNLocator(5))
+    ax.yaxis.set_major_locator(MaxNLocator(5))
+    ax.set_xlabel("Time (au)")
+    ax.set_ylabel("Magnetization (au)")
+    ax.legend()
+
+    fig.savefig("magnetization.png")
 
 
 def plot_multiple_electron_site_den(
@@ -331,8 +387,10 @@ def plot_spin_diff(filename_fci, filename_dmet, fig_filename):
         ax.set_ylabel("'Beta' Site Density Error", fontsize=17)
         fig.savefig(f"beta_{fig_filename}_error.png", dpi=300)
 
-plot_fci_dmet_spin_den("fci_spin.dat", "gen.dat", "Vquench_spin")
+plot_mag()
 
-plot_spin_diff(
-    "fci_spin.dat", "gen.dat", "Vquench_spin"
-)
+#plot_fci_dmet_spin_den("fci_spin.dat", "gen.dat", "Vquench_spin")
+
+#plot_spin_diff(
+#    "fci_spin.dat", "gen.dat", "Vquench_spin"
+#)
