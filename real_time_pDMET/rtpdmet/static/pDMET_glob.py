@@ -53,6 +53,7 @@ class static_pdmet:
         tol       - tolerance for difference in 1 RDM during DMET cycle
         U         - Hubbard constant for electron interactions
         """
+
         print()
         print("***************************************")
         print("         INITIALIZING PDMET          ")
@@ -169,10 +170,11 @@ class static_pdmet:
     def kernel(self):
         # Initialize the system from mf 1RDM and fragment information
 
-        print()
-        print("***************************************")
-        print("    BEGIN STATIC PDMET CALCULATION     ")
-        print("***************************************")
+        if self.rank == 0:
+            print()
+            print("***************************************")
+            print("    BEGIN STATIC PDMET CALCULATION     ")
+            print("***************************************")
 
         # DMET outer loop
         start_time = time.perf_counter()
@@ -324,30 +326,32 @@ class static_pdmet:
                 conv = True
                 break
 
-        print()
-        print("***************************************")
-        print("    FINISH STATIC PDMET CALCULATION    ")
-        print("***************************************")
-        print()
-        print("Final DMET energy =", self.DMET_E)
-        print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
-        if conv:
-            print("DMET calculation succesfully converged in", itr, "iterations")
-            print("Final difference in global 1RDM =", dif)
+        if self.rank == 0:
             print()
+            print("***************************************")
+            print("    FINISH STATIC PDMET CALCULATION    ")
+            print("***************************************")
+            print()
+            print("Final DMET energy =", self.DMET_E)
+            print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
+            if conv:
+                print("DMET calculation succesfully converged in", itr, "iterations")
+                print("Final difference in global 1RDM =", dif)
+                print()
 
-        else:
-            print(
-                "WARNING:DMET calculation finished, but did not converge in",
-                self.Maxitr,
-                "iterations",
-            )
-            print("Final difference in global 1RDM =", dif)
+            else:
+                print(
+                    "WARNING:DMET calculation finished, but did not converge in",
+                    self.Maxitr,
+                    "iterations",
+                )
+                print("Final difference in global 1RDM =", dif)
 
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print("total_time", total_time)
-        print(f"mf1RDM: \n {self.mf1RDM}")
+        if self.rank == 0:
+            print("total_time", total_time)
+            print(f"mf1RDM: \n {self.mf1RDM}")
         self.file_output.close()
 
     ##########################################################

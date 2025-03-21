@@ -80,11 +80,15 @@ class dynamics_driver:
         ## FOR DEBUGGING, PING
         self.printstep = 0
 
-        print()
-        print("********************************************")
-        print("     SET-UP REAL-TIME DMET CALCULATION       ")
-        print("********************************************")
-        print()
+        comm = MPI.COMM_WORLD
+        self.rank = comm.Get_rank()
+
+        if self.rank == 0:
+            print()
+            print("********************************************")
+            print("     SET-UP REAL-TIME DMET CALCULATION       ")
+            print("********************************************")
+            print()
         # Input error checks
         """
          requiers care, do not use if t=0 is a highly degenerate
@@ -155,8 +159,8 @@ class dynamics_driver:
 
         # Parallelization
 
-        comm = MPI.COMM_WORLD
-        self.rank = comm.Get_rank()
+        #comm = MPI.COMM_WORLD
+        #self.rank = comm.Get_rank()
         #print(self.rank)
         #print(f'for {self.rank} : {len(self.tot_system.frag_in_rank)}')
         #size = comm.Get_size()
@@ -185,11 +189,13 @@ class dynamics_driver:
     #####################################################################
     def kernel(self):
         start_time = time.time()
-        print()
-        print("********************************************")
-        print("     BEGIN REAL-TIME DMET CALCULATION       ")
-        print("********************************************")
-        print()
+ 
+        if self.rank == 0:
+            print()
+            print("********************************************")
+            print("     BEGIN REAL-TIME DMET CALCULATION       ")
+            print("********************************************")
+            print()
 
         # fraddg_pool = multproc.Pool(self.nproc)
 
@@ -256,13 +262,13 @@ class dynamics_driver:
             if self.laser == True:
                 self.file_laser.close()
 
-        # self.frag_pool.close()
-        print()
-        print("********************************************")
-        print("       END REAL-TIME DMET CALCULATION       ")
-        print("********************************************")
-        print()
-        print("--- %s seconds ---" % (time.time() - start_time))
+            # self.frag_pool.close()
+            print()
+            print("********************************************")
+            print("       END REAL-TIME DMET CALCULATION       ")
+            print("********************************************")
+            print()
+            print("--- %s seconds ---" % (time.time() - start_time))
 
     #####################################################################
     def update_ham(self, curr_time):
