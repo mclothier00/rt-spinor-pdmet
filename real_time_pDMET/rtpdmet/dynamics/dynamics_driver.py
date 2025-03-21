@@ -95,7 +95,13 @@ class dynamics_driver:
 
         # Convert rotation matrices, CI coefficients,
         # and MF 1RDM to complex arrays if they're not already
-        for frag in self.tot_system.frag_list:
+        #for frag in self.tot_system.frag_list:
+        #    if not np.iscomplexobj(frag.rotmat):
+        #        frag.rotmat = frag.rotmat.astype(complex)
+        #    if not np.iscomplexobj(frag.CIcoeffs):
+        #        frag.CIcoeffs = frag.CIcoeffs.astype(complex)
+
+        for frag in self.tot_system.frag_in_rank:
             if not np.iscomplexobj(frag.rotmat):
                 frag.rotmat = frag.rotmat.astype(complex)
             if not np.iscomplexobj(frag.CIcoeffs):
@@ -130,7 +136,9 @@ class dynamics_driver:
 
         # Define output files
         self.file_output = open("output_dynamics.dat", "w")
-        self.file_corrdens = open("electron_density.dat", "w")
+        #self.file_corrdens = open("electron_density.dat", "w")
+        # replacing file_corrdens with file_globdens due to parallelization
+        self.file_globdens = open("electron_density.dat", "w")
         if self.laser:
             self.file_laser = open("laser.dat", "w")
         if self.Vbias:
@@ -140,8 +148,7 @@ class dynamics_driver:
             self.file_spinx = open("spin_x.dat", "w")
             self.file_spiny = open("spin_y.dat", "w")
             self.file_spinz = open("spin_z.dat", "w")
-
-
+ 
         self.max_diagonalG = 0
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
         # self.corrdens_old += 1
@@ -150,27 +157,29 @@ class dynamics_driver:
 
         comm = MPI.COMM_WORLD
         self.rank = comm.Get_rank()
-        size = comm.Get_size()
+        #print(self.rank)
+        #print(f'for {self.rank} : {len(self.tot_system.frag_in_rank)}')
+        #size = comm.Get_size()
 
-        frag_per_rank = []
-        for i in range(size):
-            frag_per_rank.append([])
+        #frag_per_rank = []
+        #for i in range(size):
+        #    frag_per_rank.append([])
 
-        if self.rank == 0:
+        #if self.rank == 0:
             # print("FRAG LIST LENGTH: ", len(self.tot_system.frag_list))
-            for i, frag in enumerate(self.tot_system.frag_list):
+        #    for i, frag in enumerate(self.tot_system.frag_list):
                 #    print("FRAG LIST INDEX: ", i)
                 #    print("About to start comm.send")
-                frag_per_rank[i % size].append(frag)
-                self.tot_system.frag_list = None
-            self.tot_system.frag_in_rank = frag_per_rank[0]
-            for r, frag in enumerate(frag_per_rank):
-                if r != 0:
-                    comm.send(frag, dest=r)
+        #        frag_per_rank[i % size].append(frag)
+        #        self.tot_system.frag_list = None
+        #    self.tot_system.frag_in_rank = frag_per_rank[0]
+        #    for r, frag in enumerate(frag_per_rank):
+        #        if r != 0:
+        #            comm.send(frag, dest=r)
             # print("FRAG PER RANK LENGTH RANK 0: ", len(self.tot_system.frag_in_rank))
-        else:
-            self.tot_system.frag_in_rank = comm.recv(source=0)
-            self.tot_system.frag_list = None
+        #else:
+        #    self.tot_system.frag_in_rank = comm.recv(source=0)
+        #    self.tot_system.frag_list = None
             # print("FRAG IN RANK LENGTH RANK 1: ", len(frag_in_rank))
 
     #####################################################################
@@ -240,7 +249,7 @@ class dynamics_driver:
 
             # Close output files
             self.file_output.close()
-            self.file_corrdens.close()
+            self.file_globdens.close()
 
             if self.Vbias == True:
                 self.file_current.close()
@@ -659,32 +668,39 @@ class dynamics_driver:
         # Calculate total number of electrons
         self.tot_system.get_DMET_Nele()
 
-        # Print correlated density in the site basis
-        cnt = 0
-        corrdens = np.zeros(self.tot_system.Nbasis)
-        for frag in self.tot_system.frag_in_rank:
-            corrdens[cnt : cnt + frag.Nimp] = np.copy(
-                np.diag(np.real(frag.corr1RDM[: frag.Nimp]))
-            )
-            cnt += frag.Nimp
-        corrdens = np.insert(corrdens, 0, current_time)
-        np.set_printoptions(precision=6)
+        # OLD: Print correlated density in the site basis
+        #cnt = 0
+        #corrdens = np.zeros(self.tot_system.Nbasis)
+        #for frag in self.tot_system.frag_in_rank:
+        #    corrdens[cnt : cnt + frag.Nimp] = np.copy(
+        #        np.diag(np.real(frag.corr1RDM[: frag.Nimp]))
+        #    )
+        #    cnt += frag.Nimp
+        #corrdens = np.insert(corrdens, 0, current_time)
+        #np.set_printoptions(precision=6)
 
-        if not self.gen:
-            with open("corrdens_res.txt", "a") as f:
-                print(f"corrdens at step {current_time}: \n {corrdens[1:]}", file=f)
+        #if not self.gen:
+        #    with open("corrdens_res.txt", "a") as f:
+        #        print(f"corrdens at step {current_time}: \n {corrdens[1:]}", file=f)
 
-        if self.gen:
-            new_corrdens = [
-                corrdens[1:][i] + corrdens[1:][i + 1]
-                for i in range(0, len(corrdens[1:]), 2)
-            ]
-            new_corrdens = np.array(new_corrdens)
-            with open("corrdens_gen.txt", "a") as f:
-                print(f"corrdens at step {current_time}: \n {new_corrdens}", file=f)
+        #if self.gen:
+            #new_corrdens = [
+            #    corrdens[1:][i] + corrdens[1:][i + 1]
+            #    for i in range(0, len(corrdens[1:]), 2)
+            #]
+            #new_corrdens = np.array(new_corrdens)
+            #with open("corrdens_gen.txt", "a") as f:
+            #    print(f"corrdens at step {current_time}: \n {new_corrdens}", file=f)
 
-        np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
-        self.file_corrdens.flush()
+        #np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
+        #self.file_corrdens.flush()
+
+        # Print global density in the site basis
+        globdens = np.zeros(self.tot_system.Nbasis)
+        globdens = np.real(np.diag(self.tot_system.glob1RDM))
+        globdens = np.insert(globdens, 0, current_time)
+        np.savetxt(self.file_globdens, globdens.reshape(1, globdens.shape[0]), fmt_str)
+        self.file_globdens.flush()
 
         if self.gen:
             # total spin vectors
@@ -811,33 +827,41 @@ class dynamics_driver:
         self.tot_system.get_DMET_E(self.nproc)
         self.tot_system.get_DMET_Nele()
 
-        cnt = 0
+        #cnt = 0
 
-        if not self.gen:
-            corrdens = np.zeros(self.tot_system.Nsites)
-            for frag in self.tot_system.frag_in_rank:
-                corrdens[cnt : cnt + frag.Nimp] = np.diag(
-                    np.real(frag.corr1RDM[: frag.Nimp])
-                )
-                cnt += frag.Nimp
-            corrdens = np.insert(corrdens, 0, current_time)
-            np.savetxt(
-                self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str
-            )
-            self.file_corrdens.flush()
+        #if not self.gen:
+        #    corrdens = np.zeros(self.tot_system.Nsites)
+        #    for frag in self.tot_system.frag_in_rank:
+        #        corrdens[cnt : cnt + frag.Nimp] = np.diag(
+        #            np.real(frag.corr1RDM[: frag.Nimp])
+        #        )
+        #        cnt += frag.Nimp
+        #    corrdens = np.insert(corrdens, 0, current_time)
+        #    np.savetxt(
+        #        self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str
+        #    )
+        #    self.file_corrdens.flush()
 
-        if self.gen:
-            corrdens = np.zeros(2 * self.tot_system.Nsites)
-            for frag in self.tot_system.frag_in_rank:
-                corrdens[cnt : cnt + frag.Nimp] = np.diag(
-                    np.real(frag.corr1RDM[: frag.Nimp])
-                )
-                cnt += frag.Nimp
-            corrdens = np.insert(corrdens, 0, current_time)
-            np.savetxt(
-                self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str
-            )
-            self.file_corrdens.flush()
+        #if self.gen:
+        #    corrdens = np.zeros(2 * self.tot_system.Nsites)
+        #    for frag in self.tot_system.frag_in_rank:
+        #        corrdens[cnt : cnt + frag.Nimp] = np.diag(
+        #            np.real(frag.corr1RDM[: frag.Nimp])
+        #        )
+        #        cnt += frag.Nimp
+        #    corrdens = np.insert(corrdens, 0, current_time)
+        #    np.savetxt(
+        #        self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str
+        #    )
+        #    self.file_corrdens.flush()
+
+        # trying out global matrix
+        globdens = np.zeros(self.tot_system.Nbasis)
+        globdens = np.real(np.diag(self.tot_system.glob1RDM))
+        globdens = np.insert(globdens, 0, current_time)
+        np.savetxt(self.file_globdens, globdens.reshape(1, globdens.shape[0]), fmt_str)
+        self.file_globdens.flush()
+            
 
     #####################################################################
 

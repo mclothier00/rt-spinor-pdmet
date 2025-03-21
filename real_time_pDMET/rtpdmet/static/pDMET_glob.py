@@ -111,6 +111,8 @@ class static_pdmet:
             self.frag_list.append(
                 fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx)
             )
+            self.frag_list[i].frag_num = i
+            print(f'for fragment {self.frag_list[i].frag_num}: {impindx[i]}')
 
         # list that takes site index and gives
         # fragment index corresponding to that site
@@ -136,6 +138,7 @@ class static_pdmet:
         for i in range(size):
             frag_per_rank.append([])
 
+        # this currently doesn't do anything 
         self.site_to_frag = []
 
         if self.rank == 0:
@@ -158,7 +161,8 @@ class static_pdmet:
                 for j in frag.impindx:
                     self.site_to_frag.append(self.site_to_frag_list[j])
 
-        print(f"rank {self.rank} site_to_frag: {self.site_to_frag}")
+        for i, frag in enumerate(self.frag_in_rank):
+            frag.frags_rank = comm.Get_rank()
 
     ##########################################################
 
@@ -421,81 +425,35 @@ class static_pdmet:
         # form the global 1RDM forcing hermiticity
         self.globalRDMtrace = 0
 
-        for p in range(self.Nsites):
-            for q in range(p, self.Nsites):
-                pfrag = self.frag_in_rank[self.site_to_frag_list[p]]
-                qfrag = self.frag_in_rank[self.site_to_frag_list[q]]
+        mpi_glob1RDM = np.zeros([self.Nsites, self.Nsites])
 
-                # index corresponding to the impurity and bath range
-                # in the rotation matrix for each fragment
-                # rotation matrix order:(sites) x (impurity, virtual, bath, core)
+        for i, frag in enumerate(self.frag_in_rank):
+            # ordered as impurity, virtual, bath, core to match rotmat
+            fullcorr1RDM = np.zeros((self.Nsites, self.Nsites))
+            #fullcorr1RDM[frag.imprange, frag.imprange] = frag.corr1RDM[:frag.Nimp, :frag.Nimp]
+            # impurity
+            fullcorr1RDM[:frag.Nimp, :frag.Nimp] = frag.corr1RDM[:frag.Nimp, :frag.Nimp]
+            # bath
+            fullcorr1RDM[frag.last_virt:frag.last_bath, frag.last_virt:frag.last_bath] = frag.corr1RDM[frag.Nimp:, frag.Nimp:]
+            # impurity-bath coupling
+            fullcorr1RDM[frag.last_virt:frag.last_bath, :frag.Nimp] = frag.corr1RDM[frag.Nimp:, :frag.Nimp]
+            fullcorr1RDM[:frag.Nimp, frag.last_virt:frag.last_bath] = frag.corr1RDM[:frag.Nimp, frag.Nimp:]
+            # core
+            fullcorr1RDM[frag.last_bath:, frag.last_bath:] = 2 * np.eye(frag.Ncore)
+            tmp = 0.5 * np.dot(
+                frag.rotmat, np.dot(fullcorr1RDM, frag.rotmat.conj().T)
+            )
+            #print(f'tmp for rank {self.rank}: \n {tmp}')
+            for site in frag.impindx:
+                print(frag.impindx)
+                mpi_glob1RDM[site, :] += tmp[site, :]
+                mpi_glob1RDM[:, site] += tmp[:, site]
 
-                pindx = np.r_[: pfrag.Nimp, pfrag.last_virt : pfrag.last_bath]
-                qindx = np.r_[: qfrag.Nimp, qfrag.last_virt : qfrag.last_bath]
+        #print(f'mpi global matrix on rank {self.rank}: \n {mpi_glob1RDM}')
 
-                self.glob1RDM[p, q] = 0.5 * np.linalg.multi_dot(
-                    [
-                        pfrag.rotmat[p, pindx],
-                        pfrag.corr1RDM,
-                        pfrag.rotmat[q, pindx].conj().T,
-                    ]
-                )
-
-                self.glob1RDM[p, q] += 0.5 * np.linalg.multi_dot(
-                    [
-                        qfrag.rotmat[p, qindx],
-                        qfrag.corr1RDM,
-                        qfrag.rotmat[q, qindx].conj().T,
-                    ]
-                )
-
-                if p != q:  # forcing Hermiticity
-                    self.glob1RDM[q, p] = np.conjugate(self.glob1RDM[p, q])
+        self.glob1RDM = np.zeros([self.Nsites, self.Nsites])
+        MPI.COMM_WORLD.Allreduce(mpi_glob1RDM, self.glob1RDM, op=MPI.SUM)
         trace1RDM = self.glob1RDM.trace()
-        #print(f"original: \n {self.glob1RDM}")
-        #print("trace of global RDM", trace1RDM)
-
-        #### NEW MPI CODE, FIRST ATTEMPT ####
-        #glob1RDM = np.zeros([self.Nsites, self.Nsites], dtype=complex)
-
-        #for i, frag in enumerate(self.frag_in_rank):
-        #    tmp = 0.5 * np.dot(frag.rotmat, np.dot(frag.corr1RDM, frag.rotmat.conj().T))
-        #    for site in frag.impindx:
-        #        glob1RDM[site, :] += tmp[site, :]
-        #        glob1RDM[:, site] += tmp[:, site]
-
-        #true_glob1RDM = np.zeros([self.Nsites, self.Nsites], dtype=complex)
-        #MPI.COMM_WORLD.Allreduce(glob1RDM, true_glob1RDM, op=MPI.SUM)
-
-        #print(f"MPI code: {true_glob1RDM}")
-        #exit()
-        #### NEW CODE ####
-        ## NOTE: this will not work due to dimension of corr1RDM
-
-        # rotmat_unpck = np.zeros([self.Nsites, self.Nsites, self.Nsites], dtype=complex)
-        # corr1RDM_unpck = np.zeros([self.Nsites, self.Nsites], dtype=complex)
-        # for q in range(self.Nsites):
-        # fragment for site q
-        #    frag = self.frag_in_rank[self.site_to_frag_list[q]]
-
-        # index within fragment corresponding to site q -
-        # note that q is an impurity orbital
-        #    qimp = self.site_to_impindx[q]
-
-        # unpack rotation matrix
-        #    rotmat_unpck[:, :, q] = np.copy(frag.rotmat)
-
-        #    print(frag.corr1RDM.shape)
-        #    print(corr1RDM_unpck.shape)
-        # unpack necessary portion of iddt_corr1RDM
-        #    corr1RDM_unpck[:, q] = np.copy(frag.corr1RDM[:, qimp])
-
-        # calculate intermediate matrix
-        # tmp = np.einsum("paq,aq->pq", rotmat_unpck, corr1RDM_unpck)
-
-        # glob = 0.5 * (tmp - tmp.conj().T)
-        # print(f"from dynamics code: \n {glob}")
-        # exit()
 
     ##########################################################
 
@@ -672,7 +630,7 @@ class static_pdmet:
     ##########################################################
 
     def corr_calc_with_mu(self, mu):
-        totalNele = 0.0
+        rankNele = 0.0
         for frag in self.frag_in_rank:
             fragNele = frag.corr_calc(
                 self.mf1RDM,
@@ -684,8 +642,11 @@ class static_pdmet:
                 self.hubb_indx,
                 self.mubool,
             )
-            totalNele += fragNele
+            rankNele += fragNele
+        
+        totalNele = MPI.COMM_WORLD.allreduce(rankNele, op=MPI.SUM)
         print("total electrons:", totalNele)
+        
         return totalNele
 
     ##########################################################

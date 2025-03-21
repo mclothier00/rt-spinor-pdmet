@@ -49,6 +49,9 @@ class fragment:
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites
 
+            self.frags_rank = 0
+            self.frag_num = 0
+
         if gen:
             self.impindx = impindx
             # array defining index of impurity orbitals in site basis
@@ -82,6 +85,9 @@ class fragment:
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites * 2
+
+            self.frags_rank = 0
+            self.frag_num = 0
 
     #####################################################################
 
@@ -163,24 +169,6 @@ class fragment:
             # diagonalize environment part of 1RDM to obtain embedding
             # (virtual, bath, core) orbitals
             evals, evecs = np.linalg.eigh(mf1RDM)
-
-            # NOTE: blackberries; temporary check of reshaped R
-            # permutation = [0, 3, 2, 1]
-            # idx = np.empty_like(permutation)
-            # idx[permutation] = np.arange(len(permutation))
-            # block_evecs = utils.reshape_gtor_matrix(evecs)
-            ## print(f"block evecs: \n {block_evecs}")
-            ## print(
-            ##   f"reshuffled indices, before spin staggering: \n {block_evecs[:,idx]}"
-            ## )
-            # evecs = utils.reshape_rtog_matrix(block_evecs[:, idx])
-            # permutation = [0, 1, 3, 2]
-            # idx = np.empty_like(permutation)
-            # evals = evals[idx]
-            # print(f"new evals: {evals}")
-            # form rotation matrix consisting of unit vectors
-            # for impurity and the evecs for embedding
-            # rotation matrix is ordered as impurity, virtual, bath, core
 
             # WORKS ONLY FOR MULTI-IMPURITY INDEXING'''
 
