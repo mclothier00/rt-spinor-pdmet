@@ -54,11 +54,16 @@ class static_pdmet:
         U         - Hubbard constant for electron interactions
         """
 
-        print()
-        print("***************************************")
-        print("         INITIALIZING PDMET          ")
-        print("***************************************")
-        print()
+        comm = MPI.COMM_WORLD
+        self.rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        if self.rank == 0:
+            print()
+            print("***************************************")
+            print("         INITIALIZING PDMET          ")
+            print("***************************************")
+            print()
 
         self.mubool = mubool
         self.muhistory = muhistory
@@ -83,7 +88,9 @@ class static_pdmet:
 
         # Calculate an initial mean-field Hamiltonian
         
-        print("Calculating initial mean-field Hamiltonian")
+        if self.rank == 0:
+            print("Calculating initial mean-field Hamiltonian")
+        
         if hamtype == 0:
             if mf1RDM is None:
                 mf1RDM = self.initialize_RHF(h_site, V_site)
@@ -129,10 +136,6 @@ class static_pdmet:
         self.file_output = open("output_static.dat", "w")
 
         # Parallelization
-
-        comm = MPI.COMM_WORLD
-        self.rank = comm.Get_rank()
-        size = comm.Get_size()
 
         frag_per_rank = []
         for i in range(size):
@@ -388,7 +391,9 @@ class static_pdmet:
     ##########################################################
 
     def initialize_RHF(self, h_site, V_site):
-        print("Mf 1RDM is initialized with RHF")
+        if self.rank == 0:
+            print("Mf 1RDM is initialized with RHF")
+        
         Norbs = self.Nele
         mol = gto.M()
         mol.nelectron = self.Nele
