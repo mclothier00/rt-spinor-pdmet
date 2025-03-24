@@ -82,7 +82,7 @@ class static_pdmet:
         self.history = []
 
         # Calculate an initial mean-field Hamiltonian
-
+        
         print("Calculating initial mean-field Hamiltonian")
         if hamtype == 0:
             if mf1RDM is None:
@@ -183,9 +183,12 @@ class static_pdmet:
         old_glob1RDM = np.copy(self.old_glob1RDM)
 
         for itr in range(self.Maxitr):
-            print()
-            print("Iteration:", itr)
-            print()
+            
+            if self.rank == 0:
+                print()
+                print("Iteration:", itr)
+                print()
+            
             # embedding calculation
             if self.mubool:
                 # do correlation calculation and add the self.mu to the H_emb
@@ -193,7 +196,7 @@ class static_pdmet:
                 record = [(0.0, totalNele_0)]
 
                 if abs((totalNele_0 / self.Nele) - 1.0) < self.nelecTol:
-                    print("chemical potential fitting is unnecessary")
+                    print(f"chemical potential fitting is unnecessary on rank {self.rank}")
                     total_Nele = totalNele_0
                     self.history.append(record)
 
@@ -201,7 +204,7 @@ class static_pdmet:
                     if self.muhistory:
                         # predict from  historic information
                         temp_dmu = self.predict(totalNele_0, self.Nele)
-                        print("temp_dmu from prediction:", temp_dmu)
+                        print(f"temp_dmu from prediction on rank {self.rank}: {temp_dmu}")
                         if temp_dmu is not None:
                             self.dmu = temp_dmu
                         else:
@@ -212,14 +215,14 @@ class static_pdmet:
                         self.dmu = abs(self.dmu) * (
                             -1 if (totalNele_0 > self.Nele) else 1
                         )
-                    print("chemical potential dmu after 1st approximation", self.dmu)
+                    print(f"chemical potential dmu after 1st approximation on rank {self.rank}: {self.dmu}")
 
                     test_mu = self.mu + self.dmu
                     totalNele_1 = self.corr_calc_with_mu(test_mu)
                     record.append((self.dmu, totalNele_1))
 
                     if abs((totalNele_1 / self.Nele) - 1.0) < self.nelecTol:
-                        print("chemical potential is converged with dmu:", self.dmu)
+                        print(f"chemical potential is converged on rank {self.rank} with dmu: {self.dmu}")
                         self.history.append(record)
                         self.mu = test_mu
                         total_Nele = totalNele_1
@@ -243,7 +246,7 @@ class static_pdmet:
                         record.append((dmu1, totalNele_2))
 
                         if abs((totalNele_2 / self.Nele) - 1.0) < self.nelecTol:
-                            print("chem potential is converged w/ dmu1:", dmu1)
+                            print(f"chem potential is converged on rank {self.rank} w/ dmu1: {dmu1}")
                             self.mu = test_mu
                             self.history.append(record)
                             total_Nele = totalNele_2
@@ -258,7 +261,7 @@ class static_pdmet:
                             record.append((dmu2, totalNele_3))
 
                             if abs(totalNele_3 / self.Nele - 1.0) < self.nelecTol:
-                                print("chem potential is converged w/ dmu2:", dmu2)
+                                print(f"chem potential is converged on rank {self.rank} w/ dmu2: {dmu2}")
                                 self.mu = test_mu
                                 self.history.append(record)
                                 total_Nele = totalNele_3
@@ -272,7 +275,7 @@ class static_pdmet:
                                 test_mu = self.mu + dmu3
                                 totalNele_4 = self.corr_calc_with_mu(test_mu)
                                 print(
-                                    "mu didnt converge, final electron #:", totalNele_4
+                                    f"mu didnt converge on rank {self.rank}, final electron #: {totalNele_4}"
                                 )
                                 record.append((dmu3, totalNele_4))
                                 total_Nele = totalNele_4
@@ -280,7 +283,8 @@ class static_pdmet:
                                 self.mu = test_mu
 
             else:
-                print("No chemical potential fitting is employed")
+                if self.rank == 0:
+                    print("No chemical potential fitting is employed")
 
                 for frag in self.frag_in_rank:
                     frag.corr_calc(
@@ -316,10 +320,11 @@ class static_pdmet:
             old_E = np.copy(self.DMET_E)
 
             if np.mod(itr, self.Maxitr / 100) == 0 and itr > 0:
-                print("Finished DMET Iteration", itr)
-                print("Current difference in global 1RDM =", dif)
-                print("vcore=", dVcor_per_ele)
-                self.calc_data(itr, dif, total_Nele)
+                if self.rank == 0:
+                    print("Finished DMET Iteration", itr)
+                    print("Current difference in global 1RDM =", dif)
+                    print("vcore=", dVcor_per_ele)
+                    self.calc_data(itr, dif, total_Nele)
 
             if dVcor_per_ele < self.tol and abs(dE) < 1.0e-6:
                 conv = True
@@ -350,7 +355,7 @@ class static_pdmet:
         total_time = end_time - start_time
         if self.rank == 0:
             print("total_time", total_time)
-        self.file_output.close()
+            self.file_output.close()
 
     ##########################################################
 
