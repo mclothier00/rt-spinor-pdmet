@@ -113,7 +113,6 @@ class static_pdmet:
                 fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx)
             )
             self.frag_list[i].frag_num = i
-            print(f'for fragment {self.frag_list[i].frag_num}: {impindx[i]}')
 
         # list that takes site index and gives
         # fragment index corresponding to that site
@@ -351,7 +350,6 @@ class static_pdmet:
         total_time = end_time - start_time
         if self.rank == 0:
             print("total_time", total_time)
-            print(f"mf1RDM: \n {self.mf1RDM}")
         self.file_output.close()
 
     ##########################################################
@@ -449,7 +447,6 @@ class static_pdmet:
             )
             #print(f'tmp for rank {self.rank}: \n {tmp}')
             for site in frag.impindx:
-                print(frag.impindx)
                 mpi_glob1RDM[site, :] += tmp[site, :]
                 mpi_glob1RDM[:, site] += tmp[:, site]
 

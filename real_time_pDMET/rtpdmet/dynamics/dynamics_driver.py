@@ -209,7 +209,8 @@ class dynamics_driver:
                 if step == 0:
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
-                    self.print_just_spins(current_time)
+                    if self.gen:
+                        self.print_just_spins(current_time)
 
                 if (np.mod(step, self.Nprint) == 0) and step > 1:
                     print(
@@ -795,35 +796,49 @@ class dynamics_driver:
 
     def print_just_spins(self, current_time):
         fmt_str = "%20.8e"
-        sites_x = []
-        sites_y = []
-        sites_z = []
-            
-        den = utils.reshape_gtor_matrix(self.tot_system.mf1RDM)
-
-        #ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
-        #ovlp[0,0] = 1
+        
+        den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
         ovlp = np.eye(self.tot_system.Nsites)
 
         magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
         magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
         magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
-        #print('one step')
-        #print(magx)
-        #print(magy)
-        #print(magz)
 
-        magx = np.insert(np.array(magx.real), 0, current_time)
-        magy = np.insert(np.array(magy.real), 0, current_time)
-        magz = np.insert(np.array(magz.real), 0, current_time)
+        all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
         np.savetxt(
-            self.file_spinx, magx.reshape(1, magx.shape[0]), fmt_str
+            self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
+        )
+
+        # spin on each site
+
+        sites_x = []
+        sites_y = []
+        sites_z = []
+
+        for i in range(self.tot_system.Nsites):
+            ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
+            ovlp[i,i] = 1
+
+            site_magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+            site_magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
+            site_magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+
+            sites_x.append(site_magx.real)
+            sites_y.append(site_magy.real)
+            sites_z.append(site_magz.real)
+
+        sites_x = np.insert(np.array(sites_x), 0, current_time)
+        sites_y = np.insert(np.array(sites_y), 0, current_time)
+        sites_z = np.insert(np.array(sites_z), 0, current_time)
+
+        np.savetxt(
+            self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
         )
         np.savetxt(
-            self.file_spiny, magy.reshape(1, magy.shape[0]), fmt_str
+            self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
         )
         np.savetxt(
-            self.file_spinz, magz.reshape(1, magz.shape[0]), fmt_str
+            self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
         )
 
     #####################################################################

@@ -189,7 +189,8 @@ class tdfci:
             np.savetxt(
                 self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
             )
-
+            self.file_totspins.flush()
+            
             # spin on each site
 
             sites_x = []
@@ -221,6 +222,9 @@ class tdfci:
             np.savetxt(
                 self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
             )
+            self.file_spinx.flush()
+            self.file_spiny.flush()
+            self.file_spinz.flush()
 
             # Calculate total energy
             Etot = fci_mod.get_FCI_E(

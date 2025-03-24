@@ -45,19 +45,18 @@ def rtor_transition(
     tot_system.mf1RDM = the_dmet.mf1RDM
     tot_system.NOevecs = the_dmet.NOevecs
     tot_system.NOevals = the_dmet.NOevals
-    tot_system.frag_list = []
+    tot_system.frag_in_rank = []
     tot_system.Nbasis = Nsites  # for Hubbard
-    
-    print('havent updated this one yet')
-    exit()
 
-    #for i in range(Nfrag):
     for i in range(len(the_dmet.frag_in_rank)):
-        tot_system.frag_list.append(
+        tot_system.frag_in_rank.append(
             fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele)
         )
-        tot_system.frag_list[i].rotmat = the_dmet.frag_in_rank[i].rotmat
-        tot_system.frag_list[i].CIcoeffs = the_dmet.frag_in_rank[i].CIcoeffs
+        tot_system.frag_in_rank[i].rotmat = the_dmet.frag_in_rank[i].rotmat
+        tot_system.frag_in_rank[i].CIcoeffs = the_dmet.frag_in_rank[i].CIcoeffs
+
+        tot_system.frag_in_rank[i].frag_num = the_dmet.frag_in_rank[i].frag_num
+        tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[i].frags_rank
 
     return tot_system
 
@@ -127,7 +126,6 @@ def rtog_transition(
     tot_system.frag_in_rank = []
     for i in range(len(the_dmet.frag_in_rank)):
 
-        #print(f'for frag {i} or {the_dmet.frag_in_rank[i].frag_num} in rank {the_dmet.frag_in_rank[i].frags_rank}: {impindx[the_dmet.frag_in_rank[i].frag_num]} from what was {the_dmet.frag_in_rank[i].impindx}')
         frag_i = fragment_mod_dynamic.fragment(impindx[the_dmet.frag_in_rank[i].frag_num], Nsites, Nele, gen=True)
         tot_system.frag_in_rank.append(frag_i)
         tot_system.frag_in_rank[i].rotmat = utils.reshape_rtog_matrix(
@@ -135,8 +133,6 @@ def rtog_transition(
         )
         tot_system.frag_in_rank[i].frag_num = the_dmet.frag_in_rank[i].frag_num
         tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[i].frags_rank
-
-        #print(f'for frag {i} or {tot_system.frag_in_rank[i].frag_num} in rank {tot_system.frag_in_rank[i].frags_rank}: {tot_system.frag_in_rank[i].impindx} from what was {the_dmet.frag_in_rank[i].impindx}')
 
         nbeta = frag_i.Nimp // 2
         nalpha = frag_i.Nimp - nbeta
