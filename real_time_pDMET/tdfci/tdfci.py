@@ -52,6 +52,12 @@ class tdfci:
         # Define output files
         self.file_output = open("output.dat", "wb")
         self.file_corrdens = open("corr_density.dat", "wb")
+        if self.gen:
+            self.file_spindens = open("spin_density.dat", "wb")
+            self.file_spinx = open("spin_x.dat", "w")
+            self.file_spiny = open("spin_y.dat", "w")
+            self.file_spinz = open("spin_z.dat", "w")
+            self.file_totspins = open("total_spins.dat", "w")
 
     #####################################################################
 
@@ -170,6 +176,57 @@ class tdfci:
             file.write(f"from generalized: \n {corr1RDM} \n")
             file.close()
 
+            # total spin vectors
+            den = utils.reshape_gtor_matrix(corr1RDM)
+            den = np.transpose(den)
+            Nsp = int(self.Nsites / 2)
+            ovlp = np.eye(Nsp)
+
+            magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
+            magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
+            magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
+
+            all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
+            np.savetxt(
+                self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
+            )
+            self.file_totspins.flush()
+            
+            # spin on each site
+
+            sites_x = []
+            sites_y = []
+            sites_z = []
+
+            for i in range(Nsp):
+                ovlp = np.zeros((Nsp, Nsp))
+                ovlp[i,i] = 1
+
+                site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
+                site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
+                site_magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
+
+                sites_x.append(site_magx.real)
+                sites_y.append(site_magy.real)
+                sites_z.append(site_magz.real)
+
+            sites_x = np.insert(np.array(sites_x), 0, current_time)
+            sites_y = np.insert(np.array(sites_y), 0, current_time)
+            sites_z = np.insert(np.array(sites_z), 0, current_time)
+
+            np.savetxt(
+                self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
+            )
+            np.savetxt(
+                self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
+            )
+            self.file_spinx.flush()
+            self.file_spiny.flush()
+            self.file_spinz.flush()
+
             # Calculate total energy
             Etot = fci_mod.get_FCI_E(
                 self.h_site,
@@ -192,17 +249,26 @@ class tdfci:
 
         # ####### PRINT OUT EVERYTHING #######
 
+        diagcorr1RDM = np.real(np.diag(corr1RDM))
+
         # Print correlated density in the site basis
         if not self.gen:
-            corrdens = np.real(np.diag(corr1RDM))
+            corrdens = diagcorr1RDM
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
-            corrdens = np.real(np.diag(corr1RDM))
-            corrdens = corrdens.reshape(-1, 2).sum(axis=1)
+            corrdens = diagcorr1RDM.reshape(-1, 2).sum(axis=1)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
         self.file_corrdens.flush()
+
+        # Print spin density if generalized
+        if self.gen:
+            spindens = diagcorr1RDM
+            spindens = np.insert(diagcorr1RDM, 0, current_time)
+
+            np.savetxt(self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str)
+            self.file_spindens.flush()
 
         # Print output data
         output = np.zeros(3)

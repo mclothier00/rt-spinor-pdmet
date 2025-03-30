@@ -66,8 +66,6 @@ def rot2el_chem(V_orig, rotmat):
 
 #####################################################################
 
-# NOTE: this should work for spinor basis; see above
-
 
 def rot2el_phys(V_orig, rotmat):
     # subroutine to rotate two electron integrals,
@@ -304,28 +302,19 @@ def reshape_gtor_matrix(a):
     spin_block_size = num_cols // 2
 
     # original block indices for both rows and columns
-    original_row_indices = np.empty(num_rows, dtype=int)
-    original_col_indices = np.empty(num_cols, dtype=int)
-
-    original_row_indices[0::2] = np.arange(spin_block_size)
-    original_row_indices[1::2] = np.arange(spin_block_size, num_rows)
-
-    original_col_indices[0::2] = np.arange(spin_block_size)
-    original_col_indices[1::2] = np.arange(spin_block_size, num_cols)
+    rows = np.arange(num_rows)
+    indices_even = rows[::2]  
+    indices_odd = rows[1::2]
+    new_indices = np.concatenate((indices_even, indices_odd))
 
     # Create new, spin-blocked matrix
-    new_a = np.zeros((num_rows, num_cols), dtype=a.dtype)
-
-    for i in range(len(original_col_indices)):
-        for j in range(len(original_row_indices)):
-            new_a[original_row_indices[i], original_col_indices[j]] = a[i, j]
+    new_a = a[new_indices]
+    new_a = new_a[:, new_indices]
 
     return new_a
 
 
 #####################################################################
-
-# NOTE: NEED TO CHECK THIS
 
 
 def reshape_rtog_tensor(a):

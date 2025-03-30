@@ -6,6 +6,7 @@ from pyscf import gto, scf, ao2mo
 from real_time_pDMET.rtpdmet.static.quad_fit import quad_fit_mu
 from math import copysign
 from pyscf import lib
+from mpi4py import MPI
 
 DiisDim = 4
 adiis = lib.diis.DIIS()
@@ -52,11 +53,17 @@ class static_pdmet:
         tol       - tolerance for difference in 1 RDM during DMET cycle
         U         - Hubbard constant for electron interactions
         """
-        print()
-        print("***************************************")
-        print("         INITIALIZING PDMET          ")
-        print("***************************************")
-        print()
+
+        comm = MPI.COMM_WORLD
+        self.rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        if self.rank == 0:
+            print()
+            print("***************************************")
+            print("         INITIALIZING PDMET          ")
+            print("***************************************")
+            print()
 
         self.mubool = mubool
         self.muhistory = muhistory
@@ -80,8 +87,10 @@ class static_pdmet:
         self.history = []
 
         # Calculate an initial mean-field Hamiltonian
-
-        print("Calculating initial mean-field Hamiltonian")
+        
+        if self.rank == 0:
+            print("Calculating initial mean-field Hamiltonian")
+        
         if hamtype == 0:
             if mf1RDM is None:
                 mf1RDM = self.initialize_RHF(h_site, V_site)
@@ -110,9 +119,10 @@ class static_pdmet:
             self.frag_list.append(
                 fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx)
             )
+            self.frag_list[i].frag_num = i
 
         # list that takes site index and gives
-        # fragmnt index corresponding to that site
+        # fragment index corresponding to that site
 
         self.site_to_frag_list = []
         self.site_to_impindx = []
@@ -120,19 +130,53 @@ class static_pdmet:
             for ifrag, array in enumerate(impindx):
                 if i in array:
                     self.site_to_frag_list.append(ifrag)
-                    self.site_to_impindx.append(np.argwhere(array == i)[0][0])
+        self.site_to_impindx.append(np.argwhere(array == i)[0][0])
+
         # output file
         self.file_output = open("output_static.dat", "w")
+
+        # Parallelization
+
+        frag_per_rank = []
+        for i in range(size):
+            frag_per_rank.append([])
+
+        # this currently doesn't do anything 
+        self.site_to_frag = []
+
+        if self.rank == 0:
+            for i, frag in enumerate(self.frag_list):
+                frag_per_rank[i % size].append(frag)
+                self.frag_list = None
+            self.frag_in_rank = frag_per_rank[0]
+            for r, frag in enumerate(frag_per_rank):
+                if r != 0:
+                    comm.send(frag, dest=r)
+
+            for frag in self.frag_in_rank:
+                for j in frag.impindx:
+                    self.site_to_frag.append(self.site_to_frag_list[j])
+
+        else:
+            self.frag_in_rank = comm.recv(source=0)
+            self.frag_list = None
+            for frag in self.frag_in_rank:
+                for j in frag.impindx:
+                    self.site_to_frag.append(self.site_to_frag_list[j])
+
+        for i, frag in enumerate(self.frag_in_rank):
+            frag.frags_rank = comm.Get_rank()
 
     ##########################################################
 
     def kernel(self):
         # Initialize the system from mf 1RDM and fragment information
 
-        print()
-        print("***************************************")
-        print("    BEGIN STATIC PDMET CALCULATION     ")
-        print("***************************************")
+        if self.rank == 0:
+            print()
+            print("***************************************")
+            print("    BEGIN STATIC PDMET CALCULATION     ")
+            print("***************************************")
 
         # DMET outer loop
         start_time = time.perf_counter()
@@ -142,9 +186,12 @@ class static_pdmet:
         old_glob1RDM = np.copy(self.old_glob1RDM)
 
         for itr in range(self.Maxitr):
-            print()
-            print("Iteration:", itr)
-            print()
+            
+            if self.rank == 0:
+                print()
+                print("Iteration:", itr)
+                print()
+            
             # embedding calculation
             if self.mubool:
                 # do correlation calculation and add the self.mu to the H_emb
@@ -152,7 +199,7 @@ class static_pdmet:
                 record = [(0.0, totalNele_0)]
 
                 if abs((totalNele_0 / self.Nele) - 1.0) < self.nelecTol:
-                    print("chemical potential fitting is unnecessary")
+                    print(f"chemical potential fitting is unnecessary on rank {self.rank}")
                     total_Nele = totalNele_0
                     self.history.append(record)
 
@@ -160,7 +207,7 @@ class static_pdmet:
                     if self.muhistory:
                         # predict from  historic information
                         temp_dmu = self.predict(totalNele_0, self.Nele)
-                        print("temp_dmu from prediction:", temp_dmu)
+                        print(f"temp_dmu from prediction on rank {self.rank}: {temp_dmu}")
                         if temp_dmu is not None:
                             self.dmu = temp_dmu
                         else:
@@ -171,14 +218,14 @@ class static_pdmet:
                         self.dmu = abs(self.dmu) * (
                             -1 if (totalNele_0 > self.Nele) else 1
                         )
-                    print("chemical potential dmu after 1st approximation", self.dmu)
+                    print(f"chemical potential dmu after 1st approximation on rank {self.rank}: {self.dmu}")
 
                     test_mu = self.mu + self.dmu
                     totalNele_1 = self.corr_calc_with_mu(test_mu)
                     record.append((self.dmu, totalNele_1))
 
                     if abs((totalNele_1 / self.Nele) - 1.0) < self.nelecTol:
-                        print("chemical potential is converged with dmu:", self.dmu)
+                        print(f"chemical potential is converged on rank {self.rank} with dmu: {self.dmu}")
                         self.history.append(record)
                         self.mu = test_mu
                         total_Nele = totalNele_1
@@ -202,7 +249,7 @@ class static_pdmet:
                         record.append((dmu1, totalNele_2))
 
                         if abs((totalNele_2 / self.Nele) - 1.0) < self.nelecTol:
-                            print("chem potential is converged w/ dmu1:", dmu1)
+                            print(f"chem potential is converged on rank {self.rank} w/ dmu1: {dmu1}")
                             self.mu = test_mu
                             self.history.append(record)
                             total_Nele = totalNele_2
@@ -217,7 +264,7 @@ class static_pdmet:
                             record.append((dmu2, totalNele_3))
 
                             if abs(totalNele_3 / self.Nele - 1.0) < self.nelecTol:
-                                print("chem potential is converged w/ dmu2:", dmu2)
+                                print(f"chem potential is converged on rank {self.rank} w/ dmu2: {dmu2}")
                                 self.mu = test_mu
                                 self.history.append(record)
                                 total_Nele = totalNele_3
@@ -231,7 +278,7 @@ class static_pdmet:
                                 test_mu = self.mu + dmu3
                                 totalNele_4 = self.corr_calc_with_mu(test_mu)
                                 print(
-                                    "mu didnt converge, final electron #:", totalNele_4
+                                    f"mu didnt converge on rank {self.rank}, final electron #: {totalNele_4}"
                                 )
                                 record.append((dmu3, totalNele_4))
                                 total_Nele = totalNele_4
@@ -239,9 +286,10 @@ class static_pdmet:
                                 self.mu = test_mu
 
             else:
-                print("No chemical potential fitting is employed")
+                if self.rank == 0:
+                    print("No chemical potential fitting is employed")
 
-                for frag in self.frag_list:
+                for frag in self.frag_in_rank:
                     frag.corr_calc(
                         self.mf1RDM,
                         self.h_site,
@@ -253,7 +301,7 @@ class static_pdmet:
                         self.mubool,
                     )
 
-            # constract a global dencity matrix from all impurities
+            # constract a global density matrix from all impurities
             self.get_globalRDM()
 
             # DIIS routine
@@ -275,39 +323,43 @@ class static_pdmet:
             old_E = np.copy(self.DMET_E)
 
             if np.mod(itr, self.Maxitr / 100) == 0 and itr > 0:
-                print("Finished DMET Iteration", itr)
-                print("Current difference in global 1RDM =", dif)
-                print("vcore=", dVcor_per_ele)
-                self.calc_data(itr, dif, total_Nele)
+                if self.rank == 0:
+                    print("Finished DMET Iteration", itr)
+                    print("Current difference in global 1RDM =", dif)
+                    print("vcore=", dVcor_per_ele)
+                    self.calc_data(itr, dif, total_Nele)
 
             if dVcor_per_ele < self.tol and abs(dE) < 1.0e-6:
                 conv = True
                 break
 
-        print()
-        print("***************************************")
-        print("    FINISH STATIC PDMET CALCULATION    ")
-        print("***************************************")
-        print()
-        print("Final DMET energy =", self.DMET_E)
-        print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
-        if conv:
-            print("DMET calculation succesfully converged in", itr, "iterations")
-            print("Final difference in global 1RDM =", dif)
+        if self.rank == 0:
             print()
+            print("***************************************")
+            print("    FINISH STATIC PDMET CALCULATION    ")
+            print("***************************************")
+            print()
+            #print("Final DMET energy =", self.DMET_E)
+            #print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
+            print("WARNING: Final DMET E and E per site currently unavailable for MPI implementation.")
+            if conv:
+                print("DMET calculation succesfully converged in", itr, "iterations")
+                print("Final difference in global 1RDM =", dif)
+                print()
 
-        else:
-            print(
-                "WARNING:DMET calculation finished, but did not converge in",
-                self.Maxitr,
-                "iterations",
-            )
-            print("Final difference in global 1RDM =", dif)
+            else:
+                print(
+                    "WARNING:DMET calculation finished, but did not converge in",
+                    self.Maxitr,
+                    "iterations",
+                )
+                print("Final difference in global 1RDM =", dif)
 
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print("total_time", total_time)
-        self.file_output.close()
+        if self.rank == 0:
+            print("total_time", total_time)
+            self.file_output.close()
 
     ##########################################################
 
@@ -340,7 +392,9 @@ class static_pdmet:
     ##########################################################
 
     def initialize_RHF(self, h_site, V_site):
-        print("Mf 1RDM is initialized with RHF")
+        if self.rank == 0:
+            print("Mf 1RDM is initialized with RHF")
+        
         Norbs = self.Nele
         mol = gto.M()
         mol.nelectron = self.Nele
@@ -383,38 +437,31 @@ class static_pdmet:
 
         # form the global 1RDM forcing hermiticity
         self.globalRDMtrace = 0
-        for p in range(self.Nsites):
-            for q in range(p, self.Nsites):
-                pfrag = self.frag_list[self.site_to_frag_list[p]]
-                qfrag = self.frag_list[self.site_to_frag_list[q]]
 
-                # index corresponding to the impurity and bath range
-                # in the rotation matrix for each fragment
-                # rotation matrix order:(sites) x (impurity, virtual, bath, core)
+        mpi_glob1RDM = np.zeros([self.Nsites, self.Nsites])
 
-                pindx = np.r_[: pfrag.Nimp, pfrag.last_virt : pfrag.last_bath]
-                qindx = np.r_[: qfrag.Nimp, qfrag.last_virt : qfrag.last_bath]
+        for i, frag in enumerate(self.frag_in_rank):
+            # ordered as impurity, virtual, bath, core to match rotmat
+            fullcorr1RDM = np.zeros((self.Nsites, self.Nsites))
+            # impurity
+            fullcorr1RDM[:frag.Nimp, :frag.Nimp] = frag.corr1RDM[:frag.Nimp, :frag.Nimp]
+            # bath
+            fullcorr1RDM[frag.last_virt:frag.last_bath, frag.last_virt:frag.last_bath] = frag.corr1RDM[frag.Nimp:, frag.Nimp:]
+            # impurity-bath coupling
+            fullcorr1RDM[frag.last_virt:frag.last_bath, :frag.Nimp] = frag.corr1RDM[frag.Nimp:, :frag.Nimp]
+            fullcorr1RDM[:frag.Nimp, frag.last_virt:frag.last_bath] = frag.corr1RDM[:frag.Nimp, frag.Nimp:]
+            # core
+            fullcorr1RDM[frag.last_bath:, frag.last_bath:] = 2 * np.eye(frag.Ncore)
+            tmp = 0.5 * np.dot(
+                frag.rotmat, np.dot(fullcorr1RDM, frag.rotmat.conj().T)
+            )
+            for site in frag.impindx:
+                mpi_glob1RDM[site, :] += tmp[site, :]
+                mpi_glob1RDM[:, site] += tmp[:, site]
 
-                self.glob1RDM[p, q] = 0.5 * np.linalg.multi_dot(
-                    [
-                        pfrag.rotmat[p, pindx],
-                        pfrag.corr1RDM,
-                        pfrag.rotmat[q, pindx].conj().T,
-                    ]
-                )
-
-                self.glob1RDM[p, q] += 0.5 * np.linalg.multi_dot(
-                    [
-                        qfrag.rotmat[p, qindx],
-                        qfrag.corr1RDM,
-                        qfrag.rotmat[q, qindx].conj().T,
-                    ]
-                )
-
-                if p != q:  # forcing Hermiticity
-                    self.glob1RDM[q, p] = np.conjugate(self.glob1RDM[p, q])
+        self.glob1RDM = np.zeros([self.Nsites, self.Nsites])
+        MPI.COMM_WORLD.Allreduce(mpi_glob1RDM, self.glob1RDM, op=MPI.SUM)
         trace1RDM = self.glob1RDM.trace()
-        print("trace of global RDM", trace1RDM)
 
     ##########################################################
 
@@ -591,8 +638,8 @@ class static_pdmet:
     ##########################################################
 
     def corr_calc_with_mu(self, mu):
-        totalNele = 0.0
-        for frag in self.frag_list:
+        rankNele = 0.0
+        for frag in self.frag_in_rank:
             fragNele = frag.corr_calc(
                 self.mf1RDM,
                 self.h_site,
@@ -603,15 +650,18 @@ class static_pdmet:
                 self.hubb_indx,
                 self.mubool,
             )
-            totalNele += fragNele
+            rankNele += fragNele
+        
+        totalNele = MPI.COMM_WORLD.allreduce(rankNele, op=MPI.SUM)
         print("total electrons:", totalNele)
+        
         return totalNele
 
     ##########################################################
 
     def get_Nele(self, mu):
         totalNele = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.add_mu_Hemb(mu)
             frag.solve_GS(self.U)
             frag.get_corr1RDM()
@@ -628,7 +678,7 @@ class static_pdmet:
 
     def just_Nele(self):
         totalNele = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             fragNele = frag.nele_in_frag()
             totalNele += fragNele
         return totalNele
@@ -654,14 +704,14 @@ class static_pdmet:
 
     def get_frag_corr12RDM(self):
         # correlated 1 RDM for each fragment
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_corr12RDM()
 
     ##########################################################
 
     def get_frag_Hemb(self):
         # Hamiltonian for each fragment
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_Hemb(
                 self.h_site, self.V_site, self.U, self.hamtype, self.hubb_indx
             )
@@ -669,7 +719,7 @@ class static_pdmet:
     ##########################################################
 
     def Hemb_add_mu(self, mu):
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.add_mu_Hemb(mu)
 
     ##########################################################
@@ -689,7 +739,7 @@ class static_pdmet:
         np.save("globRDM_static", self.glob1RDM)
         CI = []
         rotmat = []
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             CI.append(np.copy(frag.CIcoeffs))
             rotmat.append(np.copy(frag.rotmat))
         np.save("CI_ststic", CI)
@@ -700,7 +750,7 @@ class static_pdmet:
         self.get_frag_Hemb()
         self.get_frag_corr12RDM()
         self.DMET_E = 0.0
-        for frag in self.frag_list:
+        for frag in self.frag_in_rank:
             frag.get_frag_E()
             self.DMET_E += np.real(frag.Efrag)
             # discard what should be numerical error of imaginary part

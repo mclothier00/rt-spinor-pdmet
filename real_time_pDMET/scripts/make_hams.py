@@ -763,13 +763,14 @@ def make_ham_multi_imp_anderson_realspace_spinor(
     impindx = []
     for i in imp_indx:
         impindx.append([2 * i, 2 * i + 1])
-
+    
     # Form the trivial two electron terms
     if Full:
         Vmat = np.zeros([2 * N, 2 * N, 2 * N, 2 * N])
         for imp in impindx:
             Vmat[imp[0], imp[0], imp[1], imp[1]] = U
             Vmat[imp[1], imp[1], imp[0], imp[0]] = U
+            
     else:
         print("For spinor, must be set to Full.")
         exit()
@@ -781,12 +782,11 @@ def make_ham_multi_imp_anderson_realspace_spinor(
 
 
 def make_ham_multi_imp_anderson_realspace_mag(
-    Nimp, NL, NR, Vg, U, timp, timplead, Vbias, m, tleads, boundary, Full
+    Nimp, NL, NR, Vg, U, timp, timplead, Vbias, tleads, boundary, bfield, Full
 ):
     # creates a Hamiltonian in the spinor basis
     # only difference from 'make_ham_multi_imp_anderson_realspace_spinor is the
     # presence of a magnetic field
-    # NOTE: currently not physical at all!!! update to actually include relevant equations
 
     # Input error check
     if np.absolute(NL - NR) != 1 and np.absolute(NL - NR) != 0:
@@ -846,33 +846,25 @@ def make_ham_multi_imp_anderson_realspace_mag(
     for lead in right_indx:
         hmat[lead, lead] = Vbias / 2.0
 
-    # Create alpha-alpha and beta-beta spin blocks
-    hmat = np.kron(np.eye(2, dtype=int), hmat)
-
     # Add magnetic field terms
-    # NOTE: EDIT THIS; currently bad imitation of mag_x
-    Nsp = int(hmat.shape[0] / 2)
-    hmat[:Nsp, Nsp:] = m
-    hmat[Nsp:, :Nsp] = m
-    print(hmat)
-    exit()
+    x_bfield = bfield[0]
+    y_bfield = bfield[1]
+    z_bfield = bfield[2]
 
-    # ovlp = mf.get_ovlp()
-    # hcore = mf.get_hcore()
+    ovlp = np.eye(hmat.shape[-1])
+    Nsp = int(ovlp.shape[0])
 
-    # Nsp = int(ovlp.shape[0] / 2)
+    ovlp = ovlp[:Nsp, :Nsp]
 
-    # ovlp = ovlp[:Nsp, :Nsp]
-    # hcore = hcore[:Nsp, :Nsp]
-
-    # hprime[:Nsp, :Nsp] = hcore + 0.5 * mag_z * ovlp
-    # hprime[Nsp:, Nsp:] = hcore - 0.5 * mag_z * ovlp
-    # hprime[:Nsp, Nsp:] = 0.5 * (mag_x - 1j * mag_y) * ovlp
-    # hprime[Nsp:, :Nsp] = 0.5 * (mag_x + 1j * mag_y) * ovlp
+    hprime = np.zeros([2 * Nsp, 2 * Nsp], dtype=complex)
+    hprime[:Nsp, :Nsp] = hmat + 0.5 * z_bfield * ovlp
+    hprime[Nsp:, Nsp:] = hmat - 0.5 * z_bfield * ovlp
+    hprime[Nsp:, :Nsp] = 0.5 * (x_bfield + 1j * y_bfield) * ovlp
+    hprime[:Nsp, Nsp:] = 0.5 * (x_bfield - 1j * y_bfield) * ovlp
 
     # Adjust for indexing used in DMET
-    hmat = utils.reshape_rtog_matrix(hmat)
-
+    hprime = utils.reshape_rtog_matrix(hprime)
+    
     impindx = []
     for i in imp_indx:
         impindx.append([2 * i, 2 * i + 1])
@@ -887,7 +879,7 @@ def make_ham_multi_imp_anderson_realspace_mag(
         print("For spinor, must be set to Full.")
         exit()
 
-    return hmat, Vmat
+    return hprime, Vmat
 
 
 #####################################################################

@@ -2,7 +2,6 @@ import numpy as np
 import real_time_pDMET.rtpdmet.static.codes as codes
 import real_time_pDMET.rtpdmet.static.fci_mod as fci_mod
 
-
 class fragment:
     def __init__(
         self,
@@ -39,6 +38,9 @@ class fragment:
         self.last_bath = 2 * self.Nimp + self.Nvirt
         self.last_core = self.Nsites
 
+        self.frags_rank = 0
+        self.frag_num = 0
+
     #####################################################################
 
     def initialize_RHF(self, h_site, V_site):
@@ -73,7 +75,7 @@ class fragment:
                     evecs = np.insert(evecs, indx, 0.0, axis=0)
                     # incerting delta function component
                 else:
-                    print("index is  ut of range, attaching zeros in the end")
+                    print("index is out of range, attaching zeros in the end")
                     zero_coln = np.array([np.zeros(evecs.shape[1])])
                     evecs = np.concatenate((evecs, zero_coln), axis=0)
         else:
@@ -234,7 +236,7 @@ class fragment:
             # calculation with embedding hamiltonian
             self.solve_GS(U)
             self.get_corr1RDM()  # get correlated 1 RDM
-
+    
     #####################################################################
 
     def corr_calc_for_Nele(
