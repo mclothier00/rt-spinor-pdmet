@@ -808,16 +808,16 @@ class fragment:
         # temp, delete after debugging:
         self.genFmat = genFmat
 
-        f = open("output_halffrag.txt", "a")
-        f.write("\n generalized Fock matrix \n")
-        f.close()
-        utils.printarray(genFmat.real, "output_halffrag.txt", long_fmt=True)
-        f = open("output_halffrag.txt", "a")
-        f.write("TD of correlated 1RDM: \n")
-        f.close()
-        utils.printarray(
-            self.iddt_corr1RDM.real, "output_halffrag.txt", long_fmt=True
-        )
+        #f = open("output_halffrag.txt", "a")
+        #f.write("\n generalized Fock matrix \n")
+        #f.close()
+        #utils.printarray(genFmat.real, "output_halffrag.txt", long_fmt=True)
+        #f = open("output_halffrag.txt", "a")
+        #f.write("TD of correlated 1RDM: \n")
+        #f.close()
+        #utils.printarray(
+        #    self.iddt_corr1RDM.real, "output_halffrag.txt", long_fmt=True
+        #)
 
     #####################################################################
 

@@ -63,14 +63,18 @@ def plot_fci_dmet_site_mag(dmet_filename, fci_filename, figname):
 
     fig, ax = plt.subplots()
 
+<<<<<<< HEAD
     sites = range(dmet.shape[1])
+=======
+    sites = range(1, dmet.shape[1]-1)
+>>>>>>> fcb5cbc9a46b4256411eb62ced5175e0861d5a19
     colors = plt.cm.coolwarm(np.linspace(0, 1, len(sites)))
     fig, ax = plt.subplots()
     
     for i, color in zip(sites, colors):
         ax.scatter(
-            dmet[:, 0],
-            dmet[:, i],
+            dmet[:, 0][::5],
+            dmet[:, i][::5],
             label=f"DMET mag: site {i}",
             marker="o",
             color=color,
@@ -81,7 +85,7 @@ def plot_fci_dmet_site_mag(dmet_filename, fci_filename, figname):
             fci[:, 0],
             fci[:, i],
             label=f"FCI mag: site {i}",
-        )
+            color=color,
     
     ax.xaxis.set_major_locator(MaxNLocator(5))
     ax.yaxis.set_major_locator(MaxNLocator(5))
@@ -437,14 +441,17 @@ def plot_spin_diff(filename_fci, filename_dmet, fig_filename):
         ax.set_ylabel("'Beta' Site Density Error", fontsize=17)
         fig.savefig(f"beta_{fig_filename}_error.png", dpi=300)
 
+<<<<<<< HEAD
 dmet_filename = "dmetx.dat"
 fci_filename = "fcix.dat"
 plotname = "magx.png"
 
 plot_fci_dmet_site_mag(dmet_filename, fci_filename, plotname)
+=======
+>>>>>>> fcb5cbc9a46b4256411eb62ced5175e0861d5a19
 
-#plot_fci_dmet_spin_den("fci_spin.dat", "gen.dat", "Vquench_spin")
+plot_fci_dmet_site_mag("dmetx.dat", "fcix.dat", "magx.png")
+plot_fci_dmet_site_mag("dmety.dat", "fciy.dat", "magy.png")
+plot_fci_dmet_site_mag("dmetz.dat", "fciz.dat", "magz.png")
 
-#plot_spin_diff(
-#    "fci_spin.dat", "gen.dat", "Vquench_spin"
-#)
+plot_fci_dmet_spin_den("spin_density.dat", "electron_density.dat", "spinor")

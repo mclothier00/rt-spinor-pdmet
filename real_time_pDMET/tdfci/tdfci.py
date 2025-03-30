@@ -178,6 +178,7 @@ class tdfci:
 
             # total spin vectors
             den = utils.reshape_gtor_matrix(corr1RDM)
+            den = np.transpose(den)
             Nsp = int(self.Nsites / 2)
             ovlp = np.eye(Nsp)
 
