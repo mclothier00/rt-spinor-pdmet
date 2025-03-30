@@ -71,7 +71,6 @@ def get_ddt_mf1rdm_serial(dG, system, Nocc):
             + np.dot(short_NOcc, short_ddtNOcc.conj().T)
         )
 
-    # NOTE: PING is calculation of short_NOcc still the same??
     if system.gen:
         short_NOcc = np.copy(system.NOevecs[:, : round(system.Nele / 2)])
         short_ddtNOcc = np.copy(ddt_NOevecs[:, : round(system.Nele / 2)])
@@ -133,7 +132,6 @@ def calc_Gmat(dG, system, iddt_glob1RDM):
     # Matrix of one over the difference in global 1RDM eigenvalues
     # Set diagonal terms and terms where eigenvalues are almost equal to zero
     evals = np.copy(system.NOevals)
-    # G2_fast_time = time.time()
     G2_fast = utils.rot1el(iddt_glob1RDM, system.NOevecs)
 
     if not system.gen:

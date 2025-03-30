@@ -7,8 +7,6 @@ import numpy as np
 class system:
     #####################################################################
 
-    # edited
-
     def __init__(
         self,
         Nsites,
@@ -55,11 +53,6 @@ class system:
             # initialize fragment information
             # note that here impindx should be a list of numpy arrays
             # containing the impurity indices for each fragment
-            # INCLUDED IN TRANSFER FILE
-            # self.frag_list = []
-            # for i in range(Nfrag):
-            # self.frag_list.append(
-            # fragment_mod.fragment( impindx[i], Nsites, Nele ) )
 
             # initialize list that takes site index and
             # outputs fragment index corresponding to that site
@@ -72,9 +65,6 @@ class system:
                     if i in arr:
                         self.site_to_frag_list.append(ifrag)
                         self.site_to_impindx.append(np.argwhere(arr == i)[0][0])
-                        # self.site_to_frag_list.append((ifrag,
-                        # np.argwhere(arr==i)[0][0]))
-                        # PING combines both lists into one list of tuples
 
             # initialize total system hamiltonian and mean-field 1RDM
             self.h_site = h_site
@@ -115,10 +105,6 @@ class system:
             # note that here impindx should be a list of numpy arrays
             # containing the impurity indices for each fragment
             # INCLUDED IN TRANSFER FILE
-            # self.frag_list = []
-            # for i in range(Nfrag):
-            # self.frag_list.append(
-            # fragment_mod.fragment( impindx[i], Nsites, Nele ) )
 
             # initialize list that takes site index and
             # outputs fragment index corresponding to that site
@@ -132,9 +118,6 @@ class system:
                     if i in arr:
                         self.site_to_frag_list.append(ifrag)
                         self.site_to_impindx.append(np.argwhere(arr == i)[0][0])
-                        # self.site_to_frag_list.append((ifrag,
-                        # np.argwhere(arr==i)[0][0]))
-                        # PING combines both lists into one list of tuples
 
             # initialize total system hamiltonian and mean-field 1RDM
             self.h_site = h_site

@@ -443,7 +443,6 @@ class static_pdmet:
         for i, frag in enumerate(self.frag_in_rank):
             # ordered as impurity, virtual, bath, core to match rotmat
             fullcorr1RDM = np.zeros((self.Nsites, self.Nsites))
-            #fullcorr1RDM[frag.imprange, frag.imprange] = frag.corr1RDM[:frag.Nimp, :frag.Nimp]
             # impurity
             fullcorr1RDM[:frag.Nimp, :frag.Nimp] = frag.corr1RDM[:frag.Nimp, :frag.Nimp]
             # bath
@@ -456,12 +455,9 @@ class static_pdmet:
             tmp = 0.5 * np.dot(
                 frag.rotmat, np.dot(fullcorr1RDM, frag.rotmat.conj().T)
             )
-            #print(f'tmp for rank {self.rank}: \n {tmp}')
             for site in frag.impindx:
                 mpi_glob1RDM[site, :] += tmp[site, :]
                 mpi_glob1RDM[:, site] += tmp[:, site]
-
-        #print(f'mpi global matrix on rank {self.rank}: \n {mpi_glob1RDM}')
 
         self.glob1RDM = np.zeros([self.Nsites, self.Nsites])
         MPI.COMM_WORLD.Allreduce(mpi_glob1RDM, self.glob1RDM, op=MPI.SUM)

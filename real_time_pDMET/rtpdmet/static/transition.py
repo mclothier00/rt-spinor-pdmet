@@ -225,19 +225,11 @@ def coeff_parity_change(alphastr, betastr, nalpha, nbeta):
     # if element in beta string is 1, determines parity
     new_parity = 1
 
-    # NOTE: is this alphastr or rest of full string?
     for i, bit in enumerate(beta_str[::-1]):
         if bit == "1":
-            # print(
-            #    f"whats actually getting counted for {bin(resstr)} for {i}: {bin(alphastr >> (i+1))}"
-            # )
             parity = (-1) ** bin(alphastr >> (i + 1)).count("1")
             new_parity = new_parity * parity
-    # print(f"parity of {res_str}: {new_parity}")
     return new_parity
-
-
-## copied over from pDMET_glob.py
 
 
 def initialize_GHF(Nele, h_site, V_site):
@@ -310,9 +302,6 @@ def spinor_hubsite_block(hubsite_indx, Nsites):
     spinor_hubsite_indx = np.asarray(spinor_hubsite_indx)
 
     return spinor_hubsite_indx
-
-
-# NOTE: CHECK THIS
 
 
 def get_nat_orbs(glob1RDM):

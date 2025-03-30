@@ -22,7 +22,6 @@ def interactive_RHF(Nele, h_site, V_site):
 #####################################################################
 
 
-## NOTE: HAVE NOT TESTED
 def interactive_GHF(Nele, h_site, V_site):
     Norbs = Nele*2
     mol = gto.M()
@@ -52,7 +51,6 @@ def rhf_calc_hubbard(Nelec, Hcore):
 #####################################################################
 
 
-## NOTE: HAVE NOT TESTED
 def ghf_calc_hubbard(Nelec, Hcore):
 
     # simplified subroutine to perform a
@@ -66,7 +64,6 @@ def ghf_calc_hubbard(Nelec, Hcore):
 #####################################################################
 
 
-## NOTE: will need to change this to rdm_1el_rhf at end
 def rdm_1el(C, Ne):
     # subroutine that calculates and
     # returns the one-electron density matrix in original site basis
@@ -76,8 +73,6 @@ def rdm_1el(C, Ne):
 #####################################################################
 
 
-## NOTE: HAVE NOT TESTED; is Ne changed in the generalized formalism 
-## to account for larger dimension?
 def rdm_1el_ghf(C, Ne):
     # subroutine that calculates and
     # returns the one-electron density matrix in original site basis
