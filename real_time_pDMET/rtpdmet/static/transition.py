@@ -50,7 +50,7 @@ def rtor_transition(
 
     for i in range(len(the_dmet.frag_in_rank)):
         tot_system.frag_in_rank.append(
-            fragment_mod_dynamic.fragment(impindx[i], Nsites, Nele)
+            fragment_mod_dynamic.fragment(impindx[the_dmet.frag_in_rank[i].frag_num], Nsites, Nele)
         )
         tot_system.frag_in_rank[i].rotmat = the_dmet.frag_in_rank[i].rotmat
         tot_system.frag_in_rank[i].CIcoeffs = the_dmet.frag_in_rank[i].CIcoeffs

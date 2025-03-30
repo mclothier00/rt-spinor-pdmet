@@ -66,8 +66,6 @@ def rot2el_chem(V_orig, rotmat):
 
 #####################################################################
 
-# NOTE: this should work for spinor basis; see above
-
 
 def rot2el_phys(V_orig, rotmat):
     # subroutine to rotate two electron integrals,

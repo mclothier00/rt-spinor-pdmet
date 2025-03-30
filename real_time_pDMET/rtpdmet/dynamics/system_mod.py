@@ -150,6 +150,13 @@ class system:
 
     #####################################################################
 
+    def get_frag_corr1RDM(self):
+        # Subroutine to calculate correlated 1RDM for each fragment
+        for frag in self.frag_in_rank:
+            frag.get_corr1RDM()
+
+    #####################################################################
+
     def get_frag_Hemb(self):
         # Subroutine to calculate embedding Hamiltonian for each fragment
         for frag in self.frag_in_rank:

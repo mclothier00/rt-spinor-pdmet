@@ -198,7 +198,7 @@ class dynamics_driver:
             print()
 
         # fraddg_pool = multproc.Pool(self.nproc)
-
+        
         # DYNAMICS LOOP
         current_time = self.init_time
 
@@ -211,7 +211,6 @@ class dynamics_driver:
                     sys.stdout.flush()
                     if self.gen:
                         self.print_just_spins(current_time)
-
                 if (np.mod(step, self.Nprint) == 0) and step > 1:
                     print(
                         "Writing data at step ",
@@ -237,7 +236,7 @@ class dynamics_driver:
 
             # Integrate FCI coefficients and rotation matrix for all fragments
             self.integrate(self.nproc, current_time)
-
+    
             # Increase current_time
             current_time = self.init_time + (step + 1) * self.delt
             sys.stdout.flush()
@@ -670,7 +669,8 @@ class dynamics_driver:
 
         # Calculate DMET energy, which also includes calculation
         # of 1 & 2 RDMs and embedding hamiltonian for each fragment
-        self.tot_system.get_DMET_E(self.nproc)
+        # NOTE: currently turning off due to two electron terms 
+        #self.tot_system.get_DMET_E(self.nproc)
 
         # Calculate total number of electrons
         self.tot_system.get_DMET_Nele()
@@ -759,16 +759,18 @@ class dynamics_driver:
         writing_outfile = time.time()
         output = np.zeros((12 + self.tot_system.Nbasis))
         output[0] = current_time
-        output[1] = self.tot_system.DMET_E
+        #output[1] = self.tot_system.DMET_E
+        output[1] = 0
         output[2] = self.tot_system.DMET_Nele
         # NOTE: for generalized, these may be wrong
         output[3] = np.real(np.trace(self.tot_system.mf1RDM))
         output[4] = np.real(np.trace(self.tot_system.frag_in_rank[0].corr1RDM))
-        output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
-        output[6] = np.linalg.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
+        # NOTE: currently taking out due to expensive corr2RDM formation
+        #output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
+        output[5] = np.linalg.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
         # output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
         # NOTE:PUT BACK TO 3 AFTER TESTING 2 SITES!
-        output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 1]) ** 2
+        output[6] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 1]) ** 2
 
         # self.tot_system.get_nat_orbs()
         if np.allclose(
@@ -777,12 +779,12 @@ class dynamics_driver:
             rtol=0.0,
             atol=1e-14,
         ):
-            output[8] = 1
+            output[7] = 1
         else:
-            output[8] = 0
-        output[9 : 9 + self.tot_system.Nbasis] = np.copy(self.tot_system.NOevals)
-        output[10 + self.tot_system.Nbasis] = np.copy(np.real(self.max_diag_global))
-        output[11 + self.tot_system.Nbasis] = np.copy(np.imag(self.max_diag_global))
+            output[7] = 0
+        output[8 : 8 + self.tot_system.Nbasis] = np.copy(self.tot_system.NOevals)
+        output[9 + self.tot_system.Nbasis] = np.copy(np.real(self.max_diag_global))
+        output[10 + self.tot_system.Nbasis] = np.copy(np.imag(self.max_diag_global))
 
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()
@@ -845,7 +847,8 @@ class dynamics_driver:
 
     def print_just_dens(self, current_time):
         fmt_str = "%20.8e"
-        self.tot_system.get_DMET_E(self.nproc)
+        #self.tot_system.get_DMET_E(self.nproc)
+        self.tot_system.get_frag_corr1RDM()
         self.tot_system.get_DMET_Nele()
 
         #cnt = 0

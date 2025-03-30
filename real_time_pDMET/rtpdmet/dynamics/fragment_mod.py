@@ -478,6 +478,61 @@ class fragment:
 
     #####################################################################
 
+    def get_corr1RDM(self):
+        # Subroutine to get the FCI 1RDM and 2RDM
+        if not self.gen:
+            self.corr1RDM = fci_mod.get_corr1RDM(
+                self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
+            )
+            self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
+            self.full_corr1RDM = self.full_corr1RDM.astype(complex)
+            for c in self.corerange:
+                self.full_corr1RDM[c][c] = 2
+            corr1RDM_virt = np.insert(
+                self.corr1RDM,
+                self.Nimp,
+                np.zeros((self.Nvirt, self.corr1RDM.shape[0])),
+                0,
+            )
+            corr1RDM_virt = np.insert(
+                corr1RDM_virt,
+                self.Nimp,
+                np.zeros((self.Nvirt, corr1RDM_virt.shape[0])),
+                1,
+            )
+
+            self.full_corr1RDM[
+                0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
+            ] += corr1RDM_virt
+            
+
+        if self.gen:
+            self.corr1RDM = fci_mod.get_corr1RDM(
+                self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
+            )
+            self.full_corr1RDM = np.zeros([2 * self.Nsites, 2 * self.Nsites])
+            self.full_corr1RDM = self.full_corr1RDM.astype(complex)
+            for c in self.corerange:
+                self.full_corr1RDM[c][c] = 1
+            corr1RDM_virt = np.insert(
+                self.corr1RDM,
+                self.Nimp,
+                np.zeros((self.Nvirt, self.corr1RDM.shape[0])),
+                0,
+            )
+            corr1RDM_virt = np.insert(
+                corr1RDM_virt,
+                self.Nimp,
+                np.zeros((self.Nvirt, corr1RDM_virt.shape[0])),
+                1,
+            )
+            self.full_corr1RDM[
+                0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
+            ] += corr1RDM_virt
+        
+
+    #####################################################################
+
     def get_corr12RDM(self):
         # Subroutine to get the FCI 1RDM and 2RDM
         if not self.gen:

@@ -84,12 +84,10 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
 
 #####################################################################
 
-# NOTE: still need to check that indexing is correct
-
 
 def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
     # Subroutine to get the FCI 1RDM
-    # notation for restricted is rho_pq = < c_q^dag c_p >
+    # notation for restricted is dm_pq = < q^+ p >
 
     if not gen:
         if np.iscomplexobj(CIcoeffs):
@@ -111,12 +109,27 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
         else:
             corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
 
-    # notation for generalized is rho_pq = <|p^+ q|> in code but
-    # rho_pq = <|q^+ p|> in docs... CHECK!!
+    # Notation for generalized 1RDM from fci_dhf_slow is dm_pq = <|p^+ q|>
+    # PySCF requires CIcoeffs to be in a spin-blocked configuration
 
     if gen:
         corr1RDM = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
+        
+        if np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9) == False:
+            print("WARNING: NON-NEGLIGIBLE COMPLEX TERMS ALONG DIAGONAL OF EMBEDDED CORRELATED 1RDM")
+            print("-------- ENDING SIMULATION --------")
+            exit()
 
+        np.fill_diagonal(corr1RDM, corr1RDM.diagonal().real) # make diagonal elements real 
+        
+        # tranpose back to dm_pq = <|q^+ p|> to match restricted case
+        corr1RDM = np.transpose(corr1RDM)
+        
+        if linalg.ishermitian(corr1RDM, atol=1e-9) == False:
+            print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
+            print("-------- ENDING SIMULATION --------")
+            exit()
+ 
     return corr1RDM
 
 

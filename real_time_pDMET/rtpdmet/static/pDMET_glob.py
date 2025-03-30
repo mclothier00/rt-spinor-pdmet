@@ -339,8 +339,9 @@ class static_pdmet:
             print("    FINISH STATIC PDMET CALCULATION    ")
             print("***************************************")
             print()
-            print("Final DMET energy =", self.DMET_E)
-            print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
+            #print("Final DMET energy =", self.DMET_E)
+            #print("Energy per site for U=", self.U, "is:", (self.DMET_E / self.Nsites))
+            print("WARNING: Final DMET E and E per site currently unavailable for MPI implementation.")
             if conv:
                 print("DMET calculation succesfully converged in", itr, "iterations")
                 print("Final difference in global 1RDM =", dif)

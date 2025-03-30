@@ -42,6 +42,56 @@ def plot_site_mag():
             fig.savefig("mag_z.png")
 
 
+def plot_fci_dmet_site_mag(dmet_filename, fci_filename, figname):
+    fci = []
+    dmet = []
+
+    with open(dmet_filename, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            dmet.append(data)
+
+    with open(fci_filename, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            fci.append(data)
+
+    dmet = np.asarray(dmet, dtype=float)
+    fci = np.asarray(fci, dtype=float)
+
+    fig, ax = plt.subplots()
+
+    sites = range(dmet.shape[1])
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(sites)))
+    fig, ax = plt.subplots()
+    
+    for i, color in zip(sites, colors):
+        ax.scatter(
+            dmet[:, 0],
+            dmet[:, i],
+            label=f"DMET mag: site {i}",
+            marker="o",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+        ax.plot(
+            fci[:, 0],
+            fci[:, i],
+            label=f"FCI mag: site {i}",
+        )
+    
+    ax.xaxis.set_major_locator(MaxNLocator(5))
+    ax.yaxis.set_major_locator(MaxNLocator(5))
+    ax.set_xlabel("Time (au)")
+    ax.set_ylabel("Magnetization (au)")
+    ax.legend()
+    
+    fig.savefig(f"{figname}")
+    
+
 def plot_mag():
     magx = []
     magy = []
@@ -387,7 +437,11 @@ def plot_spin_diff(filename_fci, filename_dmet, fig_filename):
         ax.set_ylabel("'Beta' Site Density Error", fontsize=17)
         fig.savefig(f"beta_{fig_filename}_error.png", dpi=300)
 
-plot_mag()
+dmet_filename = "dmetx.dat"
+fci_filename = "fcix.dat"
+plotname = "magx.png"
+
+plot_fci_dmet_site_mag(dmet_filename, fci_filename, plotname)
 
 #plot_fci_dmet_spin_den("fci_spin.dat", "gen.dat", "Vquench_spin")
 
