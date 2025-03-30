@@ -1,6 +1,1 @@
-track of changes per commit:
-
-June 17: 
-  -  final update of rtog_transitions in /static/transitions.py
-  -  updated get_rotmat in order to recreate rotmat per fragment in rtog_transitions rather than converting from old rotmat
-  -  added directory of tests (non-interacting, half system as fragment, and old U_quench_1D; all edited versions of U_quench_1D)
+This is an in-development version of spin-generalized real-time density matrix embedding theory (RT-pDMET). For a working version of RT-pDMET in the spin-restricted framework, please refer to https://github.com/jskretchmer/real_time_pDMET. For questions about the spin-generalized code, please reach out to mclothier3@gatech.edu.
