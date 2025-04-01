@@ -133,6 +133,8 @@ class dynamics_driver:
         # If running Hubbard-like model, need an array
         # containing index of all sites that have hubbard U term
         self.tot_system.hubsite_indx = hubsite_indx
+        print(f'for hubbard model, hubsite_indx = {hubsite_indx}')
+        
         if self.tot_system.hamtype == 1 and self.tot_system.hubsite_indx is None:
             print("ERROR: Did not specify an array of sites that have U term")
             print()

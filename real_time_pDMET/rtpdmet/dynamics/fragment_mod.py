@@ -263,7 +263,6 @@ class fragment:
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
-
             # augment the impurity/bath 1e- terms from contribution of coulomb
             # and exchange terms btwn impurity/bath and core
             # and augment the 1 e- term with only half the contribution
@@ -348,18 +347,29 @@ class fragment:
             self.h_emb_halfcore = np.copy(h_emb[: 2 * self.Nimp, : 2 * self.Nimp])
 
             # rotate the 2 e- terms
-            hamtype = 0
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General hamiltonian, V_emb currently
                 # ( impurities, bath, core ) ^ 4
                 V_emb = utils.rot2el_chem(V_site, rotmat_small)
+
+            elif hamtype == 1:
+                # Hubbard hamiltonian
+                # remove core states from rotation matrix
+                rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
+                self.V_emb = V_site * np.einsum(
+                    "ip,kr,pj,rl->ijkl",
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
+                    rotmat_vsmall,
+                    rotmat_vsmall,
+                )
 
             # augment the impurity/bath 1e- terms from contribution of coulomb
             # and exchange terms btwn impurity/bath and core
             # and augment the 1 e- term with only half the contribution
             # from the core to be used in DMET energy calculation
 
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General (and Hubbard, for now) hamiltonian
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                     h_emb[: 2 * self.Nimp, : 2 * self.Nimp] = (
@@ -372,12 +382,31 @@ class fragment:
                         - 0.5 * V_emb[: 2 * self.Nimp, core, core, : 2 * self.Nimp]
                     )
 
+            elif hamtype == 1:
+                # Hubbard hamiltonian
+                core_int = V_site * np.einsum(
+                    "ip,nr,pj,rn->ij",
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                    rotmat_vsmall,
+                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
+                )
+                core_int -= V_site * np.einsum(
+                    "ip,nr,pn,rj->ij",
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
+                    rotmat_vsmall,
+                )
+                h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
+                self.h_emb_halfcore += 0.5 * core_int
+
             # Calculate the energy associated with core-core interactions,
             # setting it numerically to a real number since it always will be
             Ecore = 0
             for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                 Ecore += h_emb[core1, core1]
-                if hamtype == 0 or hamtype == 1:
+                if hamtype == 0:
                     # General hamiltonian
                     for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                         Ecore += 0.5 * (
@@ -385,11 +414,20 @@ class fragment:
                             - V_emb[core1, core2, core2, core1]
                         )
 
+            if hamtype == 1:
+                # Hubbard hamiltonian
+                vec = np.einsum(
+                    "pe,ep->p",
+                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
+                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                )
+                Ecore += 0.5 * (V_site * np.einsum("p,p", vec, vec))
+
             self.Ecore = Ecore.real
 
             # Shrink h_emb and V_emb arrays to only include the impurity and bath
             self.h_emb = h_emb[: 2 * self.Nimp, : 2 * self.Nimp]
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General hamiltonian
                 self.V_emb = V_emb[
                     : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
@@ -688,7 +726,7 @@ class fragment:
                 )
 
         if gen:
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
                 IFmat += np.einsum(
@@ -698,17 +736,55 @@ class fragment:
                     "ikkj->ij", V_MO[:, self.corerange[:, None], self.corerange, :]
                 )
 
+            if hamtype == 1:
+                IFmat = utils.rot1el(h_site, self.rotmat)
+                IFmat += V_site * np.einsum(
+                    "ip,kr,pj,rk->ij",
+                    utils.adjoint(rotmat_Hub),
+                    utils.adjoint(rotmat_Hub[:, self.corerange]),
+                    rotmat_Hub,
+                    rotmat_Hub[:, self.corerange],
+                )
+                IFmat -= V_site * np.einsum(
+                    "ip,kr,pk,rj->ij",
+                    utils.adjoint(rotmat_Hub),
+                    utils.adjoint(rotmat_Hub[:, self.corerange]),
+                    rotmat_Hub[:, self.corerange],
+                    rotmat_Hub,
+                )
+
             # Form active Fock matrix
             actrange = np.concatenate((self.imprange, self.bathrange))
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General hamiltonian
                 tmp = V_MO[:, :, actrange[:, None], actrange] - np.einsum(
                     "iklj->ijlk", V_MO[:, actrange[:, None], actrange, :]
                 )
                 AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
 
+            if hamtype == 1:
+                # Hubbard hamiltonian
+                tmp = np.einsum(
+                    "ip,lr,pj,rk -> ijlk",
+                    utils.adjoint(rotmat_Hub),
+                    utils.adjoint(rotmat_Hub[:, actrange]),
+                    rotmat_Hub,
+                    rotmat_Hub[:, actrange],
+                )
+                tmp -= np.einsum(
+                    "iklj -> ijlk",
+                        np.einsum(
+                        "ip,lr,pk,rj -> iklj",
+                        utils.adjoint(rotmat_Hub),
+                        utils.adjoint(rotmat_Hub[:, actrange]),
+                        rotmat_Hub[:, actrange],
+                        rotmat_Hub,
+                    )
+                )
+                AFmat = V_site * np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
+
             # Form generalized Fock matrix from inactive and active ones
-            if hamtype == 0 or hamtype == 1:
+            if hamtype == 0:
                 # General hamiltonian
                 genFmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
                 # if j in core:
@@ -726,12 +802,31 @@ class fragment:
                     self.corr2RDM,
                 )
 
+            if hamtype == 1:
+                # Hubbard hamiltonian
+                genFmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
+                # if j in core:
+                genFmat[self.corerange, :] = np.transpose(
+                    IFmat[:, self.corerange] + AFmat[:, self.corerange]
+                )
+                # if j in impurity/bath:
+                genFmat[actrange, :] = np.transpose(
+                    np.dot(IFmat[:, actrange], self.corr1RDM)
+                )
+                tmp = np.einsum(
+                    "lr,pk,rm,jklm->pj",
+                    utils.adjoint(rotmat_Hub[:, actrange]),
+                    rotmat_Hub[:, actrange],
+                    rotmat_Hub[:, actrange],
+                    self.corr2RDM,
+                )
+                genFmat[actrange, :] += V_site * np.transpose(
+                    np.dot(utils.adjoint(rotmat_Hub), tmp)
+                )
+
         # Calculate i times H commutator portion of time-dependence of corr1RDM
         self.iddt_corr1RDM = np.transpose(genFmat) - np.conjugate(genFmat)
-
-        # temp, delete after debugging:
-        self.genFmat = genFmat
-
+    
     #####################################################################
 
     def get_Xmat(self, mf1RDM, ddt_mf1RDM):
