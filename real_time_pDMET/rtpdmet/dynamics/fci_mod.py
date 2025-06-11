@@ -7,7 +7,7 @@ import pyscf.fci
 from scipy import linalg
 from pyscf import gto, scf, ao2mo
 #####################################################################
-
+import time
 
 def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
     # Subroutine to perform groundstate FCI calculation using pyscf
@@ -108,6 +108,8 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()
+
+        corr1RDM = utils.make_hermitian(corr1RDM)
  
     return corr1RDM
 
@@ -161,9 +163,14 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
     # This would be equivalent to (p_dag r_dag s q) in chemists notation, so equal to restricted notation
     # PySCF requires CIcoeffs to be in a spin-blocked configuration
     if gen:
-        corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
+
+        corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12_new(CIcoeffs, Norbs, Nele)
+
+        if np.isclose(linalg.norm(CIcoeffs), 1.0, atol = 1e-3) == False:
+            print(f'norm of CIcoeffs: {linalg.norm(CIcoeffs)}')
 
         if np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9) == False:
+            print(linalg.norm(CIcoeffs))
             print("WARNING: NON-NEGLIGIBLE COMPLEX TERMS ALONG DIAGONAL OF EMBEDDED CORRELATED 1RDM")
             print("-------- ENDING SIMULATION --------")
             exit()
@@ -175,6 +182,8 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()
+
+        corr1RDM = utils.make_hermitian(corr1RDM)
 
     return corr1RDM, corr2RDM
 

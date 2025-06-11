@@ -11,7 +11,7 @@ import math
 from mpi4py import MPI
 import os
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
-
+from scipy import linalg
 
 class dynamics_driver:
     #####################################################################
@@ -133,7 +133,6 @@ class dynamics_driver:
         # If running Hubbard-like model, need an array
         # containing index of all sites that have hubbard U term
         self.tot_system.hubsite_indx = hubsite_indx
-        print(f'for hubbard model, hubsite_indx = {hubsite_indx}')
         
         if self.tot_system.hamtype == 1 and self.tot_system.hubsite_indx is None:
             print("ERROR: Did not specify an array of sites that have U term")
@@ -290,7 +289,7 @@ class dynamics_driver:
 
             # GETTING 1ST SUBSTEP DT
 
-            l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(nproc)
+            l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(nproc, current_time)
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
@@ -298,13 +297,15 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k1_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m1_list[cnt]
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
+                    print(f'norm of CIcoeffs at time {current_time} on rk step 1: {linalg.norm(frag.CIcoeffs)}')
 
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
         
             # GETTING 2ST SUBSTEP DT
             
-            l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(nproc)
+            l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(nproc, current_time)
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l2
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n2
@@ -312,13 +313,15 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k2_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m2_list[cnt]
-
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
+                    print(f'norm of CIcoeffs at time {current_time} on rk step 2: {linalg.norm(frag.CIcoeffs)}')
+            
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             # GETTING 3ST SUBSTEP DT
 
-            l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(nproc)
+            l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(nproc, current_time)
 
             self.tot_system.NOevecs = init_NOevecs + 1.0 * l3
             self.tot_system.glob1RDM = init_glob1RDM + 1.0 * n3
@@ -326,13 +329,16 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 * k3_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 1.0 * m3_list[cnt]
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
+                    print(f'norm of CIcoeffs at time {current_time} on rk step 3: {linalg.norm(frag.CIcoeffs)}')
+
 
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # GETTING 4ST SUBSTEP DT
 
-            l4, k4_list, m4_list, n4, p4, mfRDM_check = self.one_rk_step(nproc)
+            l4, k4_list, m4_list, n4, p4, mfRDM_check = self.one_rk_step(nproc, current_time)
 
             self.tot_system.NOevecs = init_NOevecs + 1.0 / 6.0 * (
                 l1 + 2.0 * l2 + 2.0 * l3 + l4
@@ -357,7 +363,9 @@ class dynamics_driver:
                     + 2.0 * m3_list[cnt]
                     + m4_list[cnt]
                 )
-
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
+                    print(f'norm of CIcoeffs at time {current_time} on rk step 4: {linalg.norm(frag.CIcoeffs)}')
+            
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
@@ -429,6 +437,8 @@ class dynamics_driver:
                 print("ERROR", text_centered)
                 print(f"current time: {current_time}")
                 quit()
+
+
         else:
             print("ERROR: A proper integrator was not specified")
             exit()
@@ -446,15 +456,20 @@ class dynamics_driver:
 
     #####################################################################
 
-    def one_rk_step(self, nproc):
+    def one_rk_step(self, nproc, current_time):
         # Subroutine to calculate one change in a runge-kutta step of any order
         # Using EOM that integrates CI coefficients, rotmat, and MF 1RDM
 
         # Prior to calling this routine need to update
         # MF 1RDM, rotmat and CI coefficients
+    
+        for cnt, frag in enumerate(self.tot_system.frag_in_rank):
+            if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
+                print(f'norm of CIcoeffs at time {current_time}: {linalg.norm(frag.CIcoeffs)}')
 
         # Calculate the terms needed for time-derivative of mf-1rdm
         self.tot_system.get_frag_corr12RDM()
+        #self.tot_system.get_frag_corr1RDM()
 
         self.tot_system.NOevals = np.diag(
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
@@ -517,6 +532,7 @@ class dynamics_driver:
     #####################################################################
 
     def print_data(self, current_time):
+       
         # Subroutine to calculate and print-out observables of interest
 
         fmt_str = "%20.8e"
@@ -720,6 +736,7 @@ def applyham_wrapper(frag, delt, gen=False):
         )
 
     if gen:
+
         CIvec = (
             -1j
             * delt

@@ -9,35 +9,73 @@ class fragment:
         Nsites,
         Nele,
         hubb_indx=None,
+        gen=False,
         mubool=False,
         delta=0.02,
         thrnele=1e-5,
         step=0.05,
     ):
-        self.impindx = impindx
-        self.Nsites = Nsites
-        self.Nele = Nele
-        self.hubb_indx = hubb_indx
-        self.mubool = mubool
-        # step size for chemical potential
-        self.delta = delta
-        # threshhold for the (current_electron/ideal electron) - 1
-        # convergence of chemical potential
-        self.thrnele = thrnele
-        self.step = step
-        self.Nimp = impindx.shape[0]
-        self.Ncore = int(Nele / 2) - self.Nimp
-        self.Nvirt = Nsites - 2 * self.Nimp - self.Ncore
-        self.imprange = np.arange(0, self.Nimp)
-        self.virtrange = np.arange(self.Nimp, self.Nimp + self.Nvirt)
-        self.bathrange = np.arange(self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt)
-        self.corerange = np.arange(2 * self.Nimp + self.Nvirt, self.Nsites)
 
-        self.last_imp = self.Nimp
-        self.last_virt = self.Nimp + self.Nvirt
-        self.last_bath = 2 * self.Nimp + self.Nvirt
-        self.last_core = self.Nsites
-
+    # NOTE: change 2
+        if not gen:
+            self.impindx = impindx
+            self.Nsites = Nsites
+            self.Nele = Nele
+            self.hubb_indx = hubb_indx
+            self.mubool = mubool
+            # step size for chemical potential
+            self.delta = delta
+            # threshhold for the (current_electron/ideal electron) - 1
+            # convergence of chemical potential
+            self.thrnele = thrnele
+            self.step = step
+            self.Nimp = impindx.shape[0]
+            self.Ncore = int(Nele / 2) - self.Nimp
+            self.Nvirt = Nsites - 2 * self.Nimp - self.Ncore
+            self.imprange = np.arange(0, self.Nimp)
+            self.virtrange = np.arange(self.Nimp, self.Nimp + self.Nvirt)
+            self.bathrange = np.arange(self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt)
+            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, self.Nsites)
+    
+            self.last_imp = self.Nimp
+            self.last_virt = self.Nimp + self.Nvirt
+            self.last_bath = 2 * self.Nimp + self.Nvirt
+            self.last_core = self.Nsites
+    
+        if gen:
+            self.impindx = impindx
+            self.Nsites = Nsites # spatial sites; basis is 2x this value
+            self.Nele = Nele
+            self.hubb_indx = hubb_indx
+            self.mubool = mubool
+            # step size for chemical potential
+            self.delta = delta
+            # threshhold for the (current_electron/ideal electron) - 1
+            # convergence of chemical potential
+            self.thrnele = thrnele
+            self.step = step
+            self.Nimp = impindx.shape[0]
+            self.Ncore = 2 * (int(Nele / 2) - int(self.Nimp / 2))
+            print(f'Ncore: {self.Ncore}')
+            self.Nvirt = 2 * Nsites - 2 * self.Nimp - self.Ncore
+            print(f'Nvirt: {self.Nvirt}')
+            self.imprange = np.arange(0, self.Nimp)
+            print(f'impurity range: {self.imprange}')
+            self.virtrange = np.arange(self.Nimp, self.Nimp + self.Nvirt)
+            print(f'virtual range: {self.virtrange}')
+            self.bathrange = np.arange(self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt)
+            print(f'bath range: {self.bathrange}')
+            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
+            print(f'core range: {self.corerange}')
+            self.last_imp = self.Nimp
+            print(f'last impurity index: {self.last_imp}')
+            self.last_virt = self.Nimp + self.Nvirt
+            print(f'last virtual index: {self.last_virt}')
+            self.last_bath = 2 * self.Nimp + self.Nvirt
+            print(f'last bath index: {self.last_bath}')
+            self.last_core = 2 * self.Nsites
+            print(f'last bath index: {self.last_bath}')
+    
         self.frags_rank = 0
         self.frag_num = 0
 
@@ -215,11 +253,12 @@ class fragment:
 
     #####################################################################
 
+    ## NOTE: change 3
     def corr_calc(
-        self, mf1RDM, h_site, V_site, U, mu, hamtype=0, hubb_indx=None, mubool=False
+        self, mf1RDM, h_site, V_site, U, mu, hamtype=0, hubb_indx=None, mubool=False, gen=False
     ):
         if mubool:
-            # get rotational matrix in embeding basis
+            # get rotational matrix in embedding basis
             self.get_rotmat(mf1RDM)
             # compute emb hamiltonian with the rotational matrix
             self.get_Hemb(h_site, V_site, U, hamtype, hubb_indx)

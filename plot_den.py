@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
+from matplotlib.ticker import MaxNLocator, FuncFormatter, ScalarFormatter
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 # site index starting from 1
 
@@ -26,29 +28,281 @@ def plot_multiple_electron_site_den(
             gentable.append(data)
     gentable = np.asarray(gentable)
 
-    plt.figure()
-    for i in res_site_index:
-        plt.plot(
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(gen_site_index)))
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(res_site_index, colors):
+        ax.plot(
             restable[:, 0].astype(complex).real,
             restable[:, i].astype(complex).real,
-            label=f"Res: site {i}",
+            color=color,
         )
-    for i in gen_site_index:
+    for i, color in zip(gen_site_index, colors):
         site_den = (
             gentable[:, i].astype(complex).real
             + gentable[:, (i + 1)].astype(complex).real
         )
-        plt.scatter(
-            gentable[:, 0].astype(complex).real,
-            site_den,
-            label=f"Gen: spinors {i}, {i+1}",
-            s=10,
+        ax.scatter(
+            gentable[:, 0].astype(complex).real[::5],
+            site_den[::5],
+            marker="o",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+        
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.tick_params(axis="both", labelsize=16, width=2)
+
+    solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="restricted")
+    bubbles_handle = Line2D(
+            [0], [0], color="navy", marker='o', markerfacecolor='none', markeredgecolor='navy', label="generalized"
         )
 
-    plt.xlabel("Time (au)")
-    plt.ylabel("Site Density")
-    plt.legend()
-    plt.savefig(f"{fig_filename}")
+    ax.legend(handles=[solid_line_handle, bubbles_handle], fontsize=17, edgecolor="black")
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(2)
+
+    ax.set_xlabel("Time (au)", fontsize=17)
+    ax.set_ylabel("'Alpha' Site Density", fontsize=17)
+    fig.savefig(f"{fig_filename}", dpi=300)
+
+
+def plot_two_gen_electron_site_den(
+    gen1, gen2, fig_filename, gen_site_index
+):
+    gentable1 = []
+    openfile = f"{gen1}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            gentable1.append(data)
+    gentable1 = np.asarray(gentable1)
+
+    gentable2 = []
+    openfile = f"{gen2}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            gentable2.append(data)
+    gentable2 = np.asarray(gentable2)
+
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(gen_site_index)))
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(gen_site_index, colors):
+        site_den1 = (
+            gentable1[:, i].astype(complex).real
+            + gentable1[:, (i + 1)].astype(complex).real
+        )
+        ax.plot(
+            gentable1[:, 0].astype(complex).real[::5],
+            site_den1[::5],
+            color=color
+        )
+        site_den2 = (
+            gentable2[:, i].astype(complex).real
+            + gentable2[:, (i + 1)].astype(complex).real
+        )
+        ax.scatter(
+            gentable2[:, 0].astype(complex).real[::5],
+            site_den2[::5],
+            marker="D",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.tick_params(axis="both", labelsize=16, width=2)
+
+    solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="generalized1")
+    diamond_handle = Line2D(
+            [0], [0], color="navy", marker='D', markerfacecolor='none', markeredgecolor='navy', label="generalized2"
+        )
+
+    ax.legend(handles=[solid_line_handle, diamond_handle], fontsize=17, edgecolor="black")
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(2)
+
+    ax.set_xlabel("Time (au)", fontsize=17)
+    ax.set_ylabel("Electron Site Density", fontsize=17)
+    fig.savefig(f"{fig_filename}", dpi=300)
+
+
+def plot_two_res_electron_site_den(
+    res1, res2, fig_filename, res_site_index
+):
+    restable1 = []
+    openfile = f"{res1}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            restable1.append(data)
+    restable1 = np.asarray(restable1)
+
+    restable2 = []
+    openfile = f"{res2}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            restable2.append(data)
+    restable2 = np.asarray(restable2)
+
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(res_site_index)))
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(res_site_index, colors):
+        ax.plot(
+            restable1[:, 0].astype(complex).real,
+            restable1[:, i].astype(complex).real,
+            color=color,
+        )
+        ax.scatter(
+            restable2[:, 0].astype(complex).real[::5],
+            restable2[:, i].astype(complex).real[::5],
+            marker="v",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+
+
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.tick_params(axis="both", labelsize=16, width=2)
+
+    solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="restricted1")
+    triangle_handle = Line2D(
+            [0], [0], color="navy", marker='v', markerfacecolor='none', markeredgecolor='navy', label="restricted2"
+        )
+
+    ax.legend(handles=[solid_line_handle, triangle_handle], fontsize=17, edgecolor="black")
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(2)
+
+    ax.set_xlabel("Time (au)", fontsize=17)
+    ax.set_ylabel("Electron Site Density", fontsize=17)
+    fig.savefig(f"{fig_filename}", dpi=300)
+
+
+
+def plot_four_electron_site_den(
+    res1, gen1, res2, gen2, fig_filename, res_site_index, gen_site_index
+):
+    restable1 = []
+    openfile = f"{res1}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            restable1.append(data)
+    restable1 = np.asarray(restable1)
+
+    gentable1 = []
+    openfile = f"{gen1}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            gentable1.append(data)
+    gentable1 = np.asarray(gentable1)
+
+    restable2 = []
+    openfile = f"{res2}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            restable2.append(data)
+    restable2 = np.asarray(restable2)
+
+    gentable2 = []
+    openfile = f"{gen2}"
+    with open(openfile, "r") as f:
+        for line in f:
+            data = line.split()
+            data = [x.strip() for x in data]
+            gentable2.append(data)
+    gentable2 = np.asarray(gentable2)
+
+    colors = plt.cm.coolwarm(np.linspace(0, 1, len(gen_site_index)))
+
+    fig, ax = plt.subplots(figsize=(8,6))
+    for i, color in zip(res_site_index, colors):
+        ax.plot(
+            restable1[:, 0].astype(complex).real,
+            restable1[:, i].astype(complex).real,
+            color=color,
+        )
+        ax.scatter(
+            restable2[:, 0].astype(complex).real[::5],
+            restable2[:, i].astype(complex).real[::5],
+            marker="v",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+
+    for i, color in zip(gen_site_index, colors):
+        site_den1 = (
+            gentable1[:, i].astype(complex).real
+            + gentable1[:, (i + 1)].astype(complex).real
+        )
+        ax.scatter(
+            gentable1[:, 0].astype(complex).real[::5],
+            site_den1[::5],
+            marker="o",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+        site_den2 = (
+            gentable2[:, i].astype(complex).real
+            + gentable2[:, (i + 1)].astype(complex).real
+        )
+        ax.scatter(
+            gentable2[:, 0].astype(complex).real[::5],
+            site_den2[::5],
+            marker="D",
+            color=color,
+            facecolors='none',
+            edgecolors=color
+        )
+
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
+    ax.tick_params(axis="both", labelsize=16, width=2)
+
+    solid_line_handle = Line2D([0], [0], color="navy", lw=2, label="restricted1")
+    bubbles_handle = Line2D(
+            [0], [0], color="navy", marker='o', markerfacecolor='none', markeredgecolor='navy', label="generalized1"
+        )
+    triangle_handle = Line2D(
+            [0], [0], color="navy", marker='v', markerfacecolor='none', markeredgecolor='navy', label="restricted2"
+        )
+    diamond_handle = Line2D(
+            [0], [0], color="navy", marker='D', markerfacecolor='none', markeredgecolor='navy', label="generalized2"
+        )
+    
+
+    ax.legend(handles=[solid_line_handle, bubbles_handle, triangle_handle, diamond_handle], fontsize=17, edgecolor="black")
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(2)
+
+    ax.set_xlabel("Time (au)", fontsize=17)
+    ax.set_ylabel("'Alpha' Site Density", fontsize=17)
+    fig.savefig(f"{fig_filename}", dpi=300)
 
 
 def plot_multiple_spin_den(filename_fci, filename_dmet, fig_filename):
@@ -148,7 +402,7 @@ def plot_electron_difference(
     for i,j in zip(res_site_index, gen_site_index):
         plt.plot(
             restable[:, 0].astype(complex).real,
-            (restable[:, i].astype(complex).real - (gentable[:, i].astype(complex).real + gentable[:, (i + 1)].astype(complex).real)),
+            (restable[:, i].astype(complex).real - (gentable[:, j].astype(complex).real + gentable[:, (j + 1)].astype(complex).real)),
         )
 
     plt.xlabel("Time (au)")
@@ -158,7 +412,8 @@ def plot_electron_difference(
 
 res_site_index = [1, 2, 3, 4]
 gen_site_index = [1, 3, 5, 7]
-filename1 = "res.dat"
-filename2 = "gen.dat"
 fig_filename = "electron_density"
-plot_electron_difference(filename1, filename2, fig_filename, res_site_index, gen_site_index)
+plot_two_gen_electron_site_den("gen_h0.dat", "gen_h1.dat", "generalized_density", gen_site_index)
+#plot_four_electron_site_den("res_h0.dat", "gen_h0.dat", "res_h1.dat", "gen_h1.dat", fig_filename, res_site_index, gen_site_index)
+#plot_multiple_electron_site_den(filename1, filename2, fig_filename, res_site_index, gen_site_index)
+#plot_electron_difference(filename1, filename2, fig_filename, res_site_index, gen_site_index)

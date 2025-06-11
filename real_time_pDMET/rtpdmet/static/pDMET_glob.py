@@ -34,6 +34,7 @@ class static_pdmet:
         dmu=0.02,
         step=0.05,
         trust_region=2.5,
+        gen=False,
     ):
         """
         Nsites    - total number of sites (or basis functions) in total system
@@ -85,28 +86,24 @@ class static_pdmet:
         self.DiisStart = 4
         self.DiisDim = 4
         self.history = []
+        self.gen = gen
 
         # Calculate an initial mean-field Hamiltonian
         
         if self.rank == 0:
             print("Calculating initial mean-field Hamiltonian")
-        
-        if hamtype == 0:
+       
+        # NOTE: change 1 
+        if gen:
             if mf1RDM is None:
-                mf1RDM = self.initialize_RHF(h_site, V_site)
+                mf1RDM = self.initialize_GHF(h_site, V_site)
                 self.old_glob1RDM = np.copy(mf1RDM)
-                # mf1RDM = hf.hubbard_1RDM(self.Nele, h_site)
-                # mf1RDM = self.initialize_UHF(h_site, V_site)
-
             else:
                 self.old_glob1RDM = np.copy(mf1RDM)
-
         else:
             if mf1RDM is None:
                 mf1RDM = self.initialize_RHF(h_site, V_site)
                 self.old_glob1RDM = np.copy(mf1RDM)
-                # mf1RDM = hf.hubbard_1RDM(self.Nele, h_site)
-                # mf1RDM = self.initialize_UHF(h_site, V_site)
             else:
                 self.old_glob1RDM = np.copy(mf1RDM)
 
@@ -117,7 +114,7 @@ class static_pdmet:
         self.frag_list = []
         for i in range(Nfrag):
             self.frag_list.append(
-                fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx)
+                fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx, gen)
             )
             self.frag_list[i].frag_num = i
 
@@ -141,7 +138,6 @@ class static_pdmet:
         for i in range(size):
             frag_per_rank.append([])
 
-        # this currently doesn't do anything 
         self.site_to_frag = []
 
         if self.rank == 0:
@@ -194,6 +190,9 @@ class static_pdmet:
             
             # embedding calculation
             if self.mubool:
+                if gen:
+                    print('Not yet tested generalized formalism and chemical potential fitting! Ending simulation.')
+                    exit()
                 # do correlation calculation and add the self.mu to the H_emb
                 totalNele_0 = self.corr_calc_with_mu(self.mu)
                 record = [(0.0, totalNele_0)]
@@ -289,6 +288,8 @@ class static_pdmet:
                 if self.rank == 0:
                     print("No chemical potential fitting is employed")
 
+
+                ## NOTE: STOPPED HERE; pick up in editing fragment class
                 for frag in self.frag_in_rank:
                     frag.corr_calc(
                         self.mf1RDM,
@@ -299,6 +300,7 @@ class static_pdmet:
                         self.hamtype,
                         self.hubb_indx,
                         self.mubool,
+                        self.gen,
                     )
 
             # constract a global density matrix from all impurities
@@ -372,25 +374,6 @@ class static_pdmet:
 
     ##########################################################
 
-    def initialize_UHF(self, h_site, V_site):
-        Norbs = self.Nele
-        mol = gto.M()
-        mol.nelectron = self.Nele
-        mol.imncore_anyway = True
-        mf = scf.UHF(mol)
-        mf.get_hcore = lambda *args: h_site
-        mf.get_ovlp = lambda *args: np.eye(Norbs)
-        mf._eri = ao2mo.restore(8, V_site, Norbs)
-        # evals, h = np.linalg.eigh(h_site)
-        # mf.init_guess = h
-
-        mf.kernel()
-        mfRDM = mf.make_rdm1()
-
-        return mfRDM
-
-    ##########################################################
-
     def initialize_RHF(self, h_site, V_site):
         if self.rank == 0:
             print("Mf 1RDM is initialized with RHF")
@@ -413,14 +396,14 @@ class static_pdmet:
 
     def initialize_GHF(self, h_site, V_site):
         print("Mf 1RDM is initialized with GHF")
-        Norbs = self.Nele
+        Norbs = 2 * self.Nele
         mol = gto.M()
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
         mf = scf.GHF(mol)
         mf.get_hcore = lambda *args: h_site
         mf.get_ovlp = lambda *args: np.eye(Norbs)
-        mf._eri = ao2mo.restore(8, V_site, Norbs)
+        mf._eri = ao2mo.restore(1, V_site, Norbs)
 
         mf.kernel()
         mfRDM = mf.make_rdm1()

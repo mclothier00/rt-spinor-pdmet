@@ -49,10 +49,9 @@ def FCI_GS(h, V, U, Norbs, Nele):
 
     # might be useful to use direct_uhf.FCI() instead for the cisolver
     # Second - FCI calculation using HF molecular orbitals
-
     cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
     E_FCI, CIcoeffs = cisolver.kernel()
-
+    
     # Need to rotate CI coefficients back to embeding basis
     # used in DMET (because now they are in orbital basis)
 

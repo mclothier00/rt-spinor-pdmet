@@ -13,6 +13,8 @@ import pyscf.ao2mo
 import pyscf.fci
 from pyscf.fci import cistring
 
+import time
+
 #####################################################################
 
 

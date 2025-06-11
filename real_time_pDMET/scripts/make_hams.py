@@ -773,8 +773,6 @@ def make_ham_multi_imp_anderson_realspace_spinor(
             
     else:
         Vmat = U
-    #    print("For spinor, must be set to Full.")
-    #    exit()
 
     return hmat, Vmat
 

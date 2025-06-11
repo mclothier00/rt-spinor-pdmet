@@ -263,6 +263,7 @@ class fragment:
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
+            
             # augment the impurity/bath 1e- terms from contribution of coulomb
             # and exchange terms btwn impurity/bath and core
             # and augment the 1 e- term with only half the contribution
@@ -336,7 +337,7 @@ class fragment:
             rotmat_small = np.delete(
                 self.rotmat, np.s_[self.Nimp : self.Nimp + self.Nvirt], 1
             )
-
+            
             # rotate the 1 e- terms, h_emb currently
             # ( impurities, bath, core ) x ( impurities, bath, core )
             h_emb = utils.rot1el(h_site, rotmat_small)
@@ -356,6 +357,7 @@ class fragment:
                 # Hubbard hamiltonian
                 # remove core states from rotation matrix
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
+                
                 self.V_emb = V_site * np.einsum(
                     "ip,kr,pj,rl->ijkl",
                     utils.adjoint(rotmat_vsmall),
@@ -639,7 +641,6 @@ class fragment:
         elif hamtype == 1:
             # Hubbard hamiltonian
             rotmat_Hub = self.rotmat[hubsite_indx, :]
-
         if not gen:
             # Form inactive Fock matrix
             if hamtype == 0:

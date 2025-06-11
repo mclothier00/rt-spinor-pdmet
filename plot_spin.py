@@ -63,11 +63,8 @@ def plot_fci_dmet_site_mag(dmet_filename, fci_filename, figname):
 
     fig, ax = plt.subplots()
 
-<<<<<<< HEAD
-    sites = range(dmet.shape[1])
-=======
-    sites = range(1, dmet.shape[1]-1)
->>>>>>> fcb5cbc9a46b4256411eb62ced5175e0861d5a19
+    sites = range(1, dmet.shape[1])
+    
     colors = plt.cm.coolwarm(np.linspace(0, 1, len(sites)))
     fig, ax = plt.subplots()
     
@@ -86,7 +83,8 @@ def plot_fci_dmet_site_mag(dmet_filename, fci_filename, figname):
             fci[:, i],
             label=f"FCI mag: site {i}",
             color=color,
-    
+        )   
+ 
     ax.xaxis.set_major_locator(MaxNLocator(5))
     ax.yaxis.set_major_locator(MaxNLocator(5))
     ax.set_xlabel("Time (au)")
@@ -441,14 +439,6 @@ def plot_spin_diff(filename_fci, filename_dmet, fig_filename):
         ax.set_ylabel("'Beta' Site Density Error", fontsize=17)
         fig.savefig(f"beta_{fig_filename}_error.png", dpi=300)
 
-<<<<<<< HEAD
-dmet_filename = "dmetx.dat"
-fci_filename = "fcix.dat"
-plotname = "magx.png"
-
-plot_fci_dmet_site_mag(dmet_filename, fci_filename, plotname)
-=======
->>>>>>> fcb5cbc9a46b4256411eb62ced5175e0861d5a19
 
 plot_fci_dmet_site_mag("dmetx.dat", "fcix.dat", "magx.png")
 plot_fci_dmet_site_mag("dmety.dat", "fciy.dat", "magy.png")

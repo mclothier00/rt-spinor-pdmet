@@ -24,6 +24,14 @@ def diagonalize(H, S=None):
 #####################################################################
 
 
+def make_hermitian(mat):
+    # enforcing hermiticity
+
+    return 0.5 * (mat + np.conj(mat.T))
+
+#####################################################################
+
+
 def rot1el(h_orig, rotmat):
     # subroutine to rotate one electron integrals
 
