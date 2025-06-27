@@ -10,8 +10,10 @@ import time
 import math
 from mpi4py import MPI
 import os
+
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
 from scipy import linalg
+
 
 class dynamics_driver:
     #####################################################################
@@ -99,11 +101,6 @@ class dynamics_driver:
 
         # Convert rotation matrices, CI coefficients,
         # and MF 1RDM to complex arrays if they're not already
-        #for frag in self.tot_system.frag_list:
-        #    if not np.iscomplexobj(frag.rotmat):
-        #        frag.rotmat = frag.rotmat.astype(complex)
-        #    if not np.iscomplexobj(frag.CIcoeffs):
-        #        frag.CIcoeffs = frag.CIcoeffs.astype(complex)
 
         for frag in self.tot_system.frag_in_rank:
             if not np.iscomplexobj(frag.rotmat):
@@ -133,7 +130,7 @@ class dynamics_driver:
         # If running Hubbard-like model, need an array
         # containing index of all sites that have hubbard U term
         self.tot_system.hubsite_indx = hubsite_indx
-        
+
         if self.tot_system.hamtype == 1 and self.tot_system.hubsite_indx is None:
             print("ERROR: Did not specify an array of sites that have U term")
             print()
@@ -141,7 +138,6 @@ class dynamics_driver:
 
         # Define output files
         self.file_output = open("output_dynamics.dat", "w")
-        #self.file_corrdens = open("electron_density.dat", "w")
         # replacing file_corrdens with file_globdens due to parallelization
         self.file_globdens = open("electron_density.dat", "w")
         if self.laser:
@@ -153,15 +149,15 @@ class dynamics_driver:
             self.file_spinx = open("spin_x.dat", "w")
             self.file_spiny = open("spin_y.dat", "w")
             self.file_spinz = open("spin_z.dat", "w")
- 
+
         self.max_diagonalG = 0
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
-    
+
     #####################################################################
-    
+
     def kernel(self):
         start_time = time.time()
- 
+
         if self.rank == 0:
             print()
             print("********************************************")
@@ -206,7 +202,7 @@ class dynamics_driver:
 
             # Integrate FCI coefficients and rotation matrix for all fragments
             self.integrate(self.nproc, current_time)
-    
+
             # Increase current_time
             current_time = self.init_time + (step + 1) * self.delt
             sys.stdout.flush()
@@ -289,7 +285,9 @@ class dynamics_driver:
 
             # GETTING 1ST SUBSTEP DT
 
-            l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(nproc, current_time)
+            l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(
+                nproc, current_time
+            )
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
@@ -297,15 +295,19 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k1_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m1_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
-                    print(f'norm of CIcoeffs at time {current_time} on rk step 1: {linalg.norm(frag.CIcoeffs)}')
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                    print(
+                        f"norm of CIcoeffs at time {current_time} on rk step 1: {linalg.norm(frag.CIcoeffs)}"
+                    )
 
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
-        
+
             # GETTING 2ST SUBSTEP DT
-            
-            l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(nproc, current_time)
+
+            l2, k2_list, m2_list, n2, p2, mfRDM_check = self.one_rk_step(
+                nproc, current_time
+            )
 
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l2
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n2
@@ -313,15 +315,19 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k2_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m2_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
-                    print(f'norm of CIcoeffs at time {current_time} on rk step 2: {linalg.norm(frag.CIcoeffs)}')
-            
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                    print(
+                        f"norm of CIcoeffs at time {current_time} on rk step 2: {linalg.norm(frag.CIcoeffs)}"
+                    )
+
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             # GETTING 3ST SUBSTEP DT
 
-            l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(nproc, current_time)
+            l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(
+                nproc, current_time
+            )
 
             self.tot_system.NOevecs = init_NOevecs + 1.0 * l3
             self.tot_system.glob1RDM = init_glob1RDM + 1.0 * n3
@@ -329,16 +335,19 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 * k3_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 1.0 * m3_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
-                    print(f'norm of CIcoeffs at time {current_time} on rk step 3: {linalg.norm(frag.CIcoeffs)}')
-
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                    print(
+                        f"norm of CIcoeffs at time {current_time} on rk step 3: {linalg.norm(frag.CIcoeffs)}"
+                    )
 
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # GETTING 4ST SUBSTEP DT
 
-            l4, k4_list, m4_list, n4, p4, mfRDM_check = self.one_rk_step(nproc, current_time)
+            l4, k4_list, m4_list, n4, p4, mfRDM_check = self.one_rk_step(
+                nproc, current_time
+            )
 
             self.tot_system.NOevecs = init_NOevecs + 1.0 / 6.0 * (
                 l1 + 2.0 * l2 + 2.0 * l3 + l4
@@ -363,9 +372,11 @@ class dynamics_driver:
                     + 2.0 * m3_list[cnt]
                     + m4_list[cnt]
                 )
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
-                    print(f'norm of CIcoeffs at time {current_time} on rk step 4: {linalg.norm(frag.CIcoeffs)}')
-            
+                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                    print(
+                        f"norm of CIcoeffs at time {current_time} on rk step 4: {linalg.norm(frag.CIcoeffs)}"
+                    )
+
             if self.laser:
                 self.update_ham(current_time + 1.0 * self.delt)
 
@@ -438,7 +449,6 @@ class dynamics_driver:
                 print(f"current time: {current_time}")
                 quit()
 
-
         else:
             print("ERROR: A proper integrator was not specified")
             exit()
@@ -462,14 +472,16 @@ class dynamics_driver:
 
         # Prior to calling this routine need to update
         # MF 1RDM, rotmat and CI coefficients
-    
+
         for cnt, frag in enumerate(self.tot_system.frag_in_rank):
-            if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol = 1e-3) == False:
-                print(f'norm of CIcoeffs at time {current_time}: {linalg.norm(frag.CIcoeffs)}')
+            if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                print(
+                    f"norm of CIcoeffs at time {current_time}: {linalg.norm(frag.CIcoeffs)}"
+                )
 
         # Calculate the terms needed for time-derivative of mf-1rdm
         self.tot_system.get_frag_corr12RDM()
-        #self.tot_system.get_frag_corr1RDM()
+        # self.tot_system.get_frag_corr1RDM()
 
         self.tot_system.NOevals = np.diag(
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
@@ -514,7 +526,6 @@ class dynamics_driver:
 
         # Calculate change in CI coefficients in parallel
 
-        no_paralel_start = time.time()
         change_CIcoeffs_list = []
 
         for ifrag, frag in enumerate(self.tot_system.frag_in_rank):
@@ -532,7 +543,6 @@ class dynamics_driver:
     #####################################################################
 
     def print_data(self, current_time):
-       
         # Subroutine to calculate and print-out observables of interest
 
         fmt_str = "%20.8e"
@@ -541,8 +551,8 @@ class dynamics_driver:
 
         # Calculate DMET energy, which also includes calculation
         # of 1 & 2 RDMs and embedding hamiltonian for each fragment
-        # NOTE: currently turning off due to two electron terms 
-        #self.tot_system.get_DMET_E(self.nproc)
+        # NOTE: currently turning off due to two electron terms
+        # self.tot_system.get_DMET_E(self.nproc)
 
         # Calculate total number of electrons
         self.tot_system.get_DMET_Nele()
@@ -559,11 +569,31 @@ class dynamics_driver:
             den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
             ovlp = np.eye(self.tot_system.Nsites)
 
-            magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-            magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-            magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+            magx = np.sum(
+                (
+                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                    + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                )
+                * ovlp
+            )
+            magy = 1j * np.sum(
+                (
+                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                    - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                )
+                * ovlp
+            )
+            magz = np.sum(
+                (
+                    den[: self.tot_system.Nsites, : self.tot_system.Nsites]
+                    - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+                )
+                * ovlp
+            )
 
-            all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
+            all_spin = np.insert(
+                np.array([magx.real, magy.real, magz.real]), 0, current_time
+            )
             np.savetxt(
                 self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
             )
@@ -576,11 +606,29 @@ class dynamics_driver:
 
             for i in range(self.tot_system.Nsites):
                 ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
-                ovlp[i,i] = 1
+                ovlp[i, i] = 1
 
-                site_magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-                site_magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-                site_magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+                site_magx = np.sum(
+                    (
+                        den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                        + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                    )
+                    * ovlp
+                )
+                site_magy = 1j * np.sum(
+                    (
+                        den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                        - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                    )
+                    * ovlp
+                )
+                site_magz = np.sum(
+                    (
+                        den[: self.tot_system.Nsites, : self.tot_system.Nsites]
+                        - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+                    )
+                    * ovlp
+                )
 
                 sites_x.append(site_magx.real)
                 sites_y.append(site_magy.real)
@@ -590,27 +638,21 @@ class dynamics_driver:
             sites_y = np.insert(np.array(sites_y), 0, current_time)
             sites_z = np.insert(np.array(sites_z), 0, current_time)
 
-            np.savetxt(
-                self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
-            )
-            np.savetxt(
-                self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
-            )
-            np.savetxt(
-                self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
-            )
+            np.savetxt(self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str)
+            np.savetxt(self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str)
+            np.savetxt(self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str)
 
         # Print output data
         writing_outfile = time.time()
         output = np.zeros((12 + self.tot_system.Nbasis))
         output[0] = current_time
-        #output[1] = self.tot_system.DMET_E
+        # output[1] = self.tot_system.DMET_E
         output[1] = 0
         output[2] = self.tot_system.DMET_Nele
         output[3] = np.real(np.trace(self.tot_system.mf1RDM))
         output[4] = np.real(np.trace(self.tot_system.frag_in_rank[0].corr1RDM))
         # NOTE: currently taking out due to expensive corr2RDM formation
-        #output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
+        # output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
         output[5] = np.linalg.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
         # output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
         output[6] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
@@ -641,18 +683,36 @@ class dynamics_driver:
 
     def print_just_spins(self, current_time):
         fmt_str = "%20.8e"
-        
+
         den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
         ovlp = np.eye(self.tot_system.Nsites)
 
-        magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-        magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-        magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
-
-        all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
-        np.savetxt(
-            self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
+        magx = np.sum(
+            (
+                den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+            )
+            * ovlp
         )
+        magy = 1j * np.sum(
+            (
+                den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+            )
+            * ovlp
+        )
+        magz = np.sum(
+            (
+                den[: self.tot_system.Nsites, : self.tot_system.Nsites]
+                - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+            )
+            * ovlp
+        )
+
+        all_spin = np.insert(
+            np.array([magx.real, magy.real, magz.real]), 0, current_time
+        )
+        np.savetxt(self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str)
 
         # spin on each site
 
@@ -662,11 +722,29 @@ class dynamics_driver:
 
         for i in range(self.tot_system.Nsites):
             ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
-            ovlp[i,i] = 1
+            ovlp[i, i] = 1
 
-            site_magx = np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] + den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-            site_magy = 1j * np.sum((den[:self.tot_system.Nsites, self.tot_system.Nsites:] - den[self.tot_system.Nsites:, :self.tot_system.Nsites]) * ovlp)
-            site_magz = np.sum((den[:self.tot_system.Nsites, :self.tot_system.Nsites] - den[self.tot_system.Nsites:, self.tot_system.Nsites:]) * ovlp)
+            site_magx = np.sum(
+                (
+                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                    + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                )
+                * ovlp
+            )
+            site_magy = 1j * np.sum(
+                (
+                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
+                    - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                )
+                * ovlp
+            )
+            site_magz = np.sum(
+                (
+                    den[: self.tot_system.Nsites, : self.tot_system.Nsites]
+                    - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+                )
+                * ovlp
+            )
 
             sites_x.append(site_magx.real)
             sites_y.append(site_magy.real)
@@ -676,21 +754,15 @@ class dynamics_driver:
         sites_y = np.insert(np.array(sites_y), 0, current_time)
         sites_z = np.insert(np.array(sites_z), 0, current_time)
 
-        np.savetxt(
-            self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
-        )
-        np.savetxt(
-            self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
-        )
-        np.savetxt(
-            self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
-        )
+        np.savetxt(self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str)
+        np.savetxt(self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str)
+        np.savetxt(self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str)
 
     #####################################################################
 
     def print_just_dens(self, current_time):
         fmt_str = "%20.8e"
-        #self.tot_system.get_DMET_E(self.nproc)
+        # self.tot_system.get_DMET_E(self.nproc)
         self.tot_system.get_frag_corr1RDM()
         self.tot_system.get_DMET_Nele()
 
@@ -699,7 +771,6 @@ class dynamics_driver:
         globdens = np.insert(globdens, 0, current_time)
         np.savetxt(self.file_globdens, globdens.reshape(1, globdens.shape[0]), fmt_str)
         self.file_globdens.flush()
-            
 
     #####################################################################
 
@@ -736,7 +807,6 @@ def applyham_wrapper(frag, delt, gen=False):
         )
 
     if gen:
-
         CIvec = (
             -1j
             * delt
