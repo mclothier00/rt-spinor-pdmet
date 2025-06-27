@@ -29,6 +29,7 @@ def make_hermitian(mat):
 
     return 0.5 * (mat + np.conj(mat.T))
 
+
 #####################################################################
 
 
@@ -311,7 +312,7 @@ def reshape_gtor_matrix(a):
 
     # original block indices for both rows and columns
     rows = np.arange(num_rows)
-    indices_even = rows[::2]  
+    indices_even = rows[::2]
     indices_odd = rows[1::2]
     new_indices = np.concatenate((indices_even, indices_odd))
 
@@ -320,6 +321,18 @@ def reshape_gtor_matrix(a):
     new_a = new_a[:, new_indices]
 
     return new_a
+
+
+#####################################################################
+
+
+def gtor_mat(a):
+    ### assuming a block diagonal matrix with identical blocks; for debugging
+
+    dim = a.shape[-1] // 2
+    a_block = reshape_gtor_matrix(a)
+
+    return 2 * a_block[dim:, dim:]
 
 
 #####################################################################
@@ -345,6 +358,33 @@ def reshape_rtog_tensor(a):
     new_a = new_a[indices, :, :, :]
 
     return new_a
+
+
+#####################################################################
+
+
+def spinor_impindx(Nsites, Nfrag, spinblock=False):
+    ## creates a new impindx based on spinor (or unrestricted) orbitals
+
+    impindx = []
+
+    if spinblock:
+        # spinor, aaaabbbb configuration
+        Nimp = int(Nsites / Nfrag)
+        for i in range(Nfrag):
+            impindx.append(
+                np.concatenate((
+                    np.arange(i * Nimp, (i + 1) * Nimp),
+                    np.arange(i * Nimp + Nsites, (i + 1) * Nimp + Nsites),
+                ))
+            )
+    else:
+        # spinor, abababab configuration
+        gNimp = int((Nsites * 2) / Nfrag)
+        for i in range(Nfrag):
+            impindx.append(np.arange(i * gNimp, (i + 1) * gNimp))
+
+    return impindx
 
 
 #####################################################################

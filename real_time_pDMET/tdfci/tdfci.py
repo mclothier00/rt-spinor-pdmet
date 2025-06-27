@@ -178,7 +178,7 @@ class tdfci:
 
             # total spin vectors
             den = utils.reshape_gtor_matrix(corr1RDM)
-            #den = np.transpose(den)
+            # den = np.transpose(den)
             Nsp = int(self.Nsites / 2)
             ovlp = np.eye(Nsp)
 
@@ -186,12 +186,14 @@ class tdfci:
             magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
             magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
 
-            all_spin = np.insert(np.array([magx.real, magy.real, magz.real]), 0, current_time)
+            all_spin = np.insert(
+                np.array([magx.real, magy.real, magz.real]), 0, current_time
+            )
             np.savetxt(
                 self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
             )
             self.file_totspins.flush()
-            
+
             # spin on each site
 
             sites_x = []
@@ -200,7 +202,7 @@ class tdfci:
 
             for i in range(Nsp):
                 ovlp = np.zeros((Nsp, Nsp))
-                ovlp[i,i] = 1
+                ovlp[i, i] = 1
 
                 site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
                 site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
@@ -214,15 +216,9 @@ class tdfci:
             sites_y = np.insert(np.array(sites_y), 0, current_time)
             sites_z = np.insert(np.array(sites_z), 0, current_time)
 
-            np.savetxt(
-                self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str
-            )
-            np.savetxt(
-                self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str
-            )
-            np.savetxt(
-                self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str
-            )
+            np.savetxt(self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str)
+            np.savetxt(self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str)
+            np.savetxt(self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str)
             self.file_spinx.flush()
             self.file_spiny.flush()
             self.file_spinz.flush()
@@ -267,7 +263,9 @@ class tdfci:
             spindens = diagcorr1RDM
             spindens = np.insert(diagcorr1RDM, 0, current_time)
 
-            np.savetxt(self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str)
+            np.savetxt(
+                self.file_spindens, spindens.reshape(1, spindens.shape[0]), fmt_str
+            )
             self.file_spindens.flush()
 
         # Print output data

@@ -90,34 +90,22 @@ def calc_iddt_glob1RDM(system):
     # Subroutine to calculate i times
     # time dependence of global 1RDM forcing anti-hermiticity
     if not system.gen:
-        iddt_glob1RDM = np.zeros([system.Nsites, system.Nsites], dtype=complex)
-
-        for i, frag in enumerate(system.frag_in_rank):
-            tmp = 0.5 * np.dot(
-                frag.rotmat, np.dot(frag.iddt_corr1RDM, frag.rotmat.conj().T)
-            )
-            for site in frag.impindx:
-                iddt_glob1RDM[site, :] += tmp[site, :]
-                iddt_glob1RDM[:, site] += tmp[:, site]
-
-        true_iddt_glob1RDM = np.zeros([system.Nsites, system.Nsites], dtype=complex)
-        MPI.COMM_WORLD.Allreduce(iddt_glob1RDM, true_iddt_glob1RDM, op=MPI.SUM)
-
+        Nsites = system.Nsites
     if system.gen:
-        iddt_glob1RDM = np.zeros([2 * system.Nsites, 2 * system.Nsites], dtype=complex)
+        Nsites = 2 * system.Nsites
 
-        for i, frag in enumerate(system.frag_in_rank):
-            tmp = 0.5 * np.dot(
-                frag.rotmat, np.dot(frag.iddt_corr1RDM, frag.rotmat.conj().T)
-            )
-            for site in frag.impindx:
-                iddt_glob1RDM[site, :] += tmp[site, :]
-                iddt_glob1RDM[:, site] += tmp[:, site]
+    iddt_glob1RDM = np.zeros([Nsites, Nsites], dtype=complex)
 
-        true_iddt_glob1RDM = np.zeros(
-            [2 * system.Nsites, 2 * system.Nsites], dtype=complex
+    for i, frag in enumerate(system.frag_in_rank):
+        tmp = 0.5 * np.dot(
+            frag.rotmat, np.dot(frag.iddt_corr1RDM, frag.rotmat.conj().T)
         )
-        MPI.COMM_WORLD.Allreduce(iddt_glob1RDM, true_iddt_glob1RDM, op=MPI.SUM)
+        for site in frag.impindx:
+            iddt_glob1RDM[site, :] += tmp[site, :]
+            iddt_glob1RDM[:, site] += tmp[:, site]
+
+    true_iddt_glob1RDM = np.zeros([Nsites, Nsites], dtype=complex)
+    MPI.COMM_WORLD.Allreduce(iddt_glob1RDM, true_iddt_glob1RDM, op=MPI.SUM)
 
     return true_iddt_glob1RDM
 
