@@ -406,10 +406,13 @@ def block_tensor(a):
 #####################################################################
 
 
-def reshape_cicoeffs_toblock(cicoeffs):
-    """
-    reshapes a set of [1a, 1b, 2a, 2b, ...] CI coefficients into
-    [1a, 2a, ..., 1b, 2b, ...] CI coefficients
-    """
+def return_max_value(array):
+    largest = 0
+    for x in range(0, len(array)):
+        for y in range(0, len(array)):
+            if abs(array[x, y]) > largest:
+                largest = array[x, y]
+    return largest
 
-    return cicoeffs
+
+#####################################################################

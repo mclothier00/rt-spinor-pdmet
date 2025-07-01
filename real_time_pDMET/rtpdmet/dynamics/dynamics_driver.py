@@ -9,7 +9,7 @@ import pickle
 import time
 import math
 from mpi4py import MPI
-import os
+from pathlib import Path
 
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
 from scipy import linalg
@@ -40,6 +40,7 @@ class dynamics_driver:
         init_time=0.0,
         laser=False,
         gen=False,
+        restart=False,
     ):
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
@@ -78,6 +79,7 @@ class dynamics_driver:
         else:
             self.Vbias = False
         self.gen = gen
+        self.restart = restart
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -137,18 +139,30 @@ class dynamics_driver:
             exit()
 
         # Define output files
-        self.file_output = open("output_dynamics.dat", "w")
-        # replacing file_corrdens with file_globdens due to parallelization
-        self.file_globdens = open("electron_density.dat", "w")
-        if self.laser:
-            self.file_laser = open("laser.dat", "w")
-        if self.Vbias:
-            self.file_current = open("current.dat", "w")
-        if self.gen:
-            self.file_totspins = open("total_spins.dat", "w")
-            self.file_spinx = open("spin_x.dat", "w")
-            self.file_spiny = open("spin_y.dat", "w")
-            self.file_spinz = open("spin_z.dat", "w")
+        if self.restart:
+            self.file_output = open("output_dynamics.dat", "a")
+            self.file_globdens = open("electron_density.dat", "a")
+            if self.laser:
+                self.file_laser = open("laser.dat", "a")
+            if self.Vbias:
+                self.file_current = open("current.dat", "a")
+            if self.gen:
+                self.file_totspins = open("total_spins.dat", "a")
+                self.file_spinx = open("spin_x.dat", "a")
+                self.file_spiny = open("spin_y.dat", "a")
+                self.file_spinz = open("spin_z.dat", "a")
+        else:
+            self.file_output = open("output_dynamics.dat", "w")
+            self.file_globdens = open("electron_density.dat", "w")
+            if self.laser:
+                self.file_laser = open("laser.dat", "w")
+            if self.Vbias:
+                self.file_current = open("current.dat", "w")
+            if self.gen:
+                self.file_totspins = open("total_spins.dat", "w")
+                self.file_spinx = open("spin_x.dat", "w")
+                self.file_spiny = open("spin_y.dat", "w")
+                self.file_spinz = open("spin_z.dat", "w")
 
         self.max_diagonalG = 0
         self.corrdens_old = np.zeros((self.tot_system.Nsites))
@@ -159,11 +173,31 @@ class dynamics_driver:
         start_time = time.time()
 
         if self.rank == 0:
-            print()
-            print("********************************************")
-            print("     BEGIN REAL-TIME DMET CALCULATION       ")
-            print("********************************************")
-            print()
+            if not self.restart:
+                print()
+                print("********************************************")
+                print("     BEGIN REAL-TIME DMET CALCULATION       ")
+                print("********************************************")
+                print()
+
+            if self.restart:
+                print()
+                print(
+                    "**********************************************************************"
+                )
+                print(
+                    f"   RESTARTING REAL-TIME DMET CALCULATION FROM TIME {self.init_time}    "
+                )
+                print(
+                    "**********************************************************************"
+                )
+                print()
+
+            diag_global = utils.rot1el(
+                self.tot_system.glob1RDM, self.tot_system.NOevecs
+            )
+            np.fill_diagonal(diag_global, 0)
+            self.max_diag_global = utils.return_max_value(diag_global)
 
         # DYNAMICS LOOP
         current_time = self.init_time
@@ -186,6 +220,7 @@ class dynamics_driver:
                         "for RT-pDMET calculation",
                     )
                     self.print_data(current_time)
+                    self.print_checkpoint(current_time)
                     sys.stdout.flush()
 
                 # if a trajectory restarted, record data before a 1st step
@@ -407,7 +442,7 @@ class dynamics_driver:
                 self.tot_system.glob1RDM, self.tot_system.NOevecs
             )
             np.fill_diagonal(diag_global, 0)
-            self.max_diag_global = self.return_max_value(diag_global)
+            self.max_diag_global = utils.return_max_value(diag_global)
 
             if not self.gen:
                 diag_globalRDM_check = np.allclose(
@@ -456,13 +491,13 @@ class dynamics_driver:
             quit()
 
     #####################################################################
-    def return_max_value(self, array):
-        largest = 0
-        for x in range(0, len(array)):
-            for y in range(0, len(array)):
-                if abs(array[x, y]) > largest:
-                    largest = array[x, y]
-        return largest
+    # def return_max_value(self, array):
+    #    largest = 0
+    #    for x in range(0, len(array)):
+    #        for y in range(0, len(array)):
+    #            if abs(array[x, y]) > largest:
+    #                largest = array[x, y]
+    #    return largest
 
     #####################################################################
 
@@ -674,9 +709,14 @@ class dynamics_driver:
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()
 
+    #####################################################################
+
+    def print_checkpoint(self, current_time):
         # Save total system to file for restart purposes using pickle
         file_system = open("restart_system.dat", "wb")
-        pickle.dump(self.tot_system, file_system)
+        pickle.dump(
+            {"last_time": current_time, "tot_system": self.tot_system}, file_system
+        )
         file_system.close()
 
     #####################################################################

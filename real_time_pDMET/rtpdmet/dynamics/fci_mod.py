@@ -168,9 +168,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
     # This would be equivalent to (p_dag r_dag s q) in chemists notation, so equal to restricted notation
     # PySCF requires CIcoeffs to be in a spin-blocked configuration
     if gen:
-        corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12_new(
-            CIcoeffs, Norbs, Nele
-        )
+        corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
 
         if not np.isclose(linalg.norm(CIcoeffs), 1.0, atol=1e-3):
             print(f"norm of CIcoeffs: {linalg.norm(CIcoeffs)}")
