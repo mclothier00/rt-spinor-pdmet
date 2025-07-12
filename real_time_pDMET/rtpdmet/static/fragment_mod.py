@@ -4,7 +4,6 @@ import real_time_pDMET.rtpdmet.static.fci_mod as fci_mod
 import real_time_pDMET.scripts.utils as utils
 import scipy.linalg as linalg
 
-
 class fragment:
     def __init__(
         self,
@@ -158,7 +157,7 @@ class fragment:
         # define 1 e- term of size ( impurities, bath ) x ( impurities, bath )
         # that will only have 1/2 interaction with the core
         self.h_emb_halfcore = np.copy(h_emb[: 2 * self.Nimp, : 2 * self.Nimp])
-
+        
         # augment the impurity/bath 1e- terms from contribution of Coulomb
         # and exchange terms btwn impurity/bath and core
         # and augment the 1 e- term with only half the contribution
@@ -167,6 +166,7 @@ class fragment:
             # rotate the 2 e- terms
             if hamtype == 0:
                 V_emb = codes.rot2el_chem(V_site, rotmat_small)
+
             elif hamtype == 1:
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
                 self.V_emb = U * np.einsum(
@@ -177,6 +177,7 @@ class fragment:
                     rotmat_vsmall,
                 )
 
+        
             if hamtype == 0:
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                     h_emb[: 2 * self.Nimp, : 2 * self.Nimp] = (
@@ -191,6 +192,7 @@ class fragment:
                     )
 
             elif hamtype == 1:
+                
                 core_int = U * np.einsum(
                     "ap,pb,p->ab",
                     codes.adjoint(rotmat_vsmall),
@@ -206,25 +208,25 @@ class fragment:
                 self.h_emb_halfcore += 0.5 * core_int
 
             # Calculate the energy associated with core-core interactions,
-            Ecore = 0
-            for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                Ecore += 2 * h_emb[core1, core1]
+            # Ecore = 0
+            # for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #     Ecore += 2 * h_emb[core1, core1]
 
-                if hamtype == 0:
-                    for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                        Ecore += (
-                            2 * V_emb[core1, core1, core2, core2]
-                            - V_emb[core1, core2, core2, core1]
-                        )
+            #     if hamtype == 0:
+            #         for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #             Ecore += (
+            #                 2 * V_emb[core1, core1, core2, core2]
+            #                 - V_emb[core1, core2, core2, core1]
+            #             )
 
-            if hamtype == 1:
-                vec = np.einsum(
-                    "pe,ep->p",
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                    codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                )
+            # if hamtype == 1:
+            #     vec = np.einsum(
+            #         "pe,ep->p",
+            #         rotmat_small[hubsite_indx, 2 * self.Nimp :],
+            #         codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+            #     )
 
-                Ecore += V_site * np.einsum("p, p", vec, vec)
+            #     Ecore += V_site * np.dot(vec, vec) #np.einsum("p, p", vec, vec) 
 
         if self.gen:
             # rotate the 2 e- terms
@@ -273,28 +275,29 @@ class fragment:
                 h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
                 self.h_emb_halfcore += 0.5 * core_int
 
+            ### NOTE: what is this doing? does not seem to ever be called?
             # Calculate the energy associated with core-core interactions,
-            Ecore = 0
-            for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                Ecore += h_emb[core1, core1]
-                if hamtype == 0:
-                    # General hamiltonian
-                    for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                        Ecore += 0.5 * (
-                            V_emb[core1, core1, core2, core2]
-                            - V_emb[core1, core2, core2, core1]
-                        )
+            # Ecore = 0
+            # for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #     Ecore += h_emb[core1, core1]
+            #     if hamtype == 0:
+            #         # General hamiltonian
+            #         for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #             Ecore += 0.5 * (
+            #                 V_emb[core1, core1, core2, core2]
+            #                 - V_emb[core1, core2, core2, core1]
+            #             )
 
-            if hamtype == 1:
-                # Hubbard hamiltonian
-                vec = np.einsum(
-                    "pe,ep->p",
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                    codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                )
-                Ecore += 0.5 * (V_site * np.einsum("p,p", vec, vec))
+            # if hamtype == 1:
+            #     # Hubbard hamiltonian
+            #     vec = np.einsum(
+            #         "pe,ep->p",
+            #         rotmat_small[hubsite_indx, 2 * self.Nimp :],
+            #         codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+            #     )
+            #     Ecore += 0.5 * (V_site * np.einsum("p,p", vec, vec))
 
-        self.Ecore = Ecore.real
+        # self.Ecore = Ecore.real
 
         # Shrink h_emb and V_emb arrays to only include the impurity and bath
         self.h_emb = h_emb[: 2 * self.Nimp, : 2 * self.Nimp]

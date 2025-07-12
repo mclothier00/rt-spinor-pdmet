@@ -13,7 +13,6 @@ DiisDim = 4
 adiis = lib.diis.DIIS()
 adiis.space = DiisDim
 
-
 class static_pdmet:
     def __init__(
         self,
@@ -404,7 +403,7 @@ class static_pdmet:
         if self.rank == 0:
             print("Mf 1RDM is initialized with RHF")
 
-        Norbs = self.Nele
+        Norbs = self.Nsites
         mol = gto.M()
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
@@ -422,7 +421,7 @@ class static_pdmet:
 
     def initialize_GHF(self, h_site, V_site):
         print("Mf 1RDM is initialized with GHF")
-        Norbs = 2 * self.Nele
+        Norbs = 2 * self.Nsites
         mol = gto.M()
         mol.nelectron = self.Nele
         mol.imncore_anyway = True

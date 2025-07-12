@@ -40,6 +40,7 @@ class dynamics_driver:
         init_time=0.0,
         laser=False,
         gen=False,
+        mag_sites=None,
         restart=False,
     ):
         # h_site -
@@ -57,6 +58,9 @@ class dynamics_driver:
         # integ - the type of integrator used
         # nproc - number of processors for calculation
         # - careful, there is no check that this matches the pbs script
+        # mag_sites - (for a generalized calculation) the spatial sites on which
+        #   to calculate the spin magnetic moment. If not specified, all sites 
+        #   are calculated for Nsites < 50.
 
         self.tot_system = tot_system
         self.delt = delt
@@ -80,6 +84,13 @@ class dynamics_driver:
             self.Vbias = False
         self.gen = gen
         self.restart = restart
+        if mag_sites is not None:
+            self.mag_sites = mag_sites        
+        elif self.tot_system.Nsites < 50:
+            self.mag_sites = self.tot_system.Nsites
+        else:
+            print('Too many sites to calculate the spin magnetic moment on each one. Please specifcy a range of sites.')
+            self.mag_sites = 0 
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -128,6 +139,15 @@ class dynamics_driver:
         # Set-up Hamiltonian for dynamics calculation
         self.tot_system.V_site = V_site
         self.tot_system.hamtype = hamtype
+
+        if self.tot_system.hamtype == 1 and np.ndim(self.tot_system.V_site) != 0:
+            print(f'''Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 1. Please change dimension of two-electron Hamiltonian or remove the Hubbard shortcut.''')
+            print('Canceling simulation.') 
+            exit()
+        if self.tot_system.hamtype == 0 and np.ndim(self.tot_system.V_site) != 4:
+            print(f'''Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 4. Please use full two electron Hamiltonian.''')
+            print('Canceling simulation.') 
+            exit()
 
         # If running Hubbard-like model, need an array
         # containing index of all sites that have hubbard U term
@@ -209,7 +229,7 @@ class dynamics_driver:
                 if step == 0:
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
-                    if self.gen:
+                    if self.gen: 
                         self.print_just_spins(current_time)
                 if (np.mod(step, self.Nprint) == 0) and step > 1:
                     print(
@@ -303,6 +323,7 @@ class dynamics_driver:
 
             # Copy MF 1RDM, global RDM, CI coefficients,
             # natural and embedding orbs at time t
+
             init_NOevecs = np.copy(self.tot_system.NOevecs)
             init_glob1RDM = np.copy(self.tot_system.glob1RDM)
             init_mf1RDM = np.copy(self.tot_system.mf1RDM)
@@ -599,83 +620,7 @@ class dynamics_driver:
         np.savetxt(self.file_globdens, globdens.reshape(1, globdens.shape[0]), fmt_str)
         self.file_globdens.flush()
 
-        if self.gen:
-            # total spin vectors
-            den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
-            ovlp = np.eye(self.tot_system.Nsites)
-
-            magx = np.sum(
-                (
-                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                    + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
-                )
-                * ovlp
-            )
-            magy = 1j * np.sum(
-                (
-                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                    - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
-                )
-                * ovlp
-            )
-            magz = np.sum(
-                (
-                    den[: self.tot_system.Nsites, : self.tot_system.Nsites]
-                    - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
-                )
-                * ovlp
-            )
-
-            all_spin = np.insert(
-                np.array([magx.real, magy.real, magz.real]), 0, current_time
-            )
-            np.savetxt(
-                self.file_totspins, all_spin.reshape(1, all_spin.shape[0]), fmt_str
-            )
-
-            # spin on each site
-
-            sites_x = []
-            sites_y = []
-            sites_z = []
-
-            for i in range(self.tot_system.Nsites):
-                ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
-                ovlp[i, i] = 1
-
-                site_magx = np.sum(
-                    (
-                        den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                        + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
-                    )
-                    * ovlp
-                )
-                site_magy = 1j * np.sum(
-                    (
-                        den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                        - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
-                    )
-                    * ovlp
-                )
-                site_magz = np.sum(
-                    (
-                        den[: self.tot_system.Nsites, : self.tot_system.Nsites]
-                        - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
-                    )
-                    * ovlp
-                )
-
-                sites_x.append(site_magx.real)
-                sites_y.append(site_magy.real)
-                sites_z.append(site_magz.real)
-
-            sites_x = np.insert(np.array(sites_x), 0, current_time)
-            sites_y = np.insert(np.array(sites_y), 0, current_time)
-            sites_z = np.insert(np.array(sites_z), 0, current_time)
-
-            np.savetxt(self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str)
-            np.savetxt(self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str)
-            np.savetxt(self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str)
+        self.print_just_spins(current_time)
 
         # Print output data
         writing_outfile = time.time()
@@ -722,6 +667,13 @@ class dynamics_driver:
     #####################################################################
 
     def print_just_spins(self, current_time):
+        """
+        Print the spin magentic moment for entire system and for each 
+        specified site. If no set of sites is specified and the total 
+        number of sites is less than 50, then the spin magnetic moment 
+        will be calculated for all sites.
+        """
+
         fmt_str = "%20.8e"
 
         den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
@@ -760,7 +712,7 @@ class dynamics_driver:
         sites_y = []
         sites_z = []
 
-        for i in range(self.tot_system.Nsites):
+        for i in range(self.mag_sites):
             ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
             ovlp[i, i] = 1
 

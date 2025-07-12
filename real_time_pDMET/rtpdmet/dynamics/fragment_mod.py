@@ -299,27 +299,27 @@ class fragment:
 
             # Calculate the energy associated with core-core interactions,
             # setting it numerically to a real number since it always will be
-            Ecore = 0
-            for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                Ecore += 2 * h_emb[core1, core1]
+            # Ecore = 0
+            # for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #     Ecore += 2 * h_emb[core1, core1]
 
-                if hamtype == 0:
-                    # General hamiltonian
-                    for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                        Ecore += (
-                            2 * V_emb[core1, core1, core2, core2]
-                            - V_emb[core1, core2, core2, core1]
-                        )
-            if hamtype == 1:
-                # Hubbard hamiltonian
-                vec = np.einsum(
-                    "pe,ep->p",
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                )
-                Ecore += V_site * np.einsum("p,p", vec, vec)
+            #     if hamtype == 0:
+            #         # General hamiltonian
+            #         for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #             Ecore += (
+            #                 2 * V_emb[core1, core1, core2, core2]
+            #                 - V_emb[core1, core2, core2, core1]
+            #             )
+            # if hamtype == 1:
+            #     # Hubbard hamiltonian
+            #     vec = np.einsum(
+            #         "pe,ep->p",
+            #         rotmat_small[hubsite_indx, 2 * self.Nimp :],
+            #         utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+            #     )
+            #     Ecore += V_site * np.einsum("p,p", vec, vec)
 
-            self.Ecore = Ecore.real
+            # self.Ecore = Ecore.real
 
             # Shrink h_emb and V_emb arrays to only include the impurity and bath
             self.h_emb = h_emb[: 2 * self.Nimp, : 2 * self.Nimp]
@@ -404,27 +404,27 @@ class fragment:
 
             # Calculate the energy associated with core-core interactions,
             # setting it numerically to a real number since it always will be
-            Ecore = 0
-            for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                Ecore += h_emb[core1, core1]
-                if hamtype == 0:
-                    # General hamiltonian
-                    for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
-                        Ecore += 0.5 * (
-                            V_emb[core1, core1, core2, core2]
-                            - V_emb[core1, core2, core2, core1]
-                        )
+            # Ecore = 0
+            # for core1 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #     Ecore += h_emb[core1, core1]
+            #     if hamtype == 0:
+            #         # General hamiltonian
+            #         for core2 in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
+            #             Ecore += 0.5 * (
+            #                 V_emb[core1, core1, core2, core2]
+            #                 - V_emb[core1, core2, core2, core1]
+            #             )
 
-            if hamtype == 1:
-                # Hubbard hamiltonian
-                vec = np.einsum(
-                    "pe,ep->p",
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                )
-                Ecore += 0.5 * (V_site * np.einsum("p,p", vec, vec))
+            # if hamtype == 1:
+            #     # Hubbard hamiltonian
+            #     vec = np.einsum(
+            #         "pe,ep->p",
+            #         rotmat_small[hubsite_indx, 2 * self.Nimp :],
+            #         utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+            #     )
+            #     Ecore += 0.5 * (V_site * np.einsum("p,p", vec, vec))
 
-            self.Ecore = Ecore.real
+            # self.Ecore = Ecore.real
 
             # Shrink h_emb and V_emb arrays to only include the impurity and bath
             self.h_emb = h_emb[: 2 * self.Nimp, : 2 * self.Nimp]
