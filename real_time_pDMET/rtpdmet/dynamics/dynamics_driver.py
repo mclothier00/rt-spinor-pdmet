@@ -59,7 +59,7 @@ class dynamics_driver:
         # nproc - number of processors for calculation
         # - careful, there is no check that this matches the pbs script
         # mag_sites - (for a generalized calculation) the spatial sites on which
-        #   to calculate the spin magnetic moment. If not specified, all sites 
+        #   to calculate the spin magnetic moment. If not specified, all sites
         #   are calculated for Nsites < 50.
 
         self.tot_system = tot_system
@@ -85,12 +85,14 @@ class dynamics_driver:
         self.gen = gen
         self.restart = restart
         if mag_sites is not None:
-            self.mag_sites = mag_sites        
+            self.mag_sites = mag_sites
         elif self.tot_system.Nsites < 50:
             self.mag_sites = self.tot_system.Nsites
         else:
-            print('Too many sites to calculate the spin magnetic moment on each one. Please specifcy a range of sites.')
-            self.mag_sites = 0 
+            print(
+                "Too many sites to calculate the spin magnetic moment on each one. Please specifcy a range of sites."
+            )
+            self.mag_sites = 0
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -141,12 +143,16 @@ class dynamics_driver:
         self.tot_system.hamtype = hamtype
 
         if self.tot_system.hamtype == 1 and np.ndim(self.tot_system.V_site) != 0:
-            print(f'''Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 1. Please change dimension of two-electron Hamiltonian or remove the Hubbard shortcut.''')
-            print('Canceling simulation.') 
+            print(
+                f"""Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 1. Please change dimension of two-electron Hamiltonian or remove the Hubbard shortcut."""
+            )
+            print("Canceling simulation.")
             exit()
         if self.tot_system.hamtype == 0 and np.ndim(self.tot_system.V_site) != 4:
-            print(f'''Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 4. Please use full two electron Hamiltonian.''')
-            print('Canceling simulation.') 
+            print(
+                f"""Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 4. Please use full two electron Hamiltonian."""
+            )
+            print("Canceling simulation.")
             exit()
 
         # If running Hubbard-like model, need an array
@@ -229,7 +235,7 @@ class dynamics_driver:
                 if step == 0:
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
-                    if self.gen: 
+                    if self.gen:
                         self.print_just_spins(current_time)
                 if (np.mod(step, self.Nprint) == 0) and step > 1:
                     print(
@@ -668,9 +674,9 @@ class dynamics_driver:
 
     def print_just_spins(self, current_time):
         """
-        Print the spin magentic moment for entire system and for each 
-        specified site. If no set of sites is specified and the total 
-        number of sites is less than 50, then the spin magnetic moment 
+        Print the spin magentic moment for entire system and for each
+        specified site. If no set of sites is specified and the total
+        number of sites is less than 50, then the spin magnetic moment
         will be calculated for all sites.
         """
 
