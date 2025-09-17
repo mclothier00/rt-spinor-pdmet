@@ -8,6 +8,8 @@ import real_time_pDMET.scripts.utils as utils
 import real_time_pDMET.scripts.applyham_pyscf as applyham_pyscf
 from scipy.linalg import expm
 
+import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
+
 ##########################################################################
 
 
@@ -217,6 +219,153 @@ def runge_kutta_pyscf(
     )
 
     CIcoeffs = CIcoeffs + 1.0 / 3.0 * (0.5 * k1 + k2 + k3 + 0.5 * k4)
+
+    return CIcoeffs
+
+
+def runge_kutta_spinor(
+    CIcoeffs,
+    Norbs,
+    Nalpha,
+    Nbeta,
+    dt,
+    hmat_0,
+    Vmat_0,
+    Econst_0,
+    hmat_1=None,
+    Vmat_1=None,
+    Econst_1=None,
+    hmat_2=None,
+    Vmat_2=None,
+    Econst_2=None,
+):
+    """
+    subroutine to integrate the equations of motion of the FCI
+    coefficients using 4th order runge-kutta scheme
+    the hamiltonian is applied using pyscf
+    allows for only real but time dependent or independent hamiltonian
+    CIcoeffs is a 2d-complex array containing the CI coefficients, the
+    rows/columns correspond to the alpha/beta strings
+    the strings are ordered in asscending binary order with a 0/1
+    implies that an orbital is empty/occupied
+    the 2e- integrals, Vmat_i, are given in chemistry notation
+    Econst is a constant energy contribution to the hamiltonian and an
+    energy shift to increase reliability of the integrator
+    (see schollwock,
+    j. phys. soc. jpn 2005 or Sato and Ishikawa Phys Rev A 2013 Eq. 40)
+    subscript 0, 1, 2 correspond to time t, t+dt/2 and t+dt
+    dt is the time step
+    returns C at time t+dt
+    """
+
+    if not np.iscomplexobj(CIcoeffs):
+        print(
+            "ERROR: CI coefficients in integrators.runge_kutta_pyscf are not a complex object"
+        )
+        exit()
+
+    if hmat_1 is None:
+        # Assumes time-independent hamiltonian
+        hmat_1 = np.copy(hmat_0)
+        Vmat_1 = np.copy(Vmat_0)
+        Econst_1 = np.copy(Econst_0)
+        hmat_2 = np.copy(hmat_0)
+        Vmat_2 = np.copy(Vmat_0)
+        Econst_2 = np.copy(Econst_0)
+
+    # Separate CI coefficients into real and imaginary parts
+
+    np.set_printoptions(precision=10)
+
+    corr1RDM_t0 = fci_mod.get_corr1RDM(CIcoeffs, 4, 2, gen=True)
+    print(corr1RDM_t0)
+    print()
+
+    k1 = (
+        -1j
+        * dt
+        * applyham_pyscf.apply_ham_pyscf_spinor(
+            CIcoeffs,
+            hmat_0,
+            Vmat_0,
+            (Nalpha + Nbeta),
+            Norbs,
+            Econst_0,
+        )
+    )
+
+    CI_temp = CIcoeffs + 0.5 * np.copy(k1)
+
+    corr1RDMt1 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    print(utils.reshape_gtor_matrix(corr1RDMt1 - corr1RDM_t0))
+    print()
+    tmp1 = np.dot(hmat_0, corr1RDM_t0)
+    print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+
+    k2 = (
+        -1j
+        * dt
+        * applyham_pyscf.apply_ham_pyscf_spinor(
+            CI_temp,
+            hmat_1,
+            Vmat_1,
+            (Nalpha + Nbeta),
+            Norbs,
+            Econst_1,
+        )
+    )
+
+    CI_temp = CIcoeffs + 0.5 * np.copy(k2)
+
+    corr1RDMt2 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    print()
+    print("second")
+    print()
+    print(utils.reshape_gtor_matrix(corr1RDMt2 - corr1RDMt1))
+    print()
+    tmp1 = np.dot(hmat_1, corr1RDMt1)
+    print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+    exit()
+
+    # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
+    # print(corr1RDM)
+    # print()
+    k3 = (
+        -1j
+        * dt
+        * applyham_pyscf.apply_ham_pyscf_spinor(
+            CI_temp,
+            hmat_1,
+            Vmat_1,
+            (Nalpha + Nbeta),
+            Norbs,
+            Econst_1,
+        )
+    )
+
+    CI_temp = CIcoeffs + 0.5 * np.copy(k3)
+
+    # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
+    # print(corr1RDM)
+    # print()
+    k4 = (
+        -1j
+        * dt
+        * applyham_pyscf.apply_ham_pyscf_spinor(
+            CI_temp,
+            hmat_2,
+            Vmat_2,
+            (Nalpha + Nbeta),
+            Norbs,
+            Econst_2,
+        )
+    )
+
+    # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
+    # print(corr1RDM)
+    # exit()
+
+    CIcoeffs = CIcoeffs + 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
     return CIcoeffs
 

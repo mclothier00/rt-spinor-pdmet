@@ -181,6 +181,7 @@ def apply_ham_pyscf_real(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fct
      fctr is the factor in front of the 2e- terms
      when defining the hamiltonian
     """
+
     Vmat = pyscf.fci.direct_spin1.absorb_h1e(hmat, Vmat, norbs, (nalpha, nbeta), fctr)
     temp = pyscf.fci.direct_spin1.contract_2e(Vmat, CIcoeffs, norbs, (nalpha, nbeta))
     CIcoeffs = temp + Econst * CIcoeffs
@@ -189,8 +190,6 @@ def apply_ham_pyscf_real(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fct
 
 
 #####################################################################
-
-# NOTE: this is edited for print statements; switch back to normal after testing
 
 
 def apply_ham_pyscf_nosym(CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr=0.5):

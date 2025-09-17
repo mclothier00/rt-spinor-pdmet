@@ -5,6 +5,8 @@ import real_time_pDMET.rtpdmet.dynamics.fragment_mod as fragment_mod_dynamic
 import real_time_pDMET.scripts.utils as utils
 from pyscf import gto, scf, ao2mo, fci
 
+from scipy import linalg
+
 
 def transition(
     the_dmet,

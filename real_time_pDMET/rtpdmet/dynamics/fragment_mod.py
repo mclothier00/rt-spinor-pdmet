@@ -805,10 +805,11 @@ class fragment:
                 genFmat[self.corerange, :] = np.transpose(
                     IFmat[:, self.corerange] + AFmat[:, self.corerange]
                 )
-                # if j in impurity/bath:
+                # if j in impurity / bath:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
+                # genFmat = np.dot(IFmat, self.corr1RDM)
                 tmp = np.einsum(
                     "lr,pk,rm,jklm->pj",
                     utils.adjoint(rotmat_Hub[:, actrange]),
@@ -884,6 +885,7 @@ class fragment:
                     eval_dif[b - self.Nimp, a - self.Nimp] = 1.0 / (
                         env1RDM_evals[a - self.Nimp] - env1RDM_evals[b - self.Nimp]
                     )
+
         # bath-virt
         for b in self.bathrange:
             for a in self.virtrange:
@@ -908,7 +910,7 @@ class fragment:
                     and np.abs(
                         env1RDM_evals[a - self.Nimp] - env1RDM_evals[b - self.Nimp]
                     )
-                    > 1e-9
+                    > 1e-4
                 ):
                     eval_dif[b - self.Nimp, a - self.Nimp] = 1.0 / (
                         env1RDM_evals[a - self.Nimp] - env1RDM_evals[b - self.Nimp]

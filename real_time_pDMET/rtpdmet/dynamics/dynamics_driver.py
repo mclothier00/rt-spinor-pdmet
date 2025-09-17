@@ -13,6 +13,7 @@ from pathlib import Path
 
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
 from scipy import linalg
+import pyscf
 
 
 class dynamics_driver:
@@ -132,13 +133,14 @@ class dynamics_driver:
         if not np.iscomplexobj(self.tot_system.NOevecs):
             self.tot_system.NOevecs = self.tot_system.NOevecs.astype(complex)
 
-        if not self.laser:
-            self.tot_system.h_site = np.real(h_site)
-        else:
-            if not np.iscomplexobj(self.tot_system.h_site):
-                self.tot_system.h_site = self.tot_system.h_site.astype(complex)
+        # if not self.laser:
+        #    self.tot_system.h_site = np.real(h_site)
+        # else:
+        # if not np.iscomplexobj(self.tot_system.h_site):
+        #    self.tot_system.h_site = self.tot_system.h_site.astype(complex)
 
         # Set-up Hamiltonian for dynamics calculation
+        self.tot_system.h_site = h_site
         self.tot_system.V_site = V_site
         self.tot_system.hamtype = hamtype
 
@@ -237,7 +239,7 @@ class dynamics_driver:
                     sys.stdout.flush()
                     if self.gen:
                         self.print_just_spins(current_time)
-                if (np.mod(step, self.Nprint) == 0) and step > 1:
+                if (np.mod(step, self.Nprint) == 0) and step >= 1:
                     print(
                         "Writing data at step ",
                         step,
@@ -347,10 +349,12 @@ class dynamics_driver:
 
             # GETTING 1ST SUBSTEP DT
 
+            np.set_printoptions(precision=10)
+
             l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(
                 nproc, current_time
             )
-
+            diff = []
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
             self.tot_system.mf1RDM = init_mf1RDM + 0.5 * p1
@@ -371,6 +375,7 @@ class dynamics_driver:
                 nproc, current_time
             )
 
+            diff = []
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l2
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n2
             self.tot_system.mf1RDM = init_mf1RDM + 0.5 * p2
@@ -679,6 +684,7 @@ class dynamics_driver:
         number of sites is less than 50, then the spin magnetic moment
         will be calculated for all sites.
         """
+        np.set_printoptions(precision=6, suppress=True, linewidth=sys.maxsize)
 
         fmt_str = "%20.8e"
 
@@ -747,6 +753,8 @@ class dynamics_driver:
             sites_x.append(site_magx.real)
             sites_y.append(site_magy.real)
             sites_z.append(site_magz.real)
+
+        np.set_printoptions(precision=7, suppress=True, linewidth=sys.maxsize)
 
         sites_x = np.insert(np.array(sites_x), 0, current_time)
         sites_y = np.insert(np.array(sites_y), 0, current_time)

@@ -14,6 +14,7 @@ import sys
 import real_time_pDMET.scripts.utils as utils
 
 # NOTE: assumes an even number of electrons for the integrator
+from scipy import linalg
 
 
 class tdfci:
@@ -101,8 +102,7 @@ class tdfci:
                 )
 
             if self.gen:
-                # Integrate FCI coefficients by a time-step
-                self.CIcoeffs = integrators.runge_kutta_pyscf(
+                self.CIcoeffs = integrators.runge_kutta_spinor(
                     self.CIcoeffs,
                     self.Nsites,
                     int(self.Nelec / 2),
@@ -111,7 +111,6 @@ class tdfci:
                     self.h_site,
                     self.V_site,
                     self.Ecore,
-                    self.gen,
                 )
 
             # update the current time
@@ -211,6 +210,8 @@ class tdfci:
                 sites_x.append(site_magx.real)
                 sites_y.append(site_magy.real)
                 sites_z.append(site_magz.real)
+
+            np.set_printoptions(precision=6, suppress=True, linewidth=sys.maxsize)
 
             sites_x = np.insert(np.array(sites_x), 0, current_time)
             sites_y = np.insert(np.array(sites_y), 0, current_time)
