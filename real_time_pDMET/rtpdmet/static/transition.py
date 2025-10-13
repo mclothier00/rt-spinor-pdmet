@@ -16,11 +16,12 @@ def transition(
     impindx,
     h_site,
     V_site,
-    hamtype,
-    hubsite_indx,
-    periodic,
+    hamtype=0,
+    hubsite_indx=None,
+    periodic=False,
     gen_dyn=False,
 ):
+    
     if not the_dmet.gen:
         if not gen_dyn:
             print(
@@ -83,7 +84,8 @@ def transition(
             # ex: sites: ([0, 1], [2, 3]) --> ([0, 1, 2, 3], [4, 5, 6, 7])
             impindx = utils.spinor_impindx(Nsites, Nfrag)
 
-            hubsite_indx = spinor_hubsite(hubsite_indx, Nsites)
+            if hubsite_indx is not None:
+                hubsite_indx = spinor_hubsite(hubsite_indx, Nsites)
 
             mf1RDM = the_dmet.mf1RDM
             tot_system = system_mod.system(

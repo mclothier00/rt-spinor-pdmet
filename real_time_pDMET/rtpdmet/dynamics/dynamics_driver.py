@@ -22,28 +22,29 @@ class dynamics_driver:
         self,
         h_site,
         V_site,
-        hamtype,
         tot_system,
         delt,
         dG,
         dX,
-        U,
-        A_nott,
-        t_nott,
-        omega,
-        t_d,
         nproc,
         Nstep,
+        hamtype=0,
         Nprint=100,
-        integ="rk1",
+        integ="rk4",
         hubsite_indx=None,
+        U=None,
         laser_sites=None,
+        t_d=None,
+        omega=None,
+        A_nott=None,
+        t_nott=None,
         init_time=0.0,
         laser=False,
         gen=False,
         mag_sites=None,
         restart=False,
     ):
+       
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
         # V_site -
@@ -631,7 +632,8 @@ class dynamics_driver:
         np.savetxt(self.file_globdens, globdens.reshape(1, globdens.shape[0]), fmt_str)
         self.file_globdens.flush()
 
-        self.print_just_spins(current_time)
+        if self.gen:
+            self.print_just_spins(current_time)
 
         # Print output data
         writing_outfile = time.time()
