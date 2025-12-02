@@ -1,3 +1,6 @@
+### NOTE: write a check to make sure impurity size fits the basis; spinor to spinor is currently hard-coded
+###         to revert from restricted to spinor
+
 import time
 import numpy as np
 import real_time_pDMET.rtpdmet.dynamics.system_mod as system_mod
@@ -5,12 +8,12 @@ import real_time_pDMET.rtpdmet.dynamics.fragment_mod as fragment_mod_dynamic
 import real_time_pDMET.scripts.utils as utils
 from pyscf import gto, scf, ao2mo, fci
 
-from scipy import linalg
+import scipy.linalg as la
 
+np.set_printoptions(precision = 9, suppress=True)
 
 def transition(
     the_dmet,
-    Nsites,
     Nele,
     Nfrag,
     impindx,
@@ -29,6 +32,8 @@ def transition(
             )
 
             mf1RDM = the_dmet.mf1RDM
+            Nsites = mf1RDM.shape[0]
+            
             tot_system = system_mod.system(
                 Nsites,
                 Nele,
@@ -68,26 +73,19 @@ def transition(
             )
 
             print(
-                "Currently not transitioning 1- and 2-electron Hamiltonians; please include dynamic Hamiltonians in input file."
+                "Currently not transitioning old 1- and 2- electron Hamiltonians. Please specify in input file."
             )
 
-            # h_site_r = h_site
-            # V_site_r = V_site
-
-            # changing hamiltonian and 1RDM from restricted to generalized
-            # h_site = np.kron(np.eye(2), h_site_r)
-            # V_site = utils.block_tensor(V_site_r)
-            # h_site = utils.reshape_rtog_matrix(h_site)
-            # V_site = utils.reshape_rtog_tensor(V_site)
+            mf1RDM = the_dmet.mf1RDM
+            Nsites = 2 * mf1RDM.shape[0]
 
             # changing impindx to reflect spinors indexed via sites [ababab...]
             # ex: sites: ([0, 1], [2, 3]) --> ([0, 1, 2, 3], [4, 5, 6, 7])
-            impindx = utils.spinor_impindx(Nsites, Nfrag)
+            impindx = utils.spinor_impindx(Nsites // 2, Nfrag)
 
             if hubsite_indx is not None:
-                hubsite_indx = spinor_hubsite(hubsite_indx, Nsites)
+                hubsite_indx = spinor_hubsite(hubsite_indx, Nsites // 2)
 
-            mf1RDM = the_dmet.mf1RDM
             tot_system = system_mod.system(
                 Nsites,
                 Nele,
@@ -102,7 +100,7 @@ def transition(
                 gen=gen_dyn,
             )
 
-            tot_system.Nbasis = 2 * Nsites
+            tot_system.Nbasis = Nsites
             tot_system.glob1RDM = utils.reshape_rtog_matrix(
                 np.kron(np.eye(2), 0.5 * the_dmet.glob1RDM)
             )
@@ -165,6 +163,8 @@ def transition(
             )
 
             mf1RDM = the_dmet.mf1RDM
+            Nsites = mf1RDM.shape[0]
+
             tot_system = system_mod.system(
                 Nsites,
                 Nele,
@@ -184,7 +184,9 @@ def transition(
             tot_system.NOevecs = the_dmet.NOevecs
             tot_system.NOevals = the_dmet.NOevals
             tot_system.frag_in_rank = []
-            tot_system.Nbasis = 2 * Nsites  # for Hubbard
+            tot_system.Nbasis = Nsites  # for Hubbard
+
+            impindx = utils.spinor_impindx(Nsites // 2, Nfrag)
 
             for i in range(len(the_dmet.frag_in_rank)):
                 tot_system.frag_in_rank.append(
@@ -204,158 +206,6 @@ def transition(
                 ].frags_rank
 
     return tot_system
-
-
-##### old transitions; will delete #####
-
-
-# def rtor_transition(
-#     the_dmet,
-#     Nsites,
-#     Nele,
-#     Nfrag,
-#     impindx,
-#     h_site,
-#     V_site,
-#     hamtype,
-#     hubsite_indx,
-#     periodic,
-# ):
-#     print(
-#         "Transitioning from restricted static calculation to restricted dynamic calculation."
-#     )
-#
-#     transition_time = time.time()
-#
-#     mf1RDM = the_dmet.mf1RDM
-#     tot_system = system_mod.system(
-#         Nsites,
-#         Nele,
-#         Nfrag,
-#         impindx,
-#         h_site,
-#         V_site,
-#         hamtype,
-#         mf1RDM,
-#         hubsite_indx,
-#         periodic,
-#     )
-#     tot_system.glob1RDM = the_dmet.glob1RDM
-#     tot_system.mf1RDM = the_dmet.mf1RDM
-#     tot_system.NOevecs = the_dmet.NOevecs
-#     tot_system.NOevals = the_dmet.NOevals
-#     tot_system.frag_in_rank = []
-#     tot_system.Nbasis = Nsites  # for Hubbard
-#
-#     for i in range(len(the_dmet.frag_in_rank)):
-#         tot_system.frag_in_rank.append(
-#             fragment_mod_dynamic.fragment(
-#                 impindx[the_dmet.frag_in_rank[i].frag_num], Nsites, Nele
-#             )
-#         )
-#         tot_system.frag_in_rank[i].rotmat = the_dmet.frag_in_rank[i].rotmat
-#         tot_system.frag_in_rank[i].CIcoeffs = the_dmet.frag_in_rank[i].CIcoeffs
-#
-#         tot_system.frag_in_rank[i].frag_num = the_dmet.frag_in_rank[i].frag_num
-#         tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[i].frags_rank
-#
-#     return tot_system
-
-
-# def rtog_transition(
-#     the_dmet,
-#     Nsites,
-#     Nele,
-#     Nfrag,
-#     impindx,
-#     h_site_r,
-#     V_site_r,
-#     hamtype,
-#     hubsite_indx,
-#     periodic,
-# ):
-#     print(
-#         "Transitioning from restricted static calculation to generalized dynamic calculation."
-#     )
-#
-#     transition_time = time.time()
-#
-#     # changing hamiltonian and 1RDM from restricted to generalized
-#     # h_site = np.kron(np.eye(2), h_site_r)
-#     # V_site = utils.block_tensor(V_site_r)
-#     # h_site = utils.reshape_rtog_matrix(h_site)
-#     # V_site = utils.reshape_rtog_tensor(V_site)
-#
-#     # changing impindx to reflect spinors indexed via sites [ababab...]
-#     # ex: sites: ([0, 1], [2, 3]) --> ([0, 1, 2, 3], [4, 5, 6, 7])
-#     impindx = utils.spinor_impindx(Nsites, Nfrag)
-#
-#     hubsite_indx = spinor_hubsite(hubsite_indx, Nsites)
-#
-#     mf1RDM = the_dmet.mf1RDM
-#     tot_system = system_mod.system(
-#         Nsites,
-#         Nele,
-#         Nfrag,
-#         impindx,
-#         h_site,
-#         V_site,
-#         hamtype,
-#         mf1RDM,
-#         hubsite_indx,
-#         periodic,
-#         gen=True,
-#     )
-#
-#     tot_system.Nbasis = 2 * Nsites
-#     tot_system.glob1RDM = utils.reshape_rtog_matrix(
-#         np.kron(np.eye(2), 0.5 * the_dmet.glob1RDM)
-#     )
-#     tot_system.mf1RDM = utils.reshape_rtog_matrix(
-#         np.kron(np.eye(2), 0.5 * the_dmet.mf1RDM)
-#     )
-#
-#     tot_system.NOevecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), the_dmet.NOevecs))
-#
-#     tot_system.NOevals = np.diag(
-#         np.dot(
-#             tot_system.NOevecs.conjugate().transpose(),
-#             np.dot(tot_system.glob1RDM, tot_system.NOevecs),
-#         )
-#     )
-#
-#     tot_system.frag_in_rank = []
-#     for i in range(len(the_dmet.frag_in_rank)):
-#         frag_i = fragment_mod_dynamic.fragment(
-#             impindx[the_dmet.frag_in_rank[i].frag_num], Nsites, Nele, gen=True
-#         )
-#         tot_system.frag_in_rank.append(frag_i)
-#         tot_system.frag_in_rank[i].rotmat = utils.reshape_rtog_matrix(
-#             np.kron(np.eye(2), the_dmet.frag_in_rank[i].rotmat)
-#         )
-#         tot_system.frag_in_rank[i].frag_num = the_dmet.frag_in_rank[i].frag_num
-#         tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[i].frags_rank
-#
-#         nbeta = frag_i.Nimp // 2
-#         nalpha = frag_i.Nimp - nbeta
-#
-#         tot_system.frag_in_rank[i].CIcoeffs = to_gen_coeff(
-#             frag_i.Nimp,
-#             frag_i.Nimp,
-#             (frag_i.Nimp * 2),
-#             nalpha,
-#             nbeta,
-#             the_dmet.frag_in_rank[i].CIcoeffs,
-#         )
-#
-#     print(
-#         "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
-#     )
-#
-#     return tot_system
-
-
-########################
 
 
 #### Functions used throughout transition call ###
@@ -488,7 +338,7 @@ def spinor_hubsite_block(hubsite_indx, Nsites):
 
 def get_nat_orbs(glob1RDM):
     # Subroutine to obtain natural orbitals of global 1RDM
-    NOevals, NOevecs = np.linalg.eigh(glob1RDM)
+    NOevals, NOevecs = la.eigh(glob1RDM)
     # Re-order such that eigenvalues are in descending order
     NOevals = np.flip(NOevals)
     NOevecs = np.flip(NOevecs, 1)

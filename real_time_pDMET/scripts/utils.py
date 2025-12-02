@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 import numpy as np
 import scipy.linalg as la
 import scipy.special
@@ -416,3 +415,135 @@ def return_max_value(array):
 
 
 #####################################################################
+
+
+def sort_eigenpairs(evals, evecs, tol=1e-12):
+    """
+    (Adjusted from ChatGPT) Sort eigenvectors deterministically inside degenerate eigenvalue blocks.
+    NOTE: ONLY FOR STATIC GET_ROTMAT CALL
+    """
+
+    # First sort by eigenvalue normally
+    idx = np.argsort(evals)
+    evals = evals[idx]
+    evecs = evecs[:, idx]
+
+    # Identify degenerate blocks
+    groups = []
+    current = [0] # degenerate block indices 
+    for i in range(1, len(evals)):
+        if abs(evals[i] - evals[i-1]) < tol: # check if current eigenvalue is degenerate with one before
+            current.append(i) # if so, add to current degeneracy block
+        else: # if not, end that block and start a new degenerate block 
+            groups.append(current) 
+            current = [i]
+    groups.append(current)
+
+    # Sort within each degenerate block
+    for g in groups:
+        if len(g) > 1:
+            block = evecs[:, g]
+
+            # Example deterministic rule:
+            # Sort eigenvectors by index of largest-magnitude component
+            def key(v):
+                i = np.argmax(np.abs(v)) # provides index where minimum value is
+                return (i)
+            
+            ordered = sorted(block.T, key=key) # sorts by order of minimum index found
+            evecs[:, g] = np.column_stack(ordered) # returns to row configuration and replaces prevous block ordering
+
+    # for static code, input as in restricted-like indexing, so need to flip rows back to generalized-like indexing.
+    # WILL ONLY WORK FOR STATIC GET_ROTMAT CALL
+
+    n = evecs.shape[0]
+    assert n % 2 == 0, "Must have even number of rows to interleave equally"
+    
+    k = n // 2
+    top = evecs[:k]
+    bottom = evecs[k:]
+    
+    # Interleave
+    evecs_gen = np.empty_like(evecs)
+    evecs_gen[0::2] = top
+    evecs_gen[1::2] = bottom
+
+    evecs = evecs_gen
+
+    return evals, evecs
+
+
+#####################################################################
+
+
+#def is_two_block_diagonal_with_identical_blocks(M, tol=1e-12):
+#    n = M.shape[0]
+#    if n % 2 != 0:
+#        return False
+#    
+#    k = n // 2
+#    A = M[:k, :k]
+#    B = M[k:, k:]
+#    C = M[:k, k:]
+#    D = M[k:, :k]
+#    
+#    # check A == B
+#    if not np.allclose(A, B, atol=tol, rtol=0):
+#        return False
+#    
+#    # check off-diagonals ~ 0
+#    if not (np.allclose(C, 0, atol=tol) and np.allclose(D, 0, atol=tol)):
+#        return False
+#    
+#    return True
+#
+#
+#def scriptA_eig_block(M):
+#    """
+#    Computes script-A structured eigenvectors for M = block_diag(A, A).
+#    Assumes the matrix is known to be block-diagonal with identical blocks.
+#    """
+#    n = M.shape[0]
+#    k = n // 2
+#    
+#    A = M[:k, :k]
+#    
+#    # eigen-decompose A
+#    evalsA, vecsA = la.eigh(A)
+#    
+#    # full eigenvalues: each repeated twice
+#    evals = np.repeat(evalsA, 2)
+#    
+#    # build script-A eigenvector matrix
+#    evecs = np.zeros((n, n))
+#    
+#    # embed vecsA into the 4D Script-A pattern:
+#    for i in range(k):
+#        v = vecsA[:, i]  # shape (k,)
+#        
+#        # top block column (2*i+1)
+#        evecs[:k,   2*i+1] = v
+#        # top block column (2*i) stays zero
+#        
+#        # bottom block
+#        evecs[k:, 2*i]   = -v
+#        # bottom block column (2*i+1) stays zero
+#    
+#    return evals, evecs
+#
+#
+#def safe_eigh(M, tol=1e-12):
+#    """
+#    If M has the block structure [ A 0 ; 0 A ],
+#    return the Script-A canonical eigenvectors.
+#    Otherwise, fall back to scipy.linalg.eigh.
+#    """
+#    
+#    if is_two_block_diagonal_with_identical_blocks(M, tol):
+#        return scriptA_eig_block(M)
+#    else:
+#        # normal scipy eigh
+#        evals, evecs = la.eigh(M)
+#        return evals, evecs
+
+

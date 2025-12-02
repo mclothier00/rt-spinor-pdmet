@@ -1,10 +1,9 @@
 import numpy as np
-import real_time_pDMET.rtpdmet.static.codes as codes
 import real_time_pDMET.scripts.utils as utils
 import pyscf.fci
 from pyscf import gto, scf, ao2mo
 import sys
-from scipy import linalg
+import scipy.linalg as la
 
 
 ### NOTE: don't think this is used; remove
@@ -66,7 +65,7 @@ def FCI_GS(h, V, U, Norbs, Nele, gen=False):
         # used in DMET (because now they are in orbital basis)
 
         CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
-            CIcoeffs, Norbs, Nele, codes.adjoint(mf.mo_coeff)
+            CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
         )
 
     if gen:
@@ -127,7 +126,7 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
         # tranpose back to dm_pq = <|q^+ p|> to match restricted case
         corr1RDM = np.transpose(corr1RDM)
 
-        if not linalg.ishermitian(corr1RDM, atol=1e-9):
+        if not la.ishermitian(corr1RDM, atol=1e-9):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()
@@ -188,11 +187,11 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
 
         corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
 
-        if not np.isclose(linalg.norm(CIcoeffs), 1.0, atol=1e-3):
-            print(f"norm of CIcoeffs: {linalg.norm(CIcoeffs)}")
+        if not np.isclose(la.norm(CIcoeffs), 1.0, atol=1e-3):
+            print(f"norm of CIcoeffs: {la.norm(CIcoeffs)}")
 
         if not np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9):
-            print(linalg.norm(CIcoeffs))
+            print(la.norm(CIcoeffs))
             print(
                 "WARNING: NON-NEGLIGIBLE COMPLEX TERMS ALONG DIAGONAL OF EMBEDDED CORRELATED 1RDM"
             )
@@ -204,7 +203,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
         )  # make diagonal elements real
         corr1RDM = np.transpose(corr1RDM)
 
-        if not linalg.ishermitian(corr1RDM, atol=1e-9):
+        if not la.ishermitian(corr1RDM, atol=1e-9):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()

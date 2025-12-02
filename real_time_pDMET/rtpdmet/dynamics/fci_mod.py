@@ -4,7 +4,7 @@ import numpy as np
 import real_time_pDMET.scripts.utils as utils
 import real_time_pDMET.scripts.applyham_pyscf as applyham_pyscf
 import pyscf.fci
-from scipy import linalg
+import scipy.linalg as la
 from pyscf import gto, scf, ao2mo
 
 #####################################################################
@@ -110,7 +110,7 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
         # tranpose back to dm_pq = <|q^+ p|> to match restricted case
         corr1RDM = np.transpose(corr1RDM)
 
-        if not linalg.ishermitian(corr1RDM, atol=1e-9):
+        if not la.ishermitian(corr1RDM, atol=1e-9):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()
@@ -158,6 +158,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
             corr2RDM += tmp2
 
         else:
+
             corr1RDM, corr2RDM = pyscf.fci.direct_spin1.make_rdm12(
                 CIcoeffs, Norbs, Nele
             )
@@ -170,11 +171,11 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
     if gen:
         corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
 
-        if not np.isclose(linalg.norm(CIcoeffs), 1.0, atol=1e-3):
-            print(f"norm of CIcoeffs: {linalg.norm(CIcoeffs)}")
+        if not np.isclose(la.norm(CIcoeffs), 1.0, atol=1e-3):
+            print(f"norm of CIcoeffs: {la.norm(CIcoeffs)}")
 
         if not np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9):
-            print(linalg.norm(CIcoeffs))
+            print(la.norm(CIcoeffs))
             print(
                 "WARNING: NON-NEGLIGIBLE COMPLEX TERMS ALONG DIAGONAL OF EMBEDDED CORRELATED 1RDM"
             )
@@ -186,7 +187,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
         )  # make diagonal elements real
         corr1RDM = np.transpose(corr1RDM)
 
-        if not linalg.ishermitian(corr1RDM, atol=1e-9):
+        if not la.ishermitian(corr1RDM, atol=1e-9):
             print("WARNING: EMBEDDED CORRELATED 1RDM IS NOT HERMITIAN")
             print("-------- ENDING SIMULATION --------")
             exit()

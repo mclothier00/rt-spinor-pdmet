@@ -12,7 +12,7 @@ from mpi4py import MPI
 from pathlib import Path
 
 # ########### CLASS TO RUN REAL-TIME DMET CALCULATION #########
-from scipy import linalg
+import scipy.linalg as la
 import pyscf
 
 
@@ -63,6 +63,15 @@ class dynamics_driver:
         # mag_sites - (for a generalized calculation) the spatial sites on which
         #   to calculate the spin magnetic moment. If not specified, all sites
         #   are calculated for Nsites < 50.
+        # restart - whether or not to restart a calculation from the saved pickle dictionary
+        #       'restart_system.dat'; to restart, use provided code:
+        #       ''' system_file="restart_system.dat"
+        #       with open(system_file, 'rb') as file:
+        #           system = pickle.load(file)
+        #       
+        #       init_time = system['last_time']
+        #       system = system['tot_system'] '''
+        print('called')
 
         self.tot_system = tot_system
         self.delt = delt
@@ -86,21 +95,24 @@ class dynamics_driver:
             self.Vbias = False
         self.gen = gen
         self.restart = restart
-        if mag_sites is not None:
-            self.mag_sites = mag_sites
-        elif self.tot_system.Nsites < 50:
-            self.mag_sites = self.tot_system.Nsites
-        else:
-            print(
-                "Too many sites to calculate the spin magnetic moment on each one. Please specifcy a range of sites."
-            )
-            self.mag_sites = 0
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
 
         comm = MPI.COMM_WORLD
         self.rank = comm.Get_rank()
+
+        if mag_sites is not None:
+            self.mag_sites = mag_sites
+        elif self.tot_system.Nsites < 100:
+            self.mag_sites = self.tot_system.Nsites // 2 # assuming spatial orbitals
+        else:
+            if self.rank == 0:
+                print(
+                    "Too many sites to calculate the spin magnetic moment on each one. Please specify a range of sites."
+                )
+            self.mag_sites = 0
+
 
         if self.rank == 0:
             print()
@@ -194,7 +206,7 @@ class dynamics_driver:
                 self.file_spinz = open("spin_z.dat", "w")
 
         self.max_diagonalG = 0
-        self.corrdens_old = np.zeros((self.tot_system.Nsites))
+        #self.corrdens_old = np.zeros((self.tot_system.Nsites))
 
     #####################################################################
 
@@ -239,7 +251,10 @@ class dynamics_driver:
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
                     if self.gen:
-                        self.print_just_spins(current_time)
+                        if self.tot_system.Nsites % 2 == 0:
+                            self.print_just_spins(current_time)
+                        else:
+                            self.print_spinor_spins(current_time)
                 if (np.mod(step, self.Nprint) == 0) and step >= 1:
                     print(
                         "Writing data at step ",
@@ -355,6 +370,7 @@ class dynamics_driver:
             l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(
                 nproc, current_time
             )
+
             diff = []
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
@@ -362,9 +378,9 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k1_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m1_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                if np.isclose(la.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
                     print(
-                        f"norm of CIcoeffs at time {current_time} on rk step 1: {linalg.norm(frag.CIcoeffs)}"
+                        f"norm of CIcoeffs at time {current_time} on rk step 1: {la.norm(frag.CIcoeffs)}"
                     )
 
             if self.laser:
@@ -383,9 +399,9 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 0.5 * k2_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 0.5 * m2_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                if np.isclose(la.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
                     print(
-                        f"norm of CIcoeffs at time {current_time} on rk step 2: {linalg.norm(frag.CIcoeffs)}"
+                        f"norm of CIcoeffs at time {current_time} on rk step 2: {la.norm(frag.CIcoeffs)}"
                     )
 
             if self.laser:
@@ -403,9 +419,9 @@ class dynamics_driver:
             for cnt, frag in enumerate(self.tot_system.frag_in_rank):
                 frag.rotmat = init_rotmat_list[cnt] + 1.0 * k3_list[cnt]
                 frag.CIcoeffs = init_CIcoeffs_list[cnt] + 1.0 * m3_list[cnt]
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                if np.isclose(la.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
                     print(
-                        f"norm of CIcoeffs at time {current_time} on rk step 3: {linalg.norm(frag.CIcoeffs)}"
+                        f"norm of CIcoeffs at time {current_time} on rk step 3: {la.norm(frag.CIcoeffs)}"
                     )
 
             if self.laser:
@@ -440,9 +456,9 @@ class dynamics_driver:
                     + 2.0 * m3_list[cnt]
                     + m4_list[cnt]
                 )
-                if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+                if np.isclose(la.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
                     print(
-                        f"norm of CIcoeffs at time {current_time} on rk step 4: {linalg.norm(frag.CIcoeffs)}"
+                        f"norm of CIcoeffs at time {current_time} on rk step 4: {la.norm(frag.CIcoeffs)}"
                     )
 
             if self.laser:
@@ -474,23 +490,31 @@ class dynamics_driver:
             diag_global = utils.rot1el(
                 self.tot_system.glob1RDM, self.tot_system.NOevecs
             )
+
             np.fill_diagonal(diag_global, 0)
             self.max_diag_global = utils.return_max_value(diag_global)
 
-            if not self.gen:
-                diag_globalRDM_check = np.allclose(
-                    diag_global,
-                    np.zeros((self.tot_system.Nsites, self.tot_system.Nsites)),
-                    rtol=0,
-                    atol=self.dG,
-                )
-            if self.gen:
-                diag_globalRDM_check = np.allclose(
-                    diag_global,
-                    np.zeros((2 * self.tot_system.Nsites, 2 * self.tot_system.Nsites)),
-                    rtol=0,
-                    atol=self.dG,
-                )
+            diag_globalRDM_check = np.allclose(
+                diag_global,
+                np.zeros((self.tot_system.Nsites, self.tot_system.Nsites)),
+                rtol=0,
+                atol=self.dG,
+            )
+
+            #if not self.gen:
+            #    diag_globalRDM_check = np.allclose(
+            #        diag_global,
+            #        np.zeros((self.tot_system.Nsites, self.tot_system.Nsites)),
+            #        rtol=0,
+            #        atol=self.dG,
+            #    )
+            #if self.gen:
+            #    diag_globalRDM_check = np.allclose(
+            #        diag_global,
+            #        np.zeros((2 * self.tot_system.Nsites, 2 * self.tot_system.Nsites)),
+            #        rtol=0,
+            #        atol=self.dG,
+            #    )
 
             if self.step == 0:
                 self.diag_globalRDM_check_old = diag_globalRDM_check
@@ -542,9 +566,9 @@ class dynamics_driver:
         # MF 1RDM, rotmat and CI coefficients
 
         for cnt, frag in enumerate(self.tot_system.frag_in_rank):
-            if np.isclose(linalg.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
+            if np.isclose(la.norm(frag.CIcoeffs), 1.0, atol=1e-3) == False:
                 print(
-                    f"norm of CIcoeffs at time {current_time}: {linalg.norm(frag.CIcoeffs)}"
+                    f"norm of CIcoeffs at time {current_time}: {la.norm(frag.CIcoeffs)}"
                 )
 
         # Calculate the terms needed for time-derivative of mf-1rdm
@@ -580,7 +604,7 @@ class dynamics_driver:
 
         # Use change in mf1RDM to calculate X-matrix for each fragment
         make_xmat = time.time()
-        self.tot_system.get_frag_Xmat(ddt_mf1RDM)
+        self.tot_system.get_frag_Xmat(ddt_mf1RDM, self.dX)
 
         change_glob1RDM = ddt_glob1RDM * self.delt
         change_NOevecs = ddt_NOevec * self.delt
@@ -633,7 +657,10 @@ class dynamics_driver:
         self.file_globdens.flush()
 
         if self.gen:
-            self.print_just_spins(current_time)
+            if self.tot_system.Nsites % 2 == 0:
+                self.print_just_spins(current_time)
+            else:
+                self.print_spinor_spins(current_time)
 
         # Print output data
         writing_outfile = time.time()
@@ -646,11 +673,10 @@ class dynamics_driver:
         output[4] = np.real(np.trace(self.tot_system.frag_in_rank[0].corr1RDM))
         # NOTE: currently taking out due to expensive corr2RDM formation
         # output[5] = np.real(np.einsum("ppqq", self.tot_system.frag_in_rank[0].corr2RDM))
-        output[5] = np.linalg.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
-        # output[7] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
-        output[6] = np.linalg.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
+        output[5] = la.norm(self.tot_system.frag_in_rank[0].CIcoeffs) ** 2
+        # output[7] = la.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
+        output[6] = la.norm(self.tot_system.frag_in_rank[0].rotmat[:, 3]) ** 2
 
-        # self.tot_system.get_nat_orbs()
         if np.allclose(
             self.tot_system.glob1RDM,
             utils.adjoint(self.tot_system.glob1RDM),
@@ -671,6 +697,7 @@ class dynamics_driver:
 
     def print_checkpoint(self, current_time):
         # Save total system to file for restart purposes using pickle
+
         file_system = open("restart_system.dat", "wb")
         pickle.dump(
             {"last_time": current_time, "tot_system": self.tot_system}, file_system
@@ -685,32 +712,39 @@ class dynamics_driver:
         specified site. If no set of sites is specified and the total
         number of sites is less than 50, then the spin magnetic moment
         will be calculated for all sites.
+        NOTE: Assumes spatial orbitals.
         """
         np.set_printoptions(precision=6, suppress=True, linewidth=sys.maxsize)
 
         fmt_str = "%20.8e"
 
+        if self.tot_system.Nsites % 2 != 0:
+            print('Orbitals are not spatial; cannot calculate magnetic moment. Cancelling calculation.')
+            exit()
+
+        Nhalf = self.tot_system.Nsites // 2
+
         den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
-        ovlp = np.eye(self.tot_system.Nsites)
+        ovlp = np.eye(Nhalf)
 
         magx = np.sum(
             (
-                den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                den[: Nhalf, Nhalf :]
+                + den[Nhalf :, : Nhalf]
             )
             * ovlp
         )
         magy = 1j * np.sum(
             (
-                den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                den[: Nhalf, Nhalf :]
+                - den[Nhalf :, : Nhalf]
             )
             * ovlp
         )
         magz = np.sum(
             (
-                den[: self.tot_system.Nsites, : self.tot_system.Nsites]
-                - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+                den[: Nhalf, : Nhalf]
+                - den[Nhalf :, Nhalf :]
             )
             * ovlp
         )
@@ -727,27 +761,27 @@ class dynamics_driver:
         sites_z = []
 
         for i in range(self.mag_sites):
-            ovlp = np.zeros((self.tot_system.Nsites, self.tot_system.Nsites))
+            ovlp = np.zeros((Nhalf, Nhalf))
             ovlp[i, i] = 1
 
             site_magx = np.sum(
                 (
-                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                    + den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                    den[: Nhalf, Nhalf :]
+                    + den[Nhalf :, : Nhalf]
                 )
                 * ovlp
             )
             site_magy = 1j * np.sum(
                 (
-                    den[: self.tot_system.Nsites, self.tot_system.Nsites :]
-                    - den[self.tot_system.Nsites :, : self.tot_system.Nsites]
+                    den[: Nhalf, Nhalf :]
+                    - den[Nhalf :, : Nhalf]
                 )
                 * ovlp
             )
             site_magz = np.sum(
                 (
-                    den[: self.tot_system.Nsites, : self.tot_system.Nsites]
-                    - den[self.tot_system.Nsites :, self.tot_system.Nsites :]
+                    den[: Nhalf, : Nhalf]
+                    - den[Nhalf :, Nhalf :]
                 )
                 * ovlp
             )

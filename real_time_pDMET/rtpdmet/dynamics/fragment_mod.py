@@ -58,12 +58,12 @@ class fragment:
             # total number of sites (or basis functions if restricted) in total system
             self.Nele = Nele
             # total number of electrons in total system
-            self.Nbasis = 2 * self.Nsites
+            self.Nbasis = self.Nsites
             # number of basis functions in total system
 
             self.Ncore = 2 * (int(Nele / 2) - int(self.Nimp / 2))
             # Number of core orbitals in fragment
-            self.Nvirt = 2 * Nsites - 2 * self.Nimp - self.Ncore
+            self.Nvirt = Nsites - 2 * self.Nimp - self.Ncore
             # Number of virtual orbitals in fragment
 
             self.gen = True
@@ -76,148 +76,19 @@ class fragment:
             self.bathrange = np.arange(
                 self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt
             )
-            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
+            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, self.Nsites)
 
             self.last_imp = self.Nimp
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
-            self.last_core = self.Nsites * 2
+            self.last_core = self.Nsites
 
             self.frags_rank = 0
             self.frag_num = 0
 
     #####################################################################
 
-    def get_rotmat(self, mf1RDM, gen=False):
-        """
-        Subroutine to generate rotation matrix from site to embedding basis
-        PING currently impurities have to be listed in ascending order
-        (though dont have to be sequential)
-        """
-
-        if not gen:
-            # remove rows/columns corresponding to impurity sites from mf 1RDM
-            mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
-            mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
-
-            # diagonalize environment part of 1RDM to obtain embedding
-            # (virtual, bath, core) orbitals
-            evals, evecs = np.linalg.eigh(mf1RDM)
-
-            # form rotation matrix consisting of unit vectors
-            # for impurity and the evecs for embedding
-            # rotation matrix is ordered as impurity, virtual, bath, core
-
-            # WORKS ONLY FOR MULTI-IMPURITY INDEXING'''
-
-            """
-            self.rotmat = np.zeros( [ self.Nsites, self.Nimp ] )
-            for imp in range(self.Nimp):
-                indx                     = self.impindx[imp]
-                self.rotmat[ indx, imp ] = 1.0
-                if indx <= evecs.shape[0]:
-                    evecs = np.insert( evecs, indx, 0.0, axis=0 )
-                else:
-                    zero_coln = np.array([np.zeros(evecs.shape[1])])
-                    evecs = np.concatenate((evecs, zero_coln), axis=0)
-
-            self.rotmat = np.concatenate( (self.rotmat,evecs), axis=1 )
-            """
-
-            # WORKS FOR SINGLE IMPURITY INDEXING
-
-            self.rotmat = np.zeros([self.Nsites, self.Nimp])
-
-            for imp in range(self.Nimp):
-                indx = self.impindx[imp]
-                self.rotmat[indx, imp] = 1.0
-
-            if self.impindx[0] > self.impindx[self.Nimp - 1]:
-                for imp in range(self.Nimp):
-                    rev_impindx = np.flipud(self.impindx)
-                    indx = rev_impindx[imp]
-                    if indx <= evecs.shape[0]:
-                        evecs = np.insert(evecs, indx, 0.0, axis=0)
-                    else:
-                        print("index is out of range, attaching zeros in the end")
-                        zero_coln = np.array([np.zeros(evecs.shape[1])])
-                        evecs = np.concatenate((evecs, zero_coln), axis=0)
-            else:
-                for imp in range(self.Nimp):
-                    indx = self.impindx[imp]
-                    if indx <= evecs.shape[0]:
-                        evecs = np.insert(evecs, indx, 0.0, axis=0)
-                    else:
-                        print("index is out of range, attaching zeros in the end")
-                        zero_coln = np.array([np.zeros(evecs.shape[1])])
-                        evecs = np.concatenate((evecs, zero_coln), axis=0)
-
-            self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
-            self.env1RDM_evals = evals
-
-        if gen:
-            # remove rows/columns corresponding to impurity sites from mf 1RDM
-            mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
-            mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
-
-            # diagonalize environment part of 1RDM to obtain embedding
-            # (virtual, bath, core) orbitals
-            evals, evecs = np.linalg.eigh(mf1RDM)
-
-            # WORKS ONLY FOR MULTI-IMPURITY INDEXING'''
-
-            """
-            self.rotmat = np.zeros( [ self.Nsites, self.Nimp ] )
-            for imp in range(self.Nimp):
-                indx                     = self.impindx[imp]
-                self.rotmat[ indx, imp ] = 1.0
-                if indx <= evecs.shape[0]:
-                    evecs = np.insert( evecs, indx, 0.0, axis=0 )
-                else:
-                    zero_coln = np.array([np.zeros(evecs.shape[1])])
-                    evecs = np.concatenate((evecs, zero_coln), axis=0)
-
-            self.rotmat = np.concatenate( (self.rotmat,evecs), axis=1 )
-            """
-
-            # WORKS FOR SINGLE IMPURITY INDEXING
-
-            self.rotmat = np.zeros([2 * self.Nsites, self.Nimp])
-
-            for imp in range(self.Nimp):
-                indx = self.impindx[imp]
-                self.rotmat[indx, imp] = 1.0
-
-            if self.impindx[0] > self.impindx[self.Nimp - 1]:
-                for imp in range(self.Nimp):
-                    rev_impindx = np.flipud(self.impindx)
-                    indx = rev_impindx[imp]
-                    if indx <= evecs.shape[0]:
-                        evecs = np.insert(evecs, indx, 0.0, axis=0)
-                    else:
-                        print("index is out of range, attaching zeros in the end")
-                        zero_coln = np.array([np.zeros(evecs.shape[1])])
-                        evecs = np.concatenate((evecs, zero_coln), axis=0)
-            else:
-                for imp in range(self.Nimp):
-                    indx = self.impindx[imp]
-                    if indx <= evecs.shape[0]:
-                        evecs = np.insert(evecs, indx, 0.0, axis=0)
-                    else:
-                        print("index is out of range, attaching zeros in the end")
-                        zero_coln = np.array([np.zeros(evecs.shape[1])])
-                        evecs = np.concatenate((evecs, zero_coln), axis=0)
-
-            self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
-            self.env1RDM_evals = evals
-
-        # for using this function in rtog_transitions.py
-        rotmat = self.rotmat
-        env1RDM_evals = self.env1RDM_evals
-
-        return rotmat, env1RDM_evals
-
-    #####################################################################
+    # NOTE: sign problem
 
     def get_Hemb(self, h_site, V_site, hamtype=0, hubsite_indx=None, gen=False):
         """
@@ -475,7 +346,7 @@ class fragment:
             self.corr1RDM = fci_mod.get_corr1RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
             )
-            self.full_corr1RDM = np.zeros([2 * self.Nsites, 2 * self.Nsites])
+            self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:
                 self.full_corr1RDM[c][c] = 1
@@ -528,7 +399,7 @@ class fragment:
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
             )
-            self.full_corr1RDM = np.zeros([2 * self.Nsites, 2 * self.Nsites])
+            self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:
                 self.full_corr1RDM[c][c] = 1
@@ -547,6 +418,8 @@ class fragment:
             self.full_corr1RDM[
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
+
+        # NOTE: signs are different between CI coeffs; so far does not seem to impact corr1RDM
 
     #####################################################################
 
@@ -782,7 +655,7 @@ class fragment:
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0:
                 # General hamiltonian
-                genFmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
+                genFmat = np.zeros([self.Nsites, self.Nsites], dtype=complex)
                 # if j in core:
                 genFmat[self.corerange, :] = np.transpose(
                     IFmat[:, self.corerange] + AFmat[:, self.corerange]
@@ -800,7 +673,7 @@ class fragment:
 
             if hamtype == 1:
                 # Hubbard hamiltonian
-                genFmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
+                genFmat = np.zeros([self.Nsites, self.Nsites], dtype=complex)
                 # if j in core:
                 genFmat[self.corerange, :] = np.transpose(
                     IFmat[:, self.corerange] + AFmat[:, self.corerange]
@@ -826,25 +699,24 @@ class fragment:
 
     #####################################################################
 
-    def get_Xmat(self, mf1RDM, ddt_mf1RDM):
+    def get_Xmat(self, mf1RDM, ddt_mf1RDM, dX):
         # Subroutine to calculate the X-matrix to propagate embedding orbitals
 
-        if not self.gen:
-            # Initialize X-matrix
-            self.Xmat = np.zeros([self.Nsites, self.Nsites], dtype=complex)
+        # Initialize X-matrix
+        self.Xmat = np.zeros([self.Nsites, self.Nsites], dtype=complex)
 
-            # Index of orbitals in the site-basis corresponding to the environment
-            # potential issue if considering non-sequantial
-            # imp indx (single impurity)
-            envindx = np.setdiff1d(np.arange(self.Nsites), self.impindx)
+        # Index of orbitals in the site-basis corresponding to the environment
+        # potential issue if considering non-sequantial
+        # imp indx (single impurity)
+        envindx = np.setdiff1d(np.arange(self.Nsites), self.impindx)
 
-        if self.gen:
-            self.Xmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
+       # if self.gen:
+       #     self.Xmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
 
-            # Index of orbitals in the site-basis corresponding to the environment
-            # potential issue if considering non-sequantial
-            # imp indx (single impurity)
-            envindx = np.setdiff1d(np.arange(2 * self.Nsites), self.impindx)
+       #     # Index of orbitals in the site-basis corresponding to the environment
+       #     # potential issue if considering non-sequantial
+       #     # imp indx (single impurity)
+       #     envindx = np.setdiff1d(np.arange(2 * self.Nsites), self.impindx)
 
         # Eigenvalues of environment part of mf1RDM
         env1RDM_evals = np.diag(
@@ -864,13 +736,15 @@ class fragment:
         # embedding orbital eigenvalues
         # Set redundant terms to zero,
         # ie diagonal, core-core, and virtual-virtual
-        if not self.gen:
-            eval_dif = np.zeros([self.Nsites - self.Nimp, self.Nsites - self.Nimp])
-        if self.gen:
-            eval_dif = np.zeros([
-                (2 * self.Nsites) - self.Nimp,
-                (2 * self.Nsites) - self.Nimp,
-            ])
+        eval_dif = np.zeros([self.Nsites - self.Nimp, self.Nsites - self.Nimp])
+
+        #if not self.gen:
+        #    eval_dif = np.zeros([self.Nsites - self.Nimp, self.Nsites - self.Nimp])
+        #if self.gen:
+        #    eval_dif = np.zeros([
+        #        (2 * self.Nsites) - self.Nimp,
+        #        (2 * self.Nsites) - self.Nimp,
+        #    ])
 
         # core-bath and core-virt
         for b in self.corerange:
@@ -910,7 +784,7 @@ class fragment:
                     and np.abs(
                         env1RDM_evals[a - self.Nimp] - env1RDM_evals[b - self.Nimp]
                     )
-                    > 1e-4
+                    > dX
                 ):
                     eval_dif[b - self.Nimp, a - self.Nimp] = 1.0 / (
                         env1RDM_evals[a - self.Nimp] - env1RDM_evals[b - self.Nimp]
@@ -930,3 +804,133 @@ class fragment:
         self.Xmat = np.triu(self.Xmat) + np.triu(self.Xmat, 1).conjugate().transpose()
 
     #####################################################################
+
+    #def get_rotmat(self, mf1RDM, gen=False):
+    #    """
+    #    Subroutine to generate rotation matrix from site to embedding basis
+    #    PING currently impurities have to be listed in ascending order
+    #    (though dont have to be sequential)
+    #    """
+
+    #    if not gen:
+    #        # remove rows/columns corresponding to impurity sites from mf 1RDM
+    #        mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
+    #        mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
+
+    #        # diagonalize environment part of 1RDM to obtain embedding
+    #        # (virtual, bath, core) orbitals
+    #        evals, evecs = np.linalg.eigh(mf1RDM)
+
+    #        # form rotation matrix consisting of unit vectors
+    #        # for impurity and the evecs for embedding
+    #        # rotation matrix is ordered as impurity, virtual, bath, core
+
+    #        # WORKS ONLY FOR MULTI-IMPURITY INDEXING'''
+
+    #        """
+    #        self.rotmat = np.zeros( [ self.Nsites, self.Nimp ] )
+    #        for imp in range(self.Nimp):
+    #            indx                     = self.impindx[imp]
+    #            self.rotmat[ indx, imp ] = 1.0
+    #            if indx <= evecs.shape[0]:
+    #                evecs = np.insert( evecs, indx, 0.0, axis=0 )
+    #            else:
+    #                zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                evecs = np.concatenate((evecs, zero_coln), axis=0)
+
+    #        self.rotmat = np.concatenate( (self.rotmat,evecs), axis=1 )
+    #        """
+
+    #        # WORKS FOR SINGLE IMPURITY INDEXING
+
+    #        self.rotmat = np.zeros([self.Nsites, self.Nimp])
+
+    #        for imp in range(self.Nimp):
+    #            indx = self.impindx[imp]
+    #            self.rotmat[indx, imp] = 1.0
+
+    #        if self.impindx[0] > self.impindx[self.Nimp - 1]:
+    #            for imp in range(self.Nimp):
+    #                rev_impindx = np.flipud(self.impindx)
+    #                indx = rev_impindx[imp]
+    #                if indx <= evecs.shape[0]:
+    #                    evecs = np.insert(evecs, indx, 0.0, axis=0)
+    #                else:
+    #                    print("index is out of range, attaching zeros in the end")
+    #                    zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                    evecs = np.concatenate((evecs, zero_coln), axis=0)
+    #        else:
+    #            for imp in range(self.Nimp):
+    #                indx = self.impindx[imp]
+    #                if indx <= evecs.shape[0]:
+    #                    evecs = np.insert(evecs, indx, 0.0, axis=0)
+    #                else:
+    #                    print("index is out of range, attaching zeros in the end")
+    #                    zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                    evecs = np.concatenate((evecs, zero_coln), axis=0)
+
+    #        self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
+    #        self.env1RDM_evals = evals
+
+    #    if gen:
+    #        # remove rows/columns corresponding to impurity sites from mf 1RDM
+    #        mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
+    #        mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
+
+    #        # diagonalize environment part of 1RDM to obtain embedding
+    #        # (virtual, bath, core) orbitals
+    #        evals, evecs = np.linalg.eigh(mf1RDM)
+
+    #        # WORKS ONLY FOR MULTI-IMPURITY INDEXING'''
+
+    #        """
+    #        self.rotmat = np.zeros( [ self.Nsites, self.Nimp ] )
+    #        for imp in range(self.Nimp):
+    #            indx                     = self.impindx[imp]
+    #            self.rotmat[ indx, imp ] = 1.0
+    #            if indx <= evecs.shape[0]:
+    #                evecs = np.insert( evecs, indx, 0.0, axis=0 )
+    #            else:
+    #                zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                evecs = np.concatenate((evecs, zero_coln), axis=0)
+
+    #        self.rotmat = np.concatenate( (self.rotmat,evecs), axis=1 )
+    #        """
+
+    #        # WORKS FOR SINGLE IMPURITY INDEXING
+
+    #        self.rotmat = np.zeros([2 * self.Nsites, self.Nimp])
+
+    #        for imp in range(self.Nimp):
+    #            indx = self.impindx[imp]
+    #            self.rotmat[indx, imp] = 1.0
+
+    #        if self.impindx[0] > self.impindx[self.Nimp - 1]:
+    #            for imp in range(self.Nimp):
+    #                rev_impindx = np.flipud(self.impindx)
+    #                indx = rev_impindx[imp]
+    #                if indx <= evecs.shape[0]:
+    #                    evecs = np.insert(evecs, indx, 0.0, axis=0)
+    #                else:
+    #                    print("index is out of range, attaching zeros in the end")
+    #                    zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                    evecs = np.concatenate((evecs, zero_coln), axis=0)
+    #        else:
+    #            for imp in range(self.Nimp):
+    #                indx = self.impindx[imp]
+    #                if indx <= evecs.shape[0]:
+    #                    evecs = np.insert(evecs, indx, 0.0, axis=0)
+    #                else:
+    #                    print("index is out of range, attaching zeros in the end")
+    #                    zero_coln = np.array([np.zeros(evecs.shape[1])])
+    #                    evecs = np.concatenate((evecs, zero_coln), axis=0)
+
+    #        self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
+    #        self.env1RDM_evals = evals
+
+    #    # for using this function in rtog_transitions.py
+    #    rotmat = self.rotmat
+    #    env1RDM_evals = self.env1RDM_evals
+
+    #    return rotmat, env1RDM_evals
+

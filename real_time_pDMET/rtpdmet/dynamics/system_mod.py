@@ -75,7 +75,7 @@ class system:
             # initialize total system variables
             self.Nsites = Nsites
             # total number of (spatial) sites in total system
-            self.Nspinor = Nsites * 2
+            # self.Nspinor = Nsites * 2
             # total number of basis functions in total system
             self.Nele = Nele
             # total number of electrons
@@ -113,7 +113,7 @@ class system:
             self.site_to_frag_list = []
             self.site_to_impindx = []
 
-            for i in range(self.Nspinor):
+            for i in range(self.Nsites):
                 for ifrag, arr in enumerate(impindx):
                     if i in arr:
                         self.site_to_frag_list.append(ifrag)
@@ -146,14 +146,6 @@ class system:
             frag.get_Hemb(
                 self.h_site, self.V_site, self.hamtype, self.hubsite_indx, self.gen
             )
-
-    #####################################################################
-
-    def get_frag_rotmat(self):
-        # Subroutine to calculate rotation matrix
-        # (ie embedding orbs) for each fragment
-        for frag in self.frag_in_rank:
-            frag.get_rotmat(self.mf1RDM)
 
     #####################################################################
 
@@ -192,10 +184,10 @@ class system:
 
     #####################################################################
 
-    def get_frag_Xmat(self, change_mf1RDM):
+    def get_frag_Xmat(self, change_mf1RDM, dX):
         # Solve for X-matrix of each fragment given current mean-field 1RDM
         # and the current time-derivative of the mean-field 1RDM
         for frag in self.frag_in_rank:
-            frag.get_Xmat(self.mf1RDM, change_mf1RDM)
+            frag.get_Xmat(self.mf1RDM, change_mf1RDM, dX)
 
     ######################################################################

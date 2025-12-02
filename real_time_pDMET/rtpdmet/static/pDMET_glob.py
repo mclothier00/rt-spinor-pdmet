@@ -16,17 +16,16 @@ adiis.space = DiisDim
 class static_pdmet:
     def __init__(
         self,
-        Nsites,
         Nele,
         Nfrag,
         impindx,
         h_site,
         V_site,
-        U,
         Maxitr,
         mf1RDM,
         tol,
         hamtype=0,
+        U=None,
         mubool=False,
         muhistory=False,
         hubb_indx=None,
@@ -37,7 +36,6 @@ class static_pdmet:
         trust_region=2.5,
     ):
         """
-        Nsites    - total number of sites (or basis functions) in total system
         Nele      - total number of electrons
         Nfrag     - total number of fragments for DMET calculation
         impindx   - a list of numpy arrays containing the impurity indices for
@@ -79,7 +77,6 @@ class static_pdmet:
         self.hamtype = hamtype
         self.hubb_indx = hubb_indx
         self.U = U
-        self.Nsites = Nsites
         self.Nele = Nele
         self.Nfrag = Nfrag
         self.mu = 0
@@ -88,6 +85,17 @@ class static_pdmet:
         self.history = []
         self.gen = gen
 
+        if self.hamtype == 1:
+            if self.U == None:
+                print("ERROR: Hubbard-like Hamiltonian requested, but value of U term not provided. Please specify U-term.")
+                exit()
+            if len(self.hubb_indx) == 0:
+                print("ERROR: Hubbard-like Hamiltonian requested, but location of U term not provided. Please specify hubb_indx.")
+                exit()
+
+        # basis set size
+        self.Nsites = self.h_site.shape[0]
+    
         # Calculate an initial mean-field Hamiltonian
 
         if self.rank == 0:
@@ -111,12 +119,12 @@ class static_pdmet:
         # Initialize the system from mf 1RDM and fragment information
 
         if gen:
-            impindx = utils.spinor_impindx(Nsites, Nfrag)
-
+            impindx = utils.spinor_impindx(self.Nsites // 2, Nfrag)
+        
         self.frag_list = []
         for i in range(Nfrag):
             self.frag_list.append(
-                fragment_mod.fragment(impindx[i], Nsites, Nele, hubb_indx, gen)
+                fragment_mod.fragment(impindx[i], self.Nsites, Nele, hubb_indx, gen)
             )
             self.frag_list[i].frag_num = i
 
@@ -125,18 +133,12 @@ class static_pdmet:
 
         self.site_to_frag_list = []
         self.site_to_impindx = []
-        if self.gen:
-            for i in range(2 * Nsites):
-                for ifrag, array in enumerate(impindx):
-                    if i in array:
-                        self.site_to_frag_list.append(ifrag)
-                        self.site_to_impindx.append(np.argwhere(array == i)[0][0])
-        else:
-            for i in range(Nsites):
-                for ifrag, array in enumerate(impindx):
-                    if i in array:
-                        self.site_to_frag_list.append(ifrag)
-                        self.site_to_impindx.append(np.argwhere(array == i)[0][0])
+        
+        for i in range(self.Nsites):
+            for ifrag, array in enumerate(impindx):
+                if i in array:
+                    self.site_to_frag_list.append(ifrag)
+                    self.site_to_impindx.append(np.argwhere(array == i)[0][0])
 
         # output file
         self.file_output = open("output_static.dat", "w")
@@ -189,6 +191,7 @@ class static_pdmet:
         conv = False
         old_E = 0.0
         old_glob1RDM = np.copy(self.old_glob1RDM)
+
 
         for itr in range(self.Maxitr):
             if self.rank == 0:
@@ -325,14 +328,22 @@ class static_pdmet:
                         self.mubool,
                         self.gen,
                     )
-
+            
             # constract a global density matrix from all impurities
             self.get_globalRDM()
+
+            # NOTE: DELETE AFTER GOBLIN HUNTING
+            #if self.gen:
+            #    print(utils.reshape_gtor_matrix(self.glob1RDM))
+            #else:
+            #    print(self.glob1RDM /2 )
+
+            #exit()
 
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
-            dif = np.linalg.norm(self.glob1RDM - old_glob1RDM)
+            dif = la.norm(self.glob1RDM - old_glob1RDM)
             dVcor_per_ele = self.max_abs(dif)
             old_glob1RDM = np.copy(self.glob1RDM)
 
@@ -421,7 +432,7 @@ class static_pdmet:
 
     def initialize_GHF(self, h_site, V_site):
         print("Mf 1RDM is initialized with GHF")
-        Norbs = 2 * self.Nsites
+        Norbs = self.Nsites
         mol = gto.M()
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
@@ -444,22 +455,26 @@ class static_pdmet:
     def get_globalRDM(self):
         # initialize glodal 1RDM to be complex if rotation
         # matrix or correlated 1RDM is complex
+            
+        Nsites = self.Nsites
 
-        if not self.gen:
-            Nsites = self.Nsites
         if self.gen:
-            Nsites = 2 * self.Nsites
-
-        self.glob1RDM = np.zeros([Nsites, Nsites])
-
+            self.glob1RDM = np.zeros([Nsites, Nsites], dtype=complex)
+            mpi_glob1RDM = np.zeros([Nsites, Nsites], dtype=complex)
+        else:
+            self.glob1RDM = np.zeros([Nsites, Nsites])
+            mpi_glob1RDM = np.zeros([Nsites, Nsites])
+        
         # form the global 1RDM forcing hermiticity
         self.globalRDMtrace = 0
 
-        mpi_glob1RDM = np.zeros([Nsites, Nsites])
-
         for i, frag in enumerate(self.frag_in_rank):
             # ordered as impurity, virtual, bath, core to match rotmat
-            fullcorr1RDM = np.zeros((Nsites, Nsites))
+            if self.gen:
+                fullcorr1RDM = np.zeros((Nsites, Nsites), dtype=complex)
+            else:
+                fullcorr1RDM = np.zeros((Nsites, Nsites))
+            
             # impurity
             fullcorr1RDM[: frag.Nimp, : frag.Nimp] = frag.corr1RDM[
                 : frag.Nimp, : frag.Nimp
@@ -487,7 +502,6 @@ class static_pdmet:
                 mpi_glob1RDM[site, :] += tmp[site, :]
                 mpi_glob1RDM[:, site] += tmp[:, site]
 
-        self.glob1RDM = np.zeros([Nsites, Nsites])
         MPI.COMM_WORLD.Allreduce(mpi_glob1RDM, self.glob1RDM, op=MPI.SUM)
         trace1RDM = self.glob1RDM.trace()
 
@@ -719,12 +733,35 @@ class static_pdmet:
 
     ##########################################################
 
+    # NOTE: disagreement between generalized and restricted in eigh... but might not matter?
+    #       half frag results in same mf1RDM if glob1RDM left untouched
+
     def get_nat_orbs(self):
-        NOevals, NOevecs = np.linalg.eigh(self.glob1RDM)
+        if self.gen:
+        #    print(f'glob: {utils.reshape_gtor_matrix(self.glob1RDM)}')
+        #    print()
+            NOevals, NOevecs = la.eigh(utils.reshape_gtor_matrix(self.glob1RDM))
+        #    print(NOevecs)
+            NOevals, NOevecs = utils.sort_eigenpairs(NOevals, NOevecs)
+        #    print()
+        #    print(NOevecs)
+        else:
+        #    print(f'glob: {self.glob1RDM / 2}')
+        #    print()
+            NOevals, NOevecs = la.eigh(self.glob1RDM)
+        #    print(NOevecs)
+        #exit()
+
+        NOevals, NOevecs = la.eigh(self.glob1RDM)
+        
         # Re-order such that eigenvalues are in descending order
         self.NOevals = np.flip(NOevals)
         self.NOevecs = np.flip(NOevecs, 1)
-
+       
+        #print(NOevecs)
+        #print()
+        
+ 
     ##########################################################
 
     def get_new_mfRDM(self):
@@ -740,6 +777,13 @@ class static_pdmet:
             NOcc = self.Nele
             NOcc = self.NOevecs[:, :NOcc]
             self.mf1RDM = np.dot(NOcc, NOcc.T.conj())
+
+#        print('mf1RDM')
+#        if self.gen:
+#            print(utils.reshape_gtor_matrix(self.mf1RDM))
+#            #print(self.mf1RDM)
+#        else:
+#            print(self.mf1RDM / 2)
 
     ##########################################################
 
@@ -767,10 +811,7 @@ class static_pdmet:
 
     def calc_data(self, itr, dif, total_Nele):
         fmt_str = "%20.8e"
-        if not self.gen:
-            Nsites = self.Nsites
-        if self.gen:
-            Nsites = 2 * self.Nsites
+        Nsites = self.Nsites
         output = np.zeros(6 + Nsites)
         output[0] = itr
         output[1] = self.mu

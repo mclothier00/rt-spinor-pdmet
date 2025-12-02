@@ -1,8 +1,9 @@
 import numpy as np
-import real_time_pDMET.rtpdmet.static.codes as codes
 import real_time_pDMET.rtpdmet.static.fci_mod as fci_mod
 import real_time_pDMET.scripts.utils as utils
-import scipy.linalg as linalg
+import scipy.linalg as la
+
+np.set_printoptions(linewidth=120)
 
 class fragment:
     def __init__(
@@ -48,7 +49,7 @@ class fragment:
 
         if gen:
             self.impindx = impindx
-            self.Nsites = Nsites  # spatial sites; basis is 2x this value
+            self.Nsites = Nsites  
             self.Nele = Nele
             self.hubb_indx = hubb_indx
             self.mubool = mubool
@@ -60,18 +61,20 @@ class fragment:
             self.step = step
             self.Nimp = impindx.shape[0]
             self.Ncore = 2 * (int(Nele / 2) - int(self.Nimp / 2))
-            self.Nvirt = 2 * Nsites - 2 * self.Nimp - self.Ncore
+            self.Nvirt = Nsites - 2 * self.Nimp - self.Ncore
             self.imprange = np.arange(0, self.Nimp)
             self.virtrange = np.arange(self.Nimp, self.Nimp + self.Nvirt)
             self.bathrange = np.arange(
                 self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt
             )
-            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
+            #self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
+            self.corerange = np.arange(2 * self.Nimp + self.Nvirt, self.Nsites)
             self.last_imp = self.Nimp
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
-            self.last_core = 2 * self.Nsites
-
+            #self.last_core = 2 * self.Nsites
+            self.last_core = self.Nsites
+            
             self.gen = True
 
         self.frags_rank = 0
@@ -91,18 +94,25 @@ class fragment:
         # delete rows (axis=0) and columns (axis=1) that correspond to impurity sites
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
+ 
         # diagonalize environment part of 1RDM to obtain
         # embedding (virtual, bath, core) orbitals
-        evals, evecs = np.linalg.eigh(mf1RDM)
+        if self.gen:
+            evals, evecs = la.eigh(utils.reshape_gtor_matrix(mf1RDM))            
+            evals, evecs = utils.sort_eigenpairs(evals, evecs)
+            #print(evecs)
+        else:
+            #print(f'mf: \n {mf1RDM / 2}')
+            #print()
+            evals, evecs = la.eigh(mf1RDM)
+            #print(evecs)
+        #print()
 
         # form rotation matrix consisting of unit vectors
         # for impurity and the evecs for embedding
         # rotation matrix is ordered as impurity, virtual, bath, core
 
-        if not self.gen:
-            self.rotmat = np.zeros([self.Nsites, self.Nimp])
-        if self.gen:
-            self.rotmat = np.zeros([(2 * self.Nsites), self.Nimp])
+        self.rotmat = np.zeros([self.Nsites, self.Nimp])
 
         for imp in range(self.Nimp):
             indx = self.impindx[imp]
@@ -134,6 +144,10 @@ class fragment:
         self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
         self.env1RDM_evals = evals
 
+        #print(self.rotmat)
+        #print()
+
+
     #####################################################################
 
     def get_Hemb(self, h_site, V_site, U, hamtype=0, hubsite_indx=None):
@@ -151,7 +165,7 @@ class fragment:
         )
 
         # rotate the 1 e- terms, h_emb currently
-        h_emb = codes.rot1el(h_site, rotmat_small)
+        h_emb = utils.rot1el(h_site, rotmat_small)
         self.h_site = np.copy(h_site)
 
         # define 1 e- term of size ( impurities, bath ) x ( impurities, bath )
@@ -165,18 +179,17 @@ class fragment:
         if not self.gen:
             # rotate the 2 e- terms
             if hamtype == 0:
-                V_emb = codes.rot2el_chem(V_site, rotmat_small)
+                V_emb = utils.rot2el_chem(V_site, rotmat_small)
 
             elif hamtype == 1:
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
                 self.V_emb = U * np.einsum(
                     "ap,cp,pb,pd->abcd",
-                    codes.adjoint(rotmat_vsmall),
-                    codes.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
-
         
             if hamtype == 0:
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
@@ -195,12 +208,12 @@ class fragment:
                 
                 core_int = U * np.einsum(
                     "ap,pb,p->ab",
-                    codes.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
                     rotmat_vsmall,
                     np.einsum(
                         "pe,ep->p",
                         rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                        codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                        utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
                     ),
                 )
 
@@ -231,15 +244,15 @@ class fragment:
         if self.gen:
             # rotate the 2 e- terms
             if hamtype == 0:
-                V_emb = codes.rot2el_chem(V_site, rotmat_small)
+                V_emb = utils.rot2el_chem(V_site, rotmat_small)
             elif hamtype == 1:
                 # Hubbard hamiltonian
                 # remove core states from rotation matrix
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
                 self.V_emb = U * np.einsum(
                     "ip,kr,pj,rl->ijkl",
-                    codes.adjoint(rotmat_vsmall),
-                    codes.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_vsmall),
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
@@ -259,15 +272,15 @@ class fragment:
             if hamtype == 1:
                 core_int = U * np.einsum(
                     "ip,nr,pj,rn->ij",
-                    codes.adjoint(rotmat_vsmall),
-                    codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
                     rotmat_vsmall,
                     rotmat_small[hubsite_indx, 2 * self.Nimp :],
                 )
                 core_int -= U * np.einsum(
                     "ip,nr,pn,rj->ij",
-                    codes.adjoint(rotmat_vsmall),
-                    codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                    utils.adjoint(rotmat_vsmall),
+                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
                     rotmat_small[hubsite_indx, 2 * self.Nimp :],
                     rotmat_vsmall,
                 )
@@ -306,6 +319,18 @@ class fragment:
                 : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
             ]
 
+        # NOTE: DELETE AFTER GOBLIN HUNTING
+        #if self.gen:
+        #    print(f'embed H: \n {utils.reshape_gtor_matrix(self.h_emb)}')
+        #    #print(f'embed H: \n {self.h_emb}')
+        #    print()
+        #else:
+        #    h_site = np.kron(np.eye(2), self.h_emb)
+        #    h_site = utils.reshape_rtog_matrix(h_site)
+        #    print(f'embed H: \n {h_site}')
+        #    print()
+        #exit()
+
     #####################################################################
 
     def add_mu_Hemb(self, mu):
@@ -340,6 +365,7 @@ class fragment:
             self.corr1RDM = fci_mod.get_corr1RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
             )
+
 
     #####################################################################
 
