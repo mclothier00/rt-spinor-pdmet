@@ -71,7 +71,6 @@ class dynamics_driver:
         #       
         #       init_time = system['last_time']
         #       system = system['tot_system'] '''
-        print('called')
 
         self.tot_system = tot_system
         self.delt = delt

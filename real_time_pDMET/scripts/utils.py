@@ -362,6 +362,32 @@ def reshape_rtog_tensor(a):
 #####################################################################
 
 
+def reshape_gtor_tensor(a):
+    ## reshape a tensor with columns as 1a,1b,2a,2b, etc. to a "spin-blocked" tensor
+
+    num_rows, num_cols, dim1, dim2 = a.shape
+    block_indices = np.arange(num_cols)
+    spin_block_size = int(num_cols / 2)
+
+    alpha_block = block_indices[:spin_block_size]
+    beta_block = block_indices[spin_block_size:]
+
+    indices = [list(itertools.chain(i)) for i in zip(alpha_block, beta_block)]
+    indices = np.asarray(indices).reshape(-1)
+
+    inverse_indices = np.empty_like(indices)
+    inverse_indices[indices] = np.arange(len(indices))
+
+    new_a = a[:, :, :, inverse_indices]
+    new_a = new_a[:, :, inverse_indices, :]
+    new_a = new_a[:, inverse_indices, :, :]
+    new_a = new_a[inverse_indices, :, :, :]
+
+    return new_a
+
+#####################################################################
+
+
 def spinor_impindx(Nsites, Nfrag, spinblock=False):
     ## creates a new impindx based on spinor (or unrestricted) orbitals
 
@@ -471,6 +497,61 @@ def sort_eigenpairs(evals, evecs, tol=1e-12):
     evecs = evecs_gen
 
     return evals, evecs
+
+
+#####################################################################
+
+
+def is_spin_restricted(D, tol=1e-9):
+    """
+    NOTE: From ChatGPT
+
+    Check if a spin-generalized density matrix D is spin-restricted.
+    
+    Parameters
+    ----------
+    D : np.ndarray
+        Full density matrix in spin-orbital basis (shape: 2N x 2N)
+    tol : float
+        Numerical tolerance for equality checks.
+
+    Returns
+    -------
+    result : dict
+        {
+            "restricted": True/False,
+            "diag_equal": True/False,
+            "offdiag_zero": True/False
+        }
+    """
+
+    # dimension check
+    if D.ndim != 2 or D.shape[0] != D.shape[1] or D.shape[0] % 2 != 0:
+        raise ValueError("D must be a square (2N × 2N) matrix.")
+
+    n = D.shape[0] // 2
+
+    Daa = D[:n, :n]
+    Dab = D[:n, n:]
+    Dba = D[n:, :n]
+    Dbb = D[n:, n:]
+
+    offdiag_zero = (
+        np.allclose(Dab, np.zeros_like(Dab), atol=tol) and
+        np.allclose(Dba, np.zeros_like(Dba), atol=tol)
+    )
+
+    diag_equal = np.allclose(Daa, Dbb, atol=tol)
+
+    restricted = offdiag_zero and diag_equal
+
+    return restricted
+
+    #return {
+    #    "restricted": restricted,
+    #    "diag_equal": diag_equal,
+    #    "offdiag_zero": offdiag_zero
+    #}
 
 
 #####################################################################

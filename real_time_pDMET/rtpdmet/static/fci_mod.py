@@ -71,6 +71,11 @@ def FCI_GS(h, V, U, Norbs, Nele, gen=False):
     if gen:
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
+        #h = utils.reshape_gtor_matrix(h)
+        #V = utils.reshape_gtor_tensor(V)
+
+        #E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
+
     return CIcoeffs, E_FCI
 
 

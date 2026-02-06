@@ -148,6 +148,10 @@ def transition(
                     the_dmet.frag_in_rank[i].CIcoeffs,
                 )
 
+                #print(tot_system.frag_in_rank[i].CIcoeffs)
+                #print()
+
+
             print(
                 "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
             )
@@ -204,6 +208,14 @@ def transition(
                 tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[
                     i
                 ].frags_rank
+
+     #           print(tot_system.frag_in_rank[i].CIcoeffs)
+     #           print()
+
+
+
+
+    #exit()
 
     return tot_system
 

@@ -95,7 +95,7 @@ class static_pdmet:
 
         # basis set size
         self.Nsites = self.h_site.shape[0]
-    
+
         # Calculate an initial mean-field Hamiltonian
 
         if self.rank == 0:
@@ -332,14 +332,6 @@ class static_pdmet:
             # constract a global density matrix from all impurities
             self.get_globalRDM()
 
-            # NOTE: DELETE AFTER GOBLIN HUNTING
-            #if self.gen:
-            #    print(utils.reshape_gtor_matrix(self.glob1RDM))
-            #else:
-            #    print(self.glob1RDM /2 )
-
-            #exit()
-
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
@@ -358,7 +350,7 @@ class static_pdmet:
             dE = self.DMET_E - old_E
             old_E = np.copy(self.DMET_E)
 
-            if np.mod(itr, self.Maxitr / 100) == 0 and itr > 0:
+            if np.mod(itr, self.Maxitr / 10) == 0 and itr > 0:
                 if self.rank == 0:
                     print("Finished DMET Iteration", itr)
                     print("Current difference in global 1RDM =", dif)
@@ -437,6 +429,10 @@ class static_pdmet:
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
         mf = scf.GHF(mol)
+        
+        h_site = utils.reshape_gtor_matrix(h_site)
+        V_site = utils.reshape_gtor_tensor(V_site)
+        
         mf.get_hcore = lambda *args: h_site
         mf.get_ovlp = lambda *args: np.eye(Norbs)
         if isinstance(V_site, float):
@@ -447,6 +443,8 @@ class static_pdmet:
 
         mf.kernel()
         mfRDM = mf.make_rdm1()
+
+        mfRDM = utils.reshape_rtog_matrix(mfRDM)  
 
         return mfRDM
 
@@ -474,7 +472,7 @@ class static_pdmet:
                 fullcorr1RDM = np.zeros((Nsites, Nsites), dtype=complex)
             else:
                 fullcorr1RDM = np.zeros((Nsites, Nsites))
-            
+        
             # impurity
             fullcorr1RDM[: frag.Nimp, : frag.Nimp] = frag.corr1RDM[
                 : frag.Nimp, : frag.Nimp

@@ -60,6 +60,8 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
 
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
+        corr1RDM = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
+
     return CIcoeffs
 
 

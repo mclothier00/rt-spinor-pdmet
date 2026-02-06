@@ -88,6 +88,7 @@ class tdfci:
                 )
                 self.print_data(current_time)
                 sys.stdout.flush()
+            
             if not self.gen:
                 # Integrate FCI coefficients by a time-step
                 self.CIcoeffs = integrators.runge_kutta_pyscf(
@@ -102,7 +103,7 @@ class tdfci:
                 )
 
             if self.gen:
-                self.CIcoeffs = integrators.runge_kutta_spinor(
+                self.CIcoeffs = integrators.runge_kutta_pyscf(
                     self.CIcoeffs,
                     self.Nsites,
                     int(self.Nelec / 2),
@@ -111,7 +112,19 @@ class tdfci:
                     self.h_site,
                     self.V_site,
                     self.Ecore,
+                    gen=self.gen,
                 )
+                # self.CIcoeffs = integrators.runge_kutta_spinor(
+                #     self.CIcoeffs,
+                #     self.Nsites,
+                #     #self.Nelec - int(self.Nelec / 2),
+                #     int(self.Nelec / 2),
+                #     int(self.Nelec / 2),
+                #     self.delt,
+                #     self.h_site,
+                #     self.V_site,
+                #     self.Ecore,
+                # )
 
             # update the current time
             current_time = self.delt * (step + 1)

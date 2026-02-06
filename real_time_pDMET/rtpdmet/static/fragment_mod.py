@@ -94,19 +94,23 @@ class fragment:
         # delete rows (axis=0) and columns (axis=1) that correspond to impurity sites
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=0)
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
+
+        np.set_printoptions(precision=11)
  
         # diagonalize environment part of 1RDM to obtain
         # embedding (virtual, bath, core) orbitals
         if self.gen:
-            evals, evecs = la.eigh(utils.reshape_gtor_matrix(mf1RDM))            
-            evals, evecs = utils.sort_eigenpairs(evals, evecs)
-            #print(evecs)
+            restricted = utils.is_spin_restricted(utils.reshape_gtor_matrix(mf1RDM))
+            if restricted:
+                half = int(mf1RDM.shape[0] / 2)
+                temp1_mf1rdm = utils.reshape_gtor_matrix(mf1RDM)[:half, :half]
+                evals, evecs_no = la.eigh(utils.reshape_gtor_matrix(mf1RDM))
+                evals_no, evecs1 = la.eigh(temp1_mf1rdm)
+                evecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), evecs1))
+            else:
+                evals, evecs = la.eigh(mf1RDM)
         else:
-            #print(f'mf: \n {mf1RDM / 2}')
-            #print()
             evals, evecs = la.eigh(mf1RDM)
-            #print(evecs)
-        #print()
 
         # form rotation matrix consisting of unit vectors
         # for impurity and the evecs for embedding
@@ -144,10 +148,6 @@ class fragment:
         self.rotmat = np.concatenate((self.rotmat, evecs), axis=1)
         self.env1RDM_evals = evals
 
-        #print(self.rotmat)
-        #print()
-
-
     #####################################################################
 
     def get_Hemb(self, h_site, V_site, U, hamtype=0, hubsite_indx=None):
@@ -167,7 +167,7 @@ class fragment:
         # rotate the 1 e- terms, h_emb currently
         h_emb = utils.rot1el(h_site, rotmat_small)
         self.h_site = np.copy(h_site)
-
+        
         # define 1 e- term of size ( impurities, bath ) x ( impurities, bath )
         # that will only have 1/2 interaction with the core
         self.h_emb_halfcore = np.copy(h_emb[: 2 * self.Nimp, : 2 * self.Nimp])
@@ -284,7 +284,7 @@ class fragment:
                     rotmat_small[hubsite_indx, 2 * self.Nimp :],
                     rotmat_vsmall,
                 )
-
+                
                 h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
                 self.h_emb_halfcore += 0.5 * core_int
 
@@ -319,18 +319,6 @@ class fragment:
                 : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
             ]
 
-        # NOTE: DELETE AFTER GOBLIN HUNTING
-        #if self.gen:
-        #    print(f'embed H: \n {utils.reshape_gtor_matrix(self.h_emb)}')
-        #    #print(f'embed H: \n {self.h_emb}')
-        #    print()
-        #else:
-        #    h_site = np.kron(np.eye(2), self.h_emb)
-        #    h_site = utils.reshape_rtog_matrix(h_site)
-        #    print(f'embed H: \n {h_site}')
-        #    print()
-        #exit()
-
     #####################################################################
 
     def add_mu_Hemb(self, mu):
@@ -353,7 +341,7 @@ class fragment:
             self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
                 self.h_emb, self.V_emb, U, 2 * self.Nimp, self.Nimp, self.gen
             )
-
+    
     #####################################################################
 
     def get_corr1RDM(self):
@@ -365,7 +353,6 @@ class fragment:
             self.corr1RDM = fci_mod.get_corr1RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
             )
-
 
     #####################################################################
 

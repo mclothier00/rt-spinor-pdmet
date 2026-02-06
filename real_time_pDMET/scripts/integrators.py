@@ -275,11 +275,9 @@ def runge_kutta_spinor(
 
     # Separate CI coefficients into real and imaginary parts
 
-    np.set_printoptions(precision=10)
+    #np.set_printoptions(precision=10)
 
-    corr1RDM_t0 = fci_mod.get_corr1RDM(CIcoeffs, 4, 2, gen=True)
-    print(corr1RDM_t0)
-    print()
+    #corr1RDM_t0 = fci_mod.get_corr1RDM(CIcoeffs, Norbs, (Nalpha + Nbeta), gen=True)
 
     k1 = (
         -1j
@@ -296,11 +294,11 @@ def runge_kutta_spinor(
 
     CI_temp = CIcoeffs + 0.5 * np.copy(k1)
 
-    corr1RDMt1 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
-    print(utils.reshape_gtor_matrix(corr1RDMt1 - corr1RDM_t0))
-    print()
-    tmp1 = np.dot(hmat_0, corr1RDM_t0)
-    print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+    #corr1RDMt1 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    #print(utils.reshape_gtor_matrix(corr1RDMt1 - corr1RDM_t0))
+    #print()
+    #tmp1 = np.dot(hmat_0, corr1RDM_t0)
+    #print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
 
     k2 = (
         -1j
@@ -317,15 +315,15 @@ def runge_kutta_spinor(
 
     CI_temp = CIcoeffs + 0.5 * np.copy(k2)
 
-    corr1RDMt2 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
-    print()
-    print("second")
-    print()
-    print(utils.reshape_gtor_matrix(corr1RDMt2 - corr1RDMt1))
-    print()
-    tmp1 = np.dot(hmat_1, corr1RDMt1)
-    print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
-    exit()
+    #corr1RDMt2 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    #print()
+    #print("second")
+    #print()
+    #print(utils.reshape_gtor_matrix(corr1RDMt2 - corr1RDMt1))
+    #print()
+    #tmp1 = np.dot(hmat_1, corr1RDMt1)
+    #print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+    #exit()
 
     # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
     # print(corr1RDM)
@@ -343,7 +341,7 @@ def runge_kutta_spinor(
         )
     )
 
-    CI_temp = CIcoeffs + 0.5 * np.copy(k3)
+    CI_temp = CIcoeffs + np.copy(k3)
 
     # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
     # print(corr1RDM)
@@ -365,7 +363,7 @@ def runge_kutta_spinor(
     # print(corr1RDM)
     # exit()
 
-    CIcoeffs = CIcoeffs + 1.0 / 6.0 * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    CIcoeffs = CIcoeffs + (1.0 / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
     return CIcoeffs
 
