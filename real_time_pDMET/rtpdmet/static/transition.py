@@ -10,7 +10,8 @@ from pyscf import gto, scf, ao2mo, fci
 
 import scipy.linalg as la
 
-np.set_printoptions(precision = 9, suppress=True)
+np.set_printoptions(precision=9, suppress=True)
+
 
 def transition(
     the_dmet,
@@ -24,7 +25,6 @@ def transition(
     periodic=False,
     gen_dyn=False,
 ):
-    
     if not the_dmet.gen:
         if not gen_dyn:
             print(
@@ -33,7 +33,7 @@ def transition(
 
             mf1RDM = the_dmet.mf1RDM
             Nsites = mf1RDM.shape[0]
-            
+
             tot_system = system_mod.system(
                 Nsites,
                 Nele,
@@ -148,9 +148,8 @@ def transition(
                     the_dmet.frag_in_rank[i].CIcoeffs,
                 )
 
-                #print(tot_system.frag_in_rank[i].CIcoeffs)
-                #print()
-
+                # print(tot_system.frag_in_rank[i].CIcoeffs)
+                # print()
 
             print(
                 "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"
@@ -209,13 +208,10 @@ def transition(
                     i
                 ].frags_rank
 
-     #           print(tot_system.frag_in_rank[i].CIcoeffs)
-     #           print()
+    #           print(tot_system.frag_in_rank[i].CIcoeffs)
+    #           print()
 
-
-
-
-    #exit()
+    # exit()
 
     return tot_system
 
