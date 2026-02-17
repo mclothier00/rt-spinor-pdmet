@@ -9,7 +9,7 @@
 
 import numpy as np
 import real_time_pDMET.scripts.integrators as integrators
-import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
+import real_time_pDMET.scripts.fci_mod as fci_mod
 import sys
 import real_time_pDMET.scripts.utils as utils
 
@@ -88,7 +88,7 @@ class tdfci:
                 )
                 self.print_data(current_time)
                 sys.stdout.flush()
-            
+
             if not self.gen:
                 # Integrate FCI coefficients by a time-step
                 self.CIcoeffs = integrators.runge_kutta_pyscf(

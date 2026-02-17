@@ -13,6 +13,7 @@ DiisDim = 4
 adiis = lib.diis.DIIS()
 adiis.space = DiisDim
 
+
 class static_pdmet:
     def __init__(
         self,
@@ -87,10 +88,14 @@ class static_pdmet:
 
         if self.hamtype == 1:
             if self.U == None:
-                print("ERROR: Hubbard-like Hamiltonian requested, but value of U term not provided. Please specify U-term.")
+                print(
+                    "ERROR: Hubbard-like Hamiltonian requested, but value of U term not provided. Please specify U-term."
+                )
                 exit()
             if len(self.hubb_indx) == 0:
-                print("ERROR: Hubbard-like Hamiltonian requested, but location of U term not provided. Please specify hubb_indx.")
+                print(
+                    "ERROR: Hubbard-like Hamiltonian requested, but location of U term not provided. Please specify hubb_indx."
+                )
                 exit()
 
         # basis set size
@@ -120,7 +125,7 @@ class static_pdmet:
 
         if gen:
             impindx = utils.spinor_impindx(self.Nsites // 2, Nfrag)
-        
+
         self.frag_list = []
         for i in range(Nfrag):
             self.frag_list.append(
@@ -133,7 +138,7 @@ class static_pdmet:
 
         self.site_to_frag_list = []
         self.site_to_impindx = []
-        
+
         for i in range(self.Nsites):
             for ifrag, array in enumerate(impindx):
                 if i in array:
@@ -191,7 +196,6 @@ class static_pdmet:
         conv = False
         old_E = 0.0
         old_glob1RDM = np.copy(self.old_glob1RDM)
-
 
         for itr in range(self.Maxitr):
             if self.rank == 0:
@@ -328,7 +332,7 @@ class static_pdmet:
                         self.mubool,
                         self.gen,
                     )
-            
+
             # constract a global density matrix from all impurities
             self.get_globalRDM()
 
@@ -429,10 +433,10 @@ class static_pdmet:
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
         mf = scf.GHF(mol)
-        
+
         h_site = utils.reshape_gtor_matrix(h_site)
         V_site = utils.reshape_gtor_tensor(V_site)
-        
+
         mf.get_hcore = lambda *args: h_site
         mf.get_ovlp = lambda *args: np.eye(Norbs)
         if isinstance(V_site, float):
@@ -444,7 +448,7 @@ class static_pdmet:
         mf.kernel()
         mfRDM = mf.make_rdm1()
 
-        mfRDM = utils.reshape_rtog_matrix(mfRDM)  
+        mfRDM = utils.reshape_rtog_matrix(mfRDM)
 
         return mfRDM
 
@@ -453,7 +457,7 @@ class static_pdmet:
     def get_globalRDM(self):
         # initialize glodal 1RDM to be complex if rotation
         # matrix or correlated 1RDM is complex
-            
+
         Nsites = self.Nsites
 
         if self.gen:
@@ -462,7 +466,7 @@ class static_pdmet:
         else:
             self.glob1RDM = np.zeros([Nsites, Nsites])
             mpi_glob1RDM = np.zeros([Nsites, Nsites])
-        
+
         # form the global 1RDM forcing hermiticity
         self.globalRDMtrace = 0
 
@@ -472,7 +476,7 @@ class static_pdmet:
                 fullcorr1RDM = np.zeros((Nsites, Nsites), dtype=complex)
             else:
                 fullcorr1RDM = np.zeros((Nsites, Nsites))
-        
+
             # impurity
             fullcorr1RDM[: frag.Nimp, : frag.Nimp] = frag.corr1RDM[
                 : frag.Nimp, : frag.Nimp
@@ -736,30 +740,29 @@ class static_pdmet:
 
     def get_nat_orbs(self):
         if self.gen:
-        #    print(f'glob: {utils.reshape_gtor_matrix(self.glob1RDM)}')
-        #    print()
+            #    print(f'glob: {utils.reshape_gtor_matrix(self.glob1RDM)}')
+            #    print()
             NOevals, NOevecs = la.eigh(utils.reshape_gtor_matrix(self.glob1RDM))
-        #    print(NOevecs)
+            #    print(NOevecs)
             NOevals, NOevecs = utils.sort_eigenpairs(NOevals, NOevecs)
         #    print()
         #    print(NOevecs)
         else:
-        #    print(f'glob: {self.glob1RDM / 2}')
-        #    print()
+            #    print(f'glob: {self.glob1RDM / 2}')
+            #    print()
             NOevals, NOevecs = la.eigh(self.glob1RDM)
         #    print(NOevecs)
-        #exit()
+        # exit()
 
         NOevals, NOevecs = la.eigh(self.glob1RDM)
-        
+
         # Re-order such that eigenvalues are in descending order
         self.NOevals = np.flip(NOevals)
         self.NOevecs = np.flip(NOevecs, 1)
-       
-        #print(NOevecs)
-        #print()
-        
- 
+
+        # print(NOevecs)
+        # print()
+
     ##########################################################
 
     def get_new_mfRDM(self):
@@ -776,12 +779,12 @@ class static_pdmet:
             NOcc = self.NOevecs[:, :NOcc]
             self.mf1RDM = np.dot(NOcc, NOcc.T.conj())
 
-#        print('mf1RDM')
-#        if self.gen:
-#            print(utils.reshape_gtor_matrix(self.mf1RDM))
-#            #print(self.mf1RDM)
-#        else:
-#            print(self.mf1RDM / 2)
+    #        print('mf1RDM')
+    #        if self.gen:
+    #            print(utils.reshape_gtor_matrix(self.mf1RDM))
+    #            #print(self.mf1RDM)
+    #        else:
+    #            print(self.mf1RDM / 2)
 
     ##########################################################
 

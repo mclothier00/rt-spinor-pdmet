@@ -5,7 +5,7 @@
 
 import numpy as np
 import real_time_pDMET.scripts.utils as utils
-import real_time_pDMET.scripts.applyham_pyscf as applyham_pyscf
+import real_time_pDMET.scripts.applyham as applyham
 from scipy.linalg import expm
 
 import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
@@ -185,36 +185,36 @@ def runge_kutta_pyscf(
     Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
     # Integrate according to 4th order Runge-Kutta
-    k1 = -1j * dt * applyham_pyscf.apply_ham_pyscf_check(
+    k1 = -1j * dt * applyham.apply_ham_pyscf_check(
         Re_CIcoeffs, hmat_0, Vmat_0, Nalpha, Nbeta, Norbs, Econst_0, gen
-    ) + dt * applyham_pyscf.apply_ham_pyscf_check(
+    ) + dt * applyham.apply_ham_pyscf_check(
         Im_CIcoeffs, hmat_0, Vmat_0, Nalpha, Nbeta, Norbs, Econst_0, gen
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * np.copy(k1.real)
     Im_temp = Im_CIcoeffs + 0.5 * np.copy(k1.imag)
 
-    k2 = -1j * dt * applyham_pyscf.apply_ham_pyscf_check(
+    k2 = -1j * dt * applyham.apply_ham_pyscf_check(
         Re_temp, hmat_1, Vmat_1, Nalpha, Nbeta, Norbs, Econst_1, gen
-    ) + dt * applyham_pyscf.apply_ham_pyscf_check(
+    ) + dt * applyham.apply_ham_pyscf_check(
         Im_temp, hmat_1, Vmat_1, Nalpha, Nbeta, Norbs, Econst_1, gen
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * np.copy(k2.real)
     Im_temp = Im_CIcoeffs + 0.5 * np.copy(k2.imag)
 
-    k3 = -1j * dt * applyham_pyscf.apply_ham_pyscf_check(
+    k3 = -1j * dt * applyham.apply_ham_pyscf_check(
         Re_temp, hmat_1, Vmat_1, Nalpha, Nbeta, Norbs, Econst_1, gen
-    ) + dt * applyham_pyscf.apply_ham_pyscf_check(
+    ) + dt * applyham.apply_ham_pyscf_check(
         Im_temp, hmat_1, Vmat_1, Nalpha, Nbeta, Norbs, Econst_1, gen
     )
 
     Re_temp = Re_CIcoeffs + np.copy(k3.real)
     Im_temp = Im_CIcoeffs + np.copy(k3.imag)
 
-    k4 = -1j * dt * applyham_pyscf.apply_ham_pyscf_check(
+    k4 = -1j * dt * applyham.apply_ham_pyscf_check(
         Re_temp, hmat_2, Vmat_2, Nalpha, Nbeta, Norbs, Econst_2, gen
-    ) + dt * applyham_pyscf.apply_ham_pyscf_check(
+    ) + dt * applyham.apply_ham_pyscf_check(
         Im_temp, hmat_2, Vmat_2, Nalpha, Nbeta, Norbs, Econst_2, gen
     )
 
@@ -275,14 +275,14 @@ def runge_kutta_spinor(
 
     # Separate CI coefficients into real and imaginary parts
 
-    #np.set_printoptions(precision=10)
+    # np.set_printoptions(precision=10)
 
-    #corr1RDM_t0 = fci_mod.get_corr1RDM(CIcoeffs, Norbs, (Nalpha + Nbeta), gen=True)
+    # corr1RDM_t0 = fci_mod.get_corr1RDM(CIcoeffs, Norbs, (Nalpha + Nbeta), gen=True)
 
     k1 = (
         -1j
         * dt
-        * applyham_pyscf.apply_ham_pyscf_spinor(
+        * applyham.apply_ham_pyscf_spinor(
             CIcoeffs,
             hmat_0,
             Vmat_0,
@@ -294,16 +294,16 @@ def runge_kutta_spinor(
 
     CI_temp = CIcoeffs + 0.5 * np.copy(k1)
 
-    #corr1RDMt1 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
-    #print(utils.reshape_gtor_matrix(corr1RDMt1 - corr1RDM_t0))
-    #print()
-    #tmp1 = np.dot(hmat_0, corr1RDM_t0)
-    #print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+    # corr1RDMt1 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    # print(utils.reshape_gtor_matrix(corr1RDMt1 - corr1RDM_t0))
+    # print()
+    # tmp1 = np.dot(hmat_0, corr1RDM_t0)
+    # print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
 
     k2 = (
         -1j
         * dt
-        * applyham_pyscf.apply_ham_pyscf_spinor(
+        * applyham.apply_ham_pyscf_spinor(
             CI_temp,
             hmat_1,
             Vmat_1,
@@ -315,15 +315,15 @@ def runge_kutta_spinor(
 
     CI_temp = CIcoeffs + 0.5 * np.copy(k2)
 
-    #corr1RDMt2 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
-    #print()
-    #print("second")
-    #print()
-    #print(utils.reshape_gtor_matrix(corr1RDMt2 - corr1RDMt1))
-    #print()
-    #tmp1 = np.dot(hmat_1, corr1RDMt1)
-    #print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
-    #exit()
+    # corr1RDMt2 = fci_mod.get_corr1RDM(CI_temp, 4, 2, gen=True)
+    # print()
+    # print("second")
+    # print()
+    # print(utils.reshape_gtor_matrix(corr1RDMt2 - corr1RDMt1))
+    # print()
+    # tmp1 = np.dot(hmat_1, corr1RDMt1)
+    # print(utils.reshape_gtor_matrix(1 / 2 * -1j * 0.001 * (tmp1 - tmp1.conj().T)))
+    # exit()
 
     # corr1RDM = fci_mod.get_corr1RDM(CI_temp, 8, 4, gen=True)
     # print(corr1RDM)
@@ -331,7 +331,7 @@ def runge_kutta_spinor(
     k3 = (
         -1j
         * dt
-        * applyham_pyscf.apply_ham_pyscf_spinor(
+        * applyham.apply_ham_pyscf_spinor(
             CI_temp,
             hmat_1,
             Vmat_1,
@@ -349,7 +349,7 @@ def runge_kutta_spinor(
     k4 = (
         -1j
         * dt
-        * applyham_pyscf.apply_ham_pyscf_spinor(
+        * applyham.apply_ham_pyscf_spinor(
             CI_temp,
             hmat_2,
             Vmat_2,
@@ -442,60 +442,60 @@ def runge_kutta_pyscf_nosym(
 
     # Integrate according to 4th order Runge-Kutta,
     # splitting CI coefficients and Hamiltonian into real and imaginary parts
-    Re_k1 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k1 = dt * applyham.apply_ham_pyscf_nosym(
         Im_CIcoeffs, Re_hmat_0, Re_Vmat_0, Nalpha, Nbeta, Norbs, Econst_0
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_CIcoeffs, Im_hmat_0, Im_Vmat_0, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k1 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k1 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_CIcoeffs, Re_hmat_0, Re_Vmat_0, Nalpha, Nbeta, Norbs, Econst_0
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_CIcoeffs, Im_hmat_0, Im_Vmat_0, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * Re_k1
     Im_temp = Im_CIcoeffs + 0.5 * Im_k1
 
-    Re_k2 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k2 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k2 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k2 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * Re_k2
     Im_temp = Im_CIcoeffs + 0.5 * Im_k2
 
-    Re_k3 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k3 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k3 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k3 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + Re_k3
     Im_temp = Im_CIcoeffs + Im_k3
 
-    Re_k4 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k4 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_2, Re_Vmat_2, Nalpha, Nbeta, Norbs, Econst_2
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_2, Im_Vmat_2, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k4 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k4 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_2, Re_Vmat_2, Nalpha, Nbeta, Norbs, Econst_2
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_2, Im_Vmat_2, Nalpha, Nbeta, Norbs, 0.0
     )
 
@@ -587,60 +587,60 @@ def runge_kutta_pyscf_nosym_2(
 
     # Integrate according to 4th order Runge-Kutta,
     # splitting CI coefficients and Hamiltonian into real and imaginary parts
-    Re_k1 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k1 = dt * applyham.apply_ham_pyscf_nosym(
         Im_CIcoeffs, Re_hmat_0, Re_Vmat_0, Nalpha, Nbeta, Norbs, Econst_0
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_CIcoeffs, Im_hmat_0, Im_Vmat_0, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k1 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k1 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_CIcoeffs, Re_hmat_0, Re_Vmat_0, Nalpha, Nbeta, Norbs, Econst_0
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_CIcoeffs, Im_hmat_0, Im_Vmat_0, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * Re_k1
     Im_temp = Im_CIcoeffs + 0.5 * Im_k1
 
-    Re_k2 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k2 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k2 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k2 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_1, Re_Vmat_1, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_1, Im_Vmat_1, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + 0.5 * Re_k2
     Im_temp = Im_CIcoeffs + 0.5 * Im_k2
 
-    Re_k3 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k3 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_2, Re_Vmat_2, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_2, Im_Vmat_2, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k3 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k3 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_2, Re_Vmat_2, Nalpha, Nbeta, Norbs, Econst_1
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_2, Im_Vmat_2, Nalpha, Nbeta, Norbs, 0.0
     )
 
     Re_temp = Re_CIcoeffs + Re_k3
     Im_temp = Im_CIcoeffs + Im_k3
 
-    Re_k4 = dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Re_k4 = dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Re_hmat_3, Re_Vmat_3, Nalpha, Nbeta, Norbs, Econst_2
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Im_hmat_3, Im_Vmat_3, Nalpha, Nbeta, Norbs, 0.0
     )
 
-    Im_k4 = -dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    Im_k4 = -dt * applyham.apply_ham_pyscf_nosym(
         Re_temp, Re_hmat_3, Re_Vmat_3, Nalpha, Nbeta, Norbs, Econst_2
-    ) + dt * applyham_pyscf.apply_ham_pyscf_nosym(
+    ) + dt * applyham.apply_ham_pyscf_nosym(
         Im_temp, Im_hmat_3, Im_Vmat_3, Nalpha, Nbeta, Norbs, 0.0
     )
 

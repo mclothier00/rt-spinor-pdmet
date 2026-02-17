@@ -1,6 +1,6 @@
 import real_time_pDMET.tdfci.tdfci as tdfci
 import real_time_pDMET.scripts.make_hams as make_hams
-import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
+import real_time_pDMET.scripts.fci_mod as fci_mod
 import real_time_pDMET.scripts.utils as utils
 import real_time_pDMET.rtpdmet.static.transitions as transition_driver
 

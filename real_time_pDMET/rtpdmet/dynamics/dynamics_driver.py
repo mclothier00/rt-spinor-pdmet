@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 import real_time_pDMET.rtpdmet.dynamics.mf1rdm_timedep_mod as mf1rdm_timedep_mod
-import real_time_pDMET.scripts.applyham_pyscf as applyham_pyscf
+import real_time_pDMET.scripts.applyham as applyham
 import real_time_pDMET.scripts.make_hams as make_hams
 import real_time_pDMET.scripts.utils as utils
 import pickle
@@ -44,7 +44,6 @@ class dynamics_driver:
         mag_sites=None,
         restart=False,
     ):
-       
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
         # V_site -
@@ -68,7 +67,7 @@ class dynamics_driver:
         #       ''' system_file="restart_system.dat"
         #       with open(system_file, 'rb') as file:
         #           system = pickle.load(file)
-        #       
+        #
         #       init_time = system['last_time']
         #       system = system['tot_system'] '''
 
@@ -104,14 +103,13 @@ class dynamics_driver:
         if mag_sites is not None:
             self.mag_sites = mag_sites
         elif self.tot_system.Nsites < 100:
-            self.mag_sites = self.tot_system.Nsites // 2 # assuming spatial orbitals
+            self.mag_sites = self.tot_system.Nsites // 2  # assuming spatial orbitals
         else:
             if self.rank == 0:
                 print(
                     "Too many sites to calculate the spin magnetic moment on each one. Please specify a range of sites."
                 )
             self.mag_sites = 0
-
 
         if self.rank == 0:
             print()
@@ -205,7 +203,7 @@ class dynamics_driver:
                 self.file_spinz = open("spin_z.dat", "w")
 
         self.max_diagonalG = 0
-        #self.corrdens_old = np.zeros((self.tot_system.Nsites))
+        # self.corrdens_old = np.zeros((self.tot_system.Nsites))
 
     #####################################################################
 
@@ -500,14 +498,14 @@ class dynamics_driver:
                 atol=self.dG,
             )
 
-            #if not self.gen:
+            # if not self.gen:
             #    diag_globalRDM_check = np.allclose(
             #        diag_global,
             #        np.zeros((self.tot_system.Nsites, self.tot_system.Nsites)),
             #        rtol=0,
             #        atol=self.dG,
             #    )
-            #if self.gen:
+            # if self.gen:
             #    diag_globalRDM_check = np.allclose(
             #        diag_global,
             #        np.zeros((2 * self.tot_system.Nsites, 2 * self.tot_system.Nsites)),
@@ -718,7 +716,9 @@ class dynamics_driver:
         fmt_str = "%20.8e"
 
         if self.tot_system.Nsites % 2 != 0:
-            print('Orbitals are not spatial; cannot calculate magnetic moment. Cancelling calculation.')
+            print(
+                "Orbitals are not spatial; cannot calculate magnetic moment. Cancelling calculation."
+            )
             exit()
 
         Nhalf = self.tot_system.Nsites // 2
@@ -726,27 +726,9 @@ class dynamics_driver:
         den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
         ovlp = np.eye(Nhalf)
 
-        magx = np.sum(
-            (
-                den[: Nhalf, Nhalf :]
-                + den[Nhalf :, : Nhalf]
-            )
-            * ovlp
-        )
-        magy = 1j * np.sum(
-            (
-                den[: Nhalf, Nhalf :]
-                - den[Nhalf :, : Nhalf]
-            )
-            * ovlp
-        )
-        magz = np.sum(
-            (
-                den[: Nhalf, : Nhalf]
-                - den[Nhalf :, Nhalf :]
-            )
-            * ovlp
-        )
+        magx = np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
+        magy = 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
+        magz = np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
 
         all_spin = np.insert(
             np.array([magx.real, magy.real, magz.real]), 0, current_time
@@ -763,27 +745,9 @@ class dynamics_driver:
             ovlp = np.zeros((Nhalf, Nhalf))
             ovlp[i, i] = 1
 
-            site_magx = np.sum(
-                (
-                    den[: Nhalf, Nhalf :]
-                    + den[Nhalf :, : Nhalf]
-                )
-                * ovlp
-            )
-            site_magy = 1j * np.sum(
-                (
-                    den[: Nhalf, Nhalf :]
-                    - den[Nhalf :, : Nhalf]
-                )
-                * ovlp
-            )
-            site_magz = np.sum(
-                (
-                    den[: Nhalf, : Nhalf]
-                    - den[Nhalf :, Nhalf :]
-                )
-                * ovlp
-            )
+            site_magx = np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
+            site_magy = 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
+            site_magz = np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
 
             sites_x.append(site_magx.real)
             sites_y.append(site_magy.real)
@@ -836,7 +800,7 @@ def applyham_wrapper(frag, delt, gen=False):
         CIvec = (
             -1j
             * delt
-            * applyham_pyscf.apply_ham_pyscf_fully_complex(
+            * applyham.apply_ham_pyscf_fully_complex(
                 frag.CIcoeffs,
                 frag.h_emb - Xmat_sml,
                 frag.V_emb,
@@ -851,7 +815,7 @@ def applyham_wrapper(frag, delt, gen=False):
         CIvec = (
             -1j
             * delt
-            * applyham_pyscf.apply_ham_pyscf_spinor(
+            * applyham.apply_ham_pyscf_spinor(
                 frag.CIcoeffs,
                 frag.h_emb - Xmat_sml,
                 frag.V_emb,

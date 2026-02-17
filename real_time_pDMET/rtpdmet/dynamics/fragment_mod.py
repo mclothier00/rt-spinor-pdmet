@@ -1,8 +1,7 @@
 # including all quantities specific to a given fragment
 import numpy as np
-import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
+import real_time_pDMET.scripts.fci_mod as fci_mod
 import real_time_pDMET.scripts.utils as utils
-import real_time_pDMET.scripts.applyham_pyscf as applyham_pyscf
 import time
 
 # ####### FRAGMENT CLASS #######
@@ -710,13 +709,13 @@ class fragment:
         # imp indx (single impurity)
         envindx = np.setdiff1d(np.arange(self.Nsites), self.impindx)
 
-       # if self.gen:
-       #     self.Xmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
+        # if self.gen:
+        #     self.Xmat = np.zeros([2 * self.Nsites, 2 * self.Nsites], dtype=complex)
 
-       #     # Index of orbitals in the site-basis corresponding to the environment
-       #     # potential issue if considering non-sequantial
-       #     # imp indx (single impurity)
-       #     envindx = np.setdiff1d(np.arange(2 * self.Nsites), self.impindx)
+        #     # Index of orbitals in the site-basis corresponding to the environment
+        #     # potential issue if considering non-sequantial
+        #     # imp indx (single impurity)
+        #     envindx = np.setdiff1d(np.arange(2 * self.Nsites), self.impindx)
 
         # Eigenvalues of environment part of mf1RDM
         env1RDM_evals = np.diag(
@@ -738,9 +737,9 @@ class fragment:
         # ie diagonal, core-core, and virtual-virtual
         eval_dif = np.zeros([self.Nsites - self.Nimp, self.Nsites - self.Nimp])
 
-        #if not self.gen:
+        # if not self.gen:
         #    eval_dif = np.zeros([self.Nsites - self.Nimp, self.Nsites - self.Nimp])
-        #if self.gen:
+        # if self.gen:
         #    eval_dif = np.zeros([
         #        (2 * self.Nsites) - self.Nimp,
         #        (2 * self.Nsites) - self.Nimp,
@@ -805,7 +804,7 @@ class fragment:
 
     #####################################################################
 
-    #def get_rotmat(self, mf1RDM, gen=False):
+    # def get_rotmat(self, mf1RDM, gen=False):
     #    """
     #    Subroutine to generate rotation matrix from site to embedding basis
     #    PING currently impurities have to be listed in ascending order
@@ -933,4 +932,3 @@ class fragment:
     #    env1RDM_evals = self.env1RDM_evals
 
     #    return rotmat, env1RDM_evals
-
