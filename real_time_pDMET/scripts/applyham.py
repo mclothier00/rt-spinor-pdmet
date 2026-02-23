@@ -346,43 +346,45 @@ def absorb_h1e_complex(h1e, eri, norb, nelec, fac=1):
 #####################################################################
 
 
-def applyham_forte2(civec, h1, h2, nelec, norbs, ecore):
-    # NOTE: concerns: similar to those for FCI_GS in fci_mod
-    #                 CHECK: is singlet ok?
-    #                 NOTE!!!!! I want to be able to use my own CIcoeffs, not a new calculation!
-
+def applyham_forte2(civec, h1, h2, nelec, norbs, ecore, ci=None):
     # Forte2 uses physicists notation
-    h2_forte = np.einsum("pqrs->prqs", h2)
 
-    ints = SpinorbitalIntegrals.__new__(SpinorbitalIntegrals)
-    ints.E = ecore
-    ints.H = h1
-    ints.V = h2_forte
-    mo_space = MOSpace(nmo=norbs, active_orbitals=list(range(norbs)))
-    print("Currently calculating a singlet state")
-    state = State(nel=nelec, multiplicity=1, ms=0.0)
-    ci = _CIBase(
-        mo_space=mo_space,
-        state=state,
-        ints=ints,
-        maxiter=200,
-        ci_algorithm="hz",
-        two_component=True,
-    )
-    ci.run()
+    # set up CI base outside of function, at beginning of dynamics
+    # h2_forte = np.einsum("pqrs->prqs", h2).copy()
 
-    ci_vec = ci.evecs
-    ci_vec_out = np.zeros_like(ci_vec)
+    # ints = SpinorbitalIntegrals.__new__(SpinorbitalIntegrals)
+    # ints.E = ecore
+    # ints.H = h1
+    # ints.V = h2_forte
+    # mo_space = MOSpace(nmo=norbs, active_orbitals=list(range(norbs)))
+    # print("Currently calculating a singlet state")
+    # state = State(nel=nelec, multiplicity=1, ms=0.0)
+    # ci = _CIBase(
+    #     mo_space=mo_space,
+    #     state=state,
+    #     ints=ints,
+    #     maxiter=200,
+    #     ci_algorithm="hz",
+    #     two_component=True,
+    # )
+
+    # ci_vec = ci.evecs
+    # allocate once in fragment class and have it overwrite instead of allocating at every step
+    ci_vec_out = np.zeros_like(civec)
 
     def compute_Hc(ci_vec_in, ci_vec_out):
         # Compute the sigma block from the basis block; assume single state CIcoeffs
         # copies ensure contiguous arrays are passed to C++
         b_det = ci_vec_in[:].copy()
-        # NOTE: equivalent to h2e I think?
-        ci.ci_sigma_builder.Hamiltonian(b_det, ci.sigma_det)
+        ci.ci_sigma_builder.Hamiltonian(
+            b_det, ci.sigma_det
+        )  # Hamiltonian is really apply hamiltonian; H and V hidden in ci class
         ci_vec_out = ci.sigma_det.copy()
         return ci_vec_out
 
-    compute_Hc(ci_vec, ci_vec_out)
+    compute_Hc(civec, ci_vec_out)
 
     return ci_vec_out
+
+
+# NOTE: save three functions to a separate class and compare against

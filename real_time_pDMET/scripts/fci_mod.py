@@ -21,13 +21,8 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False, forte=False):
 
     if forte:
         # switching to physicist notation for the Forte2 calculation
-        V_forte = np.einsum("pqrs->prqs", V)
+        V_forte = np.einsum("pqrs->prqs", V).copy()
 
-        # NOTE: question: am I setting this up correctly for the systems I care about?
-        # concerned about: not using the RelState instead of State
-        #                  not using two_component
-        #                  CISolver does not seem to support generalized? correct?
-        #                  CIBase calls for Restricted ints? can I still give spinor hamiltonian?
         ints = SpinorbitalIntegrals.__new__(SpinorbitalIntegrals)
         ints.E = Ecore
         ints.H = h
@@ -39,9 +34,10 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False, forte=False):
             mo_space=mo_space,
             state=state,
             ints=ints,
-            nroot=1,  # ground state; CHECK!!!
+            nroot=1,  # ground state
             maxiter=200,
-            two_component=True,
+            two_component=True,  # tells CI this is spinor
+            ci_algorithm="hz",  # currently default in forte2; could change
         )
         ci.run()
 
@@ -176,25 +172,25 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False, forte=False):
 #####################################################################
 
 
-def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False, forte=False):
+def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False, forte=False, ci=None):
     # Subroutine to get the FCI 1 & 2 RDMs together
 
     if forte:
-        # NOTE: concerns: make_sd seem to be what I want but do CIcoeffs have to be int?
-        #                       not complex?
-        #                 looks like I might have to create an independent function for these?
-        #                       wrapped into CIBase?
-        #                 corr2RDM has a (aa, bb, ab) shape; need 4d tensor
-        #                 CHECK: do I actually want make_sf_1/2rdm???
-        corr1RDM = _CIBase.make_sd_1rdm(CIcoeffs)
-        corr2RDM = _CIBase.make_sd_2rdm(CIcoeffs)
-        # print(np.shape(corr1RDM))
-        # print(np.shape(corr2RDM))
-        corr1RDM = _CIBase.make_sf_1rdm(CIcoeffs)
-        corr2RDM = _CIBase.make_sf_2rdm(CIcoeffs)
-        # print(np.shape(corr1RDM))
-        # print(np.shape(corr2RDM))
-        # exit()
+        # need a CI_basetype object for forte2
+        sigma_builder = ci.ci_sigma_builder
+        corr1RDM = sigma_builder.so_1rdm(CIcoeffs.copy(), CIcoeffs.copy())
+        corr2RDM = sigma_builder.so_2rdm(CIcoeffs.copy(), CIcoeffs.copy())
+
+        # corr1RDM = _CIBase.make_sd_1rdm(CIcoeffs)
+        # corr2RDM = _CIBase.make_sd_2rdm(CIcoeffs)
+        # # print(np.shape(corr1RDM))
+        # # print(np.shape(corr2RDM))
+        # corr1RDM = _CIBase.make_sf_1rdm(CIcoeffs)
+        # corr2RDM = _CIBase.make_sf_2rdm(CIcoeffs)
+        # # print(np.shape(corr1RDM))
+        # # print(np.shape(corr2RDM))
+        # # exit()
+        # corr1RDM = _CIBase.make_sf_1rdm(CIcoeffs)
 
     else:
         if not gen:
