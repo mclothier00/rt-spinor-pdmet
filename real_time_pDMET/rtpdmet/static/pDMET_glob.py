@@ -35,6 +35,7 @@ class static_pdmet:
         dmu=0.02,
         step=0.05,
         trust_region=2.5,
+        forte=False,
     ):
         """
         Nele      - total number of electrons
@@ -52,6 +53,7 @@ class static_pdmet:
                     iterations
         tol       - tolerance for difference in 1 RDM during DMET cycle
         U         - Hubbard constant for electron interactions
+        forte     - Use Forte2 for FCI calculations. PySCF is the default.
         """
 
         comm = MPI.COMM_WORLD
@@ -85,6 +87,7 @@ class static_pdmet:
         self.DiisDim = 4
         self.history = []
         self.gen = gen
+        self.forte = forte
 
         if self.hamtype == 1:
             if self.U == None:

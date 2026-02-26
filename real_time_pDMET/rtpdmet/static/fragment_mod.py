@@ -1,5 +1,6 @@
 import numpy as np
 import real_time_pDMET.scripts.fci_mod as fci_mod
+import real_time_pDMET.scripts.forte as forte
 import real_time_pDMET.scripts.utils as utils
 import scipy.linalg as la
 
@@ -18,6 +19,7 @@ class fragment:
         delta=0.02,
         thrnele=1e-5,
         step=0.05,
+        forte=False,
     ):
         if not gen:
             self.impindx = impindx
@@ -47,6 +49,7 @@ class fragment:
             self.last_core = self.Nsites
 
             self.gen = False
+            self.forte = forte
 
         if gen:
             self.impindx = impindx
@@ -77,6 +80,10 @@ class fragment:
             self.last_core = self.Nsites
 
             self.gen = True
+            self.forte = forte
+
+        if self.forte:
+            self.forte_mod = forte.forte(self.Ecore, self.Norbs, self.Nele)
 
         self.frags_rank = 0
         self.frag_num = 0
@@ -333,38 +340,61 @@ class fragment:
         # use embedding hamiltonian to solve for the FCI ground-state
         # calculation only on active space,
         # therefore 2*Nimp orbitals and 2 Nimp electrons
-        if not self.gen:
-            self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
-                self.h_emb, self.V_emb, U, 2 * self.Nimp, (self.Nimp, self.Nimp)
-            )
-        if self.gen:
-            self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
-                self.h_emb, self.V_emb, U, 2 * self.Nimp, self.Nimp, self.gen
-            )
+        if not self.forte:
+            if not self.gen:
+                self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
+                    self.h_emb, self.V_emb, U, 2 * self.Nimp, (self.Nimp, self.Nimp)
+                )
+            if self.gen:
+                self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
+                    self.h_emb, self.V_emb, U, 2 * self.Nimp, self.Nimp, self.gen
+                )
+        else:
+            if not self.gen:
+                print("Currently not tested. Calcelling simulation.")
+                exit()
+            if self.gen:
+                self.CIcoeffs, self.E_FCI = forte.FCI_GS(self.h_emb, self.V_emb)
 
     #####################################################################
 
     def get_corr1RDM(self):
-        if not self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, (self.Nimp + self.Nimp)
-            )
-        if self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
-            )
+        if not self.forte:
+            if not self.gen:
+                self.corr1RDM = fci_mod.get_corr1RDM(
+                    self.CIcoeffs, 2 * self.Nimp, (self.Nimp + self.Nimp)
+                )
+            if self.gen:
+                self.corr1RDM = fci_mod.get_corr1RDM(
+                    self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
+                )
+        else:
+            if not self.gen:
+                print("Currently not tested. Ending simulation.")
+                exit()
+            else:
+                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
 
     #####################################################################
 
     def get_corr12RDM(self):
-        if not self.gen:
-            self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
-                self.CIcoeffs, 2 * self.Nimp, (self.Nimp + self.Nimp)
-            )
-        if self.gen:
-            self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
-            )
+        if not self.forte:
+            if not self.gen:
+                self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
+                    self.CIcoeffs, 2 * self.Nimp, (self.Nimp + self.Nimp)
+                )
+            if self.gen:
+                self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
+                    self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
+                )
+        else:
+            if not self.gen:
+                print("Currently not tested. Ending simulation.")
+                exit()
+            else:
+                self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
+                    self.CIcoeffs
+                )
 
     #####################################################################
 
