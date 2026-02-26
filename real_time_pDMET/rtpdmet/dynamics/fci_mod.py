@@ -68,7 +68,7 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
 #####################################################################
 
 
-def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
+def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False, mo=None):
     # Subroutine to get the FCI 1RDM
     # notation for restricted is dm_pq = < q^+ p >
 
@@ -96,7 +96,11 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
     # PySCF requires CIcoeffs to be in a spin-blocked configuration
 
     if gen:
-        corr1RDM = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
+        corr1RDM_mo = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
+        if mo is None:
+            corr1RDM = corr1RDM_mo
+        else:
+            corr1RDM = mo @ corr1RDM_mo @ mo.conj().T
 
         if not np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9):
             print(
@@ -160,7 +164,6 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
             corr2RDM += tmp2
 
         else:
-
             corr1RDM, corr2RDM = pyscf.fci.direct_spin1.make_rdm12(
                 CIcoeffs, Norbs, Nele
             )

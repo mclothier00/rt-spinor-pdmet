@@ -34,6 +34,8 @@ class tdfci:
         Nprint,
         Ecore=0.0,
         gen=False,
+        ovlp=None,
+        mo=None,
     ):
         self.Nsites = Nsites
         self.Nelec = Nelec
@@ -45,6 +47,9 @@ class tdfci:
         self.Nprint = Nprint
         self.Ecore = Ecore
         self.gen = gen
+        # used for debugging hydrogen trimer; might not be needed
+        self.ovlp = ovlp
+        self.mo = mo
 
         # Convert CI coefficients to complex arrays if they're not already
         if not np.iscomplexobj(self.CIcoeffs):
@@ -88,7 +93,7 @@ class tdfci:
                 )
                 self.print_data(current_time)
                 sys.stdout.flush()
-            
+
             if not self.gen:
                 # Integrate FCI coefficients by a time-step
                 self.CIcoeffs = integrators.runge_kutta_pyscf(
@@ -106,7 +111,7 @@ class tdfci:
                 self.CIcoeffs = integrators.runge_kutta_pyscf(
                     self.CIcoeffs,
                     self.Nsites,
-                    int(self.Nelec / 2),
+                    self.Nelec - int(self.Nelec / 2),
                     int(self.Nelec / 2),
                     self.delt,
                     self.h_site,
@@ -128,6 +133,7 @@ class tdfci:
 
             # update the current time
             current_time = self.delt * (step + 1)
+            self.CIcoeffs = self.CIcoeffs.astype(complex)
 
         # Print data at final step regardless of Nprint
         print(
@@ -163,24 +169,24 @@ class tdfci:
             file.close()
 
             # Calculate total energy
-            Etot = fci_mod.get_FCI_E(
-                self.h_site,
-                self.V_site,
-                self.Ecore,
-                self.CIcoeffs,
-                self.Nsites,
-                int(self.Nelec / 2),
-                int(self.Nelec / 2),
-            )
+            # Etot = fci_mod.get_FCI_E(
+            #     self.h_site,
+            #     self.V_site,
+            #     self.Ecore,
+            #     self.CIcoeffs,
+            #     self.Nsites,
+            #     int(self.Nelec / 2),
+            #     int(self.Nelec / 2),
+            # )
 
-            file = open("restricted.txt", "a")
-            file.write(f"energy: {Etot}")
-            file.close()
+            # file = open("restricted.txt", "a")
+            # file.write(f"energy: {Etot}")
+            # file.close()
 
         if self.gen:
             # Calculate 1RDM
             corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, self.Nsites, self.Nelec, self.gen
+                self.CIcoeffs, self.Nsites, self.Nelec, self.gen, self.mo
             )
 
             file = open("generalized.txt", "w")
@@ -189,14 +195,14 @@ class tdfci:
             file.close()
 
             # total spin vectors
-            den = utils.reshape_gtor_matrix(corr1RDM)
-            # den = np.transpose(den)
+            den = corr1RDM.copy()
             Nsp = int(self.Nsites / 2)
-            ovlp = np.eye(Nsp)
+            if self.ovlp is None:
+                self.ovlp = np.eye(Nsp)
 
-            magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
-            magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
-            magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
+            magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * self.ovlp)
+            magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * self.ovlp)
+            magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * self.ovlp)
 
             all_spin = np.insert(
                 np.array([magx.real, magy.real, magz.real]), 0, current_time
@@ -213,12 +219,12 @@ class tdfci:
             sites_z = []
 
             for i in range(Nsp):
-                ovlp = np.zeros((Nsp, Nsp))
-                ovlp[i, i] = 1
+                weight = np.zeros((Nsp, Nsp))
+                weight[i, :] = self.ovlp[i, :]
 
-                site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * ovlp)
-                site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * ovlp)
-                site_magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * ovlp)
+                site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * weight)
+                site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * weight)
+                site_magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * weight)
 
                 sites_x.append(site_magx.real)
                 sites_y.append(site_magy.real)
@@ -238,20 +244,20 @@ class tdfci:
             self.file_spinz.flush()
 
             # Calculate total energy
-            Etot = fci_mod.get_FCI_E(
-                self.h_site,
-                self.V_site,
-                self.Ecore,
-                self.CIcoeffs,
-                self.Nsites,
-                int(self.Nelec / 2),
-                int(self.Nelec / 2),
-                self.gen,
-            )
+            # Etot = fci_mod.get_FCI_E(
+            #     self.h_site,
+            #     self.V_site,
+            #     self.Ecore,
+            #     self.CIcoeffs,
+            #     self.Nsites,
+            #     int(self.Nelec / 2),
+            #     int(self.Nelec / 2),
+            #     self.gen,
+            # )
 
-            file = open("generalized.txt", "a")
-            file.write(f"energy: {Etot}")
-            file.close()
+            # file = open("generalized.txt", "a")
+            # file.write(f"energy: {Etot}")
+            # file.close()
 
         # Calculate total number of electrons
         # (used as convergence check for time-step)
@@ -285,7 +291,7 @@ class tdfci:
         # Print output data
         output = np.zeros(3)
         output[0] = current_time
-        output[1] = Etot
+        # output[1] = Etot
         output[2] = Nele
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()
