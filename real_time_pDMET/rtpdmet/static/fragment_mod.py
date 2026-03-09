@@ -5,6 +5,7 @@ import scipy.linalg as la
 
 np.set_printoptions(linewidth=120)
 
+
 class fragment:
     def __init__(
         self,
@@ -49,7 +50,7 @@ class fragment:
 
         if gen:
             self.impindx = impindx
-            self.Nsites = Nsites  
+            self.Nsites = Nsites
             self.Nele = Nele
             self.hubb_indx = hubb_indx
             self.mubool = mubool
@@ -67,14 +68,14 @@ class fragment:
             self.bathrange = np.arange(
                 self.Nimp + self.Nvirt, 2 * self.Nimp + self.Nvirt
             )
-            #self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
+            # self.corerange = np.arange(2 * self.Nimp + self.Nvirt, 2 * self.Nsites)
             self.corerange = np.arange(2 * self.Nimp + self.Nvirt, self.Nsites)
             self.last_imp = self.Nimp
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
-            #self.last_core = 2 * self.Nsites
+            # self.last_core = 2 * self.Nsites
             self.last_core = self.Nsites
-            
+
             self.gen = True
 
         self.frags_rank = 0
@@ -96,7 +97,7 @@ class fragment:
         mf1RDM = np.delete(mf1RDM, self.impindx, axis=1)
 
         np.set_printoptions(precision=11)
- 
+
         # diagonalize environment part of 1RDM to obtain
         # embedding (virtual, bath, core) orbitals
         if self.gen:
@@ -167,11 +168,11 @@ class fragment:
         # rotate the 1 e- terms, h_emb currently
         h_emb = utils.rot1el(h_site, rotmat_small)
         self.h_site = np.copy(h_site)
-        
+
         # define 1 e- term of size ( impurities, bath ) x ( impurities, bath )
         # that will only have 1/2 interaction with the core
         self.h_emb_halfcore = np.copy(h_emb[: 2 * self.Nimp, : 2 * self.Nimp])
-        
+
         # augment the impurity/bath 1e- terms from contribution of Coulomb
         # and exchange terms btwn impurity/bath and core
         # and augment the 1 e- term with only half the contribution
@@ -190,7 +191,7 @@ class fragment:
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
-        
+
             if hamtype == 0:
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
                     h_emb[: 2 * self.Nimp, : 2 * self.Nimp] = (
@@ -205,7 +206,6 @@ class fragment:
                     )
 
             elif hamtype == 1:
-                
                 core_int = U * np.einsum(
                     "ap,pb,p->ab",
                     utils.adjoint(rotmat_vsmall),
@@ -239,7 +239,7 @@ class fragment:
             #         codes.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
             #     )
 
-            #     Ecore += V_site * np.dot(vec, vec) #np.einsum("p, p", vec, vec) 
+            #     Ecore += V_site * np.dot(vec, vec) #np.einsum("p, p", vec, vec)
 
         if self.gen:
             # rotate the 2 e- terms
@@ -284,7 +284,7 @@ class fragment:
                     rotmat_small[hubsite_indx, 2 * self.Nimp :],
                     rotmat_vsmall,
                 )
-                
+
                 h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
                 self.h_emb_halfcore += 0.5 * core_int
 
@@ -341,7 +341,7 @@ class fragment:
             self.CIcoeffs, self.E_FCI = fci_mod.FCI_GS(
                 self.h_emb, self.V_emb, U, 2 * self.Nimp, self.Nimp, self.gen
             )
-    
+
     #####################################################################
 
     def get_corr1RDM(self):
@@ -390,10 +390,7 @@ class fragment:
     ):
         if mubool:
             if gen:
-                print(
-                    "Chemical potential fitting not implemented with generalized spin formalism."
-                )
-                exit()
+                print("Chemical potential fitting is currently being tested.")
             # get rotational matrix in embedding basis
             self.get_rotmat(mf1RDM)
             # compute emb hamiltonian with the rotational matrix

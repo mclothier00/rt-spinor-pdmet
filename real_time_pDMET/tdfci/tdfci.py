@@ -161,12 +161,9 @@ class tdfci:
 
         if not self.gen:
             # Calculate 1RDM
-            corr1RDM = fci_mod.get_corr1RDM(self.CIcoeffs, self.Nsites, self.Nelec)
-
-            file = open("restricted.txt", "w")
-            file.write("from restricted: \n")
-            file.write(f"correlated 1RDM: \n {corr1RDM} \n")
-            file.close()
+            corr1RDM = fci_mod.get_corr1RDM(
+                self.CIcoeffs, self.Nsites, self.Nelec, mo=self.mo
+            )
 
             # Calculate total energy
             # Etot = fci_mod.get_FCI_E(
@@ -179,20 +176,11 @@ class tdfci:
             #     int(self.Nelec / 2),
             # )
 
-            # file = open("restricted.txt", "a")
-            # file.write(f"energy: {Etot}")
-            # file.close()
-
         if self.gen:
             # Calculate 1RDM
             corr1RDM = fci_mod.get_corr1RDM(
                 self.CIcoeffs, self.Nsites, self.Nelec, self.gen, self.mo
             )
-
-            file = open("generalized.txt", "w")
-            file.write("from generalized \n")
-            file.write(f"from generalized: \n {corr1RDM} \n")
-            file.close()
 
             # total spin vectors
             den = corr1RDM.copy()
@@ -254,10 +242,6 @@ class tdfci:
             #     int(self.Nelec / 2),
             #     self.gen,
             # )
-
-            # file = open("generalized.txt", "a")
-            # file.write(f"energy: {Etot}")
-            # file.close()
 
         # Calculate total number of electrons
         # (used as convergence check for time-step)

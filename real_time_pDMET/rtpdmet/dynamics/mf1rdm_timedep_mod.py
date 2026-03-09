@@ -90,10 +90,10 @@ def calc_iddt_glob1RDM(system):
     # Subroutine to calculate i times
     # time dependence of global 1RDM forcing anti-hermiticity
     Nsites = system.Nsites
-    
-    #if not system.gen:
+
+    # if not system.gen:
     #    Nsites = system.Nsites
-    #if system.gen:
+    # if system.gen:
     #    Nsites = 2 * system.Nsites
 
     iddt_glob1RDM = np.zeros([Nsites, Nsites], dtype=complex)
@@ -130,22 +130,6 @@ def calc_Gmat(dG, system, iddt_glob1RDM):
                 G2_fast[a, b] /= evals[b] - evals[a]
             else:
                 G2_fast[a, b] = 0
-
-    #if not system.gen:
-    #    for a in range(system.Nsites):
-    #        for b in range(system.Nsites):
-    #            if a != b and np.abs(evals[a] - evals[b]) > dG:
-    #                G2_fast[a, b] /= evals[b] - evals[a]
-    #            else:
-    #                G2_fast[a, b] = 0
-
-    #if system.gen:
-    #    for a in range(2 * system.Nsites):
-    #        for b in range(2 * system.Nsites):
-    #            if a != b and np.abs(evals[a] - evals[b]) > dG:
-    #                G2_fast[a, b] /= evals[b] - evals[a]
-    #            else:
-    #                G2_fast[a, b] = 0
 
     G2_fast = np.triu(G2_fast) + np.triu(G2_fast, 1).conjugate().transpose()
     G2_site = utils.rot1el(G2_fast, utils.adjoint(system.NOevecs))

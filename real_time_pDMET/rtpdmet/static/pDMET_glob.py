@@ -203,16 +203,13 @@ class static_pdmet:
                 print("Iteration:", itr)
                 print()
 
+            # NOTE: blackberries
             # embedding calculation
             if self.mubool:
-                if self.gen:
-                    print(
-                        "Not yet tested generalized formalism and chemical potential fitting! Ending simulation."
-                    )
-                    exit()
                 # do correlation calculation and add the self.mu to the H_emb
                 totalNele_0 = self.corr_calc_with_mu(self.mu)
                 record = [(0.0, totalNele_0)]
+                print(totalNele_0)
 
                 if abs((totalNele_0 / self.Nele) - 1.0) < self.nelecTol:
                     print(
