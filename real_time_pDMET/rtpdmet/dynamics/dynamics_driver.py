@@ -260,6 +260,7 @@ class dynamics_driver:
                         current_time,
                         "for RT-pDMET calculation",
                     )
+                    print(f"Total electron count: {np.trace(self.tot_system.glob1RDM)}")
                     self.print_data(current_time)
                     self.print_checkpoint(current_time)
                     sys.stdout.flush()

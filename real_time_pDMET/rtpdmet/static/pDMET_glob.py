@@ -120,7 +120,8 @@ class static_pdmet:
                 self.old_glob1RDM = np.copy(mf1RDM)
 
         self.mf1RDM = mf1RDM
-
+        print(f"Initial electron count: {np.trace(self.mf1RDM)}")
+        
         # Initialize the system from mf 1RDM and fragment information
 
         if gen:
@@ -201,7 +202,9 @@ class static_pdmet:
             if self.rank == 0:
                 print()
                 print("Iteration:", itr)
+                print(f"Total electron count: {np.trace(old_glob1RDM)}")
                 print()
+                
 
             # embedding calculation
             if self.mubool:
@@ -335,7 +338,7 @@ class static_pdmet:
 
             # constract a global density matrix from all impurities
             self.get_globalRDM()
-
+ 
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
