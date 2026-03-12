@@ -385,6 +385,7 @@ def reshape_gtor_tensor(a):
 
     return new_a
 
+
 #####################################################################
 
 
@@ -456,12 +457,14 @@ def sort_eigenpairs(evals, evecs, tol=1e-12):
 
     # Identify degenerate blocks
     groups = []
-    current = [0] # degenerate block indices 
+    current = [0]  # degenerate block indices
     for i in range(1, len(evals)):
-        if abs(evals[i] - evals[i-1]) < tol: # check if current eigenvalue is degenerate with one before
-            current.append(i) # if so, add to current degeneracy block
-        else: # if not, end that block and start a new degenerate block 
-            groups.append(current) 
+        if (
+            abs(evals[i] - evals[i - 1]) < tol
+        ):  # check if current eigenvalue is degenerate with one before
+            current.append(i)  # if so, add to current degeneracy block
+        else:  # if not, end that block and start a new degenerate block
+            groups.append(current)
             current = [i]
     groups.append(current)
 
@@ -473,22 +476,24 @@ def sort_eigenpairs(evals, evecs, tol=1e-12):
             # Example deterministic rule:
             # Sort eigenvectors by index of largest-magnitude component
             def key(v):
-                i = np.argmax(np.abs(v)) # provides index where minimum value is
-                return (i)
-            
-            ordered = sorted(block.T, key=key) # sorts by order of minimum index found
-            evecs[:, g] = np.column_stack(ordered) # returns to row configuration and replaces prevous block ordering
+                i = np.argmax(np.abs(v))  # provides index where minimum value is
+                return i
+
+            ordered = sorted(block.T, key=key)  # sorts by order of minimum index found
+            evecs[:, g] = np.column_stack(
+                ordered
+            )  # returns to row configuration and replaces prevous block ordering
 
     # for static code, input as in restricted-like indexing, so need to flip rows back to generalized-like indexing.
     # WILL ONLY WORK FOR STATIC GET_ROTMAT CALL
 
     n = evecs.shape[0]
     assert n % 2 == 0, "Must have even number of rows to interleave equally"
-    
+
     k = n // 2
     top = evecs[:k]
     bottom = evecs[k:]
-    
+
     # Interleave
     evecs_gen = np.empty_like(evecs)
     evecs_gen[0::2] = top
@@ -507,7 +512,7 @@ def is_spin_restricted(D, tol=1e-9):
     NOTE: From ChatGPT
 
     Check if a spin-generalized density matrix D is spin-restricted.
-    
+
     Parameters
     ----------
     D : np.ndarray
@@ -536,9 +541,8 @@ def is_spin_restricted(D, tol=1e-9):
     Dba = D[n:, :n]
     Dbb = D[n:, n:]
 
-    offdiag_zero = (
-        np.allclose(Dab, np.zeros_like(Dab), atol=tol) and
-        np.allclose(Dba, np.zeros_like(Dba), atol=tol)
+    offdiag_zero = np.allclose(Dab, np.zeros_like(Dab), atol=tol) and np.allclose(
+        Dba, np.zeros_like(Dba), atol=tol
     )
 
     diag_equal = np.allclose(Daa, Dbb, atol=tol)
@@ -547,84 +551,92 @@ def is_spin_restricted(D, tol=1e-9):
 
     return restricted
 
-    #return {
+    # return {
     #    "restricted": restricted,
     #    "diag_equal": diag_equal,
     #    "offdiag_zero": offdiag_zero
-    #}
+    # }
 
 
 #####################################################################
 
 
-#def is_two_block_diagonal_with_identical_blocks(M, tol=1e-12):
+def lowdin(s):
+    # NOTE: check this!!
+    e, v = la.eigh(s)
+    idx = e > 1e-15
+    C_ao = np.dot(v[:, idx] / np.sqrt(e[idx]), v[:, idx].conj().T)
+    return C_ao
+
+
+#####################################################################
+
+# def is_two_block_diagonal_with_identical_blocks(M, tol=1e-12):
 #    n = M.shape[0]
 #    if n % 2 != 0:
 #        return False
-#    
+#
 #    k = n // 2
 #    A = M[:k, :k]
 #    B = M[k:, k:]
 #    C = M[:k, k:]
 #    D = M[k:, :k]
-#    
+#
 #    # check A == B
 #    if not np.allclose(A, B, atol=tol, rtol=0):
 #        return False
-#    
+#
 #    # check off-diagonals ~ 0
 #    if not (np.allclose(C, 0, atol=tol) and np.allclose(D, 0, atol=tol)):
 #        return False
-#    
+#
 #    return True
 #
 #
-#def scriptA_eig_block(M):
+# def scriptA_eig_block(M):
 #    """
 #    Computes script-A structured eigenvectors for M = block_diag(A, A).
 #    Assumes the matrix is known to be block-diagonal with identical blocks.
 #    """
 #    n = M.shape[0]
 #    k = n // 2
-#    
+#
 #    A = M[:k, :k]
-#    
+#
 #    # eigen-decompose A
 #    evalsA, vecsA = la.eigh(A)
-#    
+#
 #    # full eigenvalues: each repeated twice
 #    evals = np.repeat(evalsA, 2)
-#    
+#
 #    # build script-A eigenvector matrix
 #    evecs = np.zeros((n, n))
-#    
+#
 #    # embed vecsA into the 4D Script-A pattern:
 #    for i in range(k):
 #        v = vecsA[:, i]  # shape (k,)
-#        
+#
 #        # top block column (2*i+1)
 #        evecs[:k,   2*i+1] = v
 #        # top block column (2*i) stays zero
-#        
+#
 #        # bottom block
 #        evecs[k:, 2*i]   = -v
 #        # bottom block column (2*i+1) stays zero
-#    
+#
 #    return evals, evecs
 #
 #
-#def safe_eigh(M, tol=1e-12):
+# def safe_eigh(M, tol=1e-12):
 #    """
 #    If M has the block structure [ A 0 ; 0 A ],
 #    return the Script-A canonical eigenvectors.
 #    Otherwise, fall back to scipy.linalg.eigh.
 #    """
-#    
+#
 #    if is_two_block_diagonal_with_identical_blocks(M, tol):
 #        return scriptA_eig_block(M)
 #    else:
 #        # normal scipy eigh
 #        evals, evecs = la.eigh(M)
 #        return evals, evecs
-
-

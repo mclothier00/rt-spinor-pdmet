@@ -161,12 +161,9 @@ class tdfci:
 
         if not self.gen:
             # Calculate 1RDM
-            corr1RDM = fci_mod.get_corr1RDM(self.CIcoeffs, self.Nsites, self.Nelec)
-
-            file = open("restricted.txt", "w")
-            file.write("from restricted: \n")
-            file.write(f"correlated 1RDM: \n {corr1RDM} \n")
-            file.close()
+            corr1RDM = fci_mod.get_corr1RDM(
+                self.CIcoeffs, self.Nsites, self.Nelec, mo=self.mo
+            )
 
             # Calculate total energy
             # Etot = fci_mod.get_FCI_E(
@@ -179,20 +176,11 @@ class tdfci:
             #     int(self.Nelec / 2),
             # )
 
-            # file = open("restricted.txt", "a")
-            # file.write(f"energy: {Etot}")
-            # file.close()
-
         if self.gen:
             # Calculate 1RDM
             corr1RDM = fci_mod.get_corr1RDM(
                 self.CIcoeffs, self.Nsites, self.Nelec, self.gen, self.mo
             )
-
-            file = open("generalized.txt", "w")
-            file.write("from generalized \n")
-            file.write(f"from generalized: \n {corr1RDM} \n")
-            file.close()
 
             # total spin vectors
             den = corr1RDM.copy()
@@ -255,10 +243,6 @@ class tdfci:
             #     self.gen,
             # )
 
-            # file = open("generalized.txt", "a")
-            # file.write(f"energy: {Etot}")
-            # file.close()
-
         # Calculate total number of electrons
         # (used as convergence check for time-step)
         Nele = np.real(np.sum(np.diag(corr1RDM)))
@@ -272,7 +256,7 @@ class tdfci:
             corrdens = diagcorr1RDM
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
-            corrdens = diagcorr1RDM.reshape(-1, 2).sum(axis=1)
+            corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)

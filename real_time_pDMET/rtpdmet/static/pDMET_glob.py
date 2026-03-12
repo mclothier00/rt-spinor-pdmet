@@ -208,11 +208,6 @@ class static_pdmet:
 
             # embedding calculation
             if self.mubool:
-                if self.gen:
-                    print(
-                        "Not yet tested generalized formalism and chemical potential fitting! Ending simulation."
-                    )
-                    exit()
                 # do correlation calculation and add the self.mu to the H_emb
                 totalNele_0 = self.corr_calc_with_mu(self.mu)
                 record = [(0.0, totalNele_0)]
@@ -743,28 +738,16 @@ class static_pdmet:
 
     def get_nat_orbs(self):
         if self.gen:
-            #    print(f'glob: {utils.reshape_gtor_matrix(self.glob1RDM)}')
-            #    print()
             NOevals, NOevecs = la.eigh(utils.reshape_gtor_matrix(self.glob1RDM))
-            #    print(NOevecs)
             NOevals, NOevecs = utils.sort_eigenpairs(NOevals, NOevecs)
-        #    print()
-        #    print(NOevecs)
         else:
-            #    print(f'glob: {self.glob1RDM / 2}')
-            #    print()
             NOevals, NOevecs = la.eigh(self.glob1RDM)
-        #    print(NOevecs)
-        # exit()
 
         NOevals, NOevecs = la.eigh(self.glob1RDM)
 
         # Re-order such that eigenvalues are in descending order
         self.NOevals = np.flip(NOevals)
         self.NOevecs = np.flip(NOevecs, 1)
-
-        # print(NOevecs)
-        # print()
 
     ##########################################################
 
@@ -781,13 +764,6 @@ class static_pdmet:
             NOcc = self.Nele
             NOcc = self.NOevecs[:, :NOcc]
             self.mf1RDM = np.dot(NOcc, NOcc.T.conj())
-
-    #        print('mf1RDM')
-    #        if self.gen:
-    #            print(utils.reshape_gtor_matrix(self.mf1RDM))
-    #            #print(self.mf1RDM)
-    #        else:
-    #            print(self.mf1RDM / 2)
 
     ##########################################################
 
@@ -825,14 +801,6 @@ class static_pdmet:
         output[5 : 5 + Nsites] = self.NOevals
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()
-        np.save("mfRDM_static", self.mf1RDM)
-        np.save("globRDM_static", self.glob1RDM)
-        CI = []
-        rotmat = []
-        for frag in self.frag_in_rank:
-            CI.append(np.copy(frag.CIcoeffs))
-            rotmat.append(np.copy(frag.rotmat))
-        np.save("CI_static", CI)
 
     ##########################################################
 

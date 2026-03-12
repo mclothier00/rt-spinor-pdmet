@@ -5,7 +5,7 @@ import real_time_pDMET.rtpdmet.dynamics.fci_mod as fci_mod
 NL = 2
 NR = 2
 Ndots = 2
-Nsites = NL+NR+Ndots
+Nsites = NL + NR + Ndots
 Nele = Nsites
 
 timp = 1.0
@@ -22,7 +22,8 @@ boundary = False
 U = 1.0
 Vbias = 0.0
 h_site, V_site = make_hams.make_ham_multi_imp_anderson_realspace(
-    Ndots, NL, NR, Vg, U, timp, timplead, Vbias, tleads, boundary, Full)
+    Ndots, NL, NR, Vg, U, timp, timplead, Vbias, tleads, boundary, Full
+)
 
 CIcoeffs = fci_mod.FCI_GS(h_site, V_site, 0.0, Nsites, Nele)
 
@@ -30,8 +31,8 @@ CIcoeffs = fci_mod.FCI_GS(h_site, V_site, 0.0, Nsites, Nele)
 U = 0.0
 Vbias = 0.0
 h_site, V_site = make_hams.make_ham_multi_imp_anderson_realspace(
-    Ndots, NL, NR, Vg, U, timp, timplead, Vbias, tleads, boundary, Full)
+    Ndots, NL, NR, Vg, U, timp, timplead, Vbias, tleads, boundary, Full
+)
 
-tdfci = tdfci.tdfci(Nsites, Nele, h_site, V_site,
-                    CIcoeffs, delt, Nstep, Nprint)
+tdfci = tdfci.tdfci(Nsites, Nele, h_site, V_site, CIcoeffs, delt, Nstep, Nprint)
 tdfci.kernel()

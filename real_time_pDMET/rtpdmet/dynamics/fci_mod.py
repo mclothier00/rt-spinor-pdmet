@@ -40,7 +40,7 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         mf._eri = ao2mo.restore(8, V, Norbs)
         mf.kernel()
 
-        # Perform FCI calculation using HF MOs
+        # Perform FCI calculation using HF MOs for stability
         cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
         E_FCI, CIcoeffs = cisolver.kernel()
 
@@ -48,6 +48,7 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         #       uncomment. Currently not used by RT-pDMET
         # E_FCI, CIcoeffs = pyscf.fci.direct_spin1.kernel(h, V, Norbs, Nele)
 
+        # rotate back to site basis
         CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
             CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
         )
@@ -56,11 +57,10 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         # NOTE: HF det should be the most dominant det in FCI exp.,
         #       making num solver more stable than without.
         #       may not get correct answer for lattice models, so check
-        #       for proper convergence.
+        #       for proper convergence. Currently solving in site basis
+        #       directly.
 
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
-
-        corr1RDM = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
 
     return CIcoeffs
 
@@ -77,20 +77,25 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False, mo=None):
             Re_CIcoeffs = np.copy(CIcoeffs.real)
             Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
-            corr1RDM = 1j * pyscf.fci.direct_spin1.trans_rdm1(
+            corr1RDM_og = 1j * pyscf.fci.direct_spin1.trans_rdm1(
                 Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele
             )
 
-            corr1RDM -= 1j * pyscf.fci.direct_spin1.trans_rdm1(
+            corr1RDM_og -= 1j * pyscf.fci.direct_spin1.trans_rdm1(
                 Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele
             )
 
-            corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Re_CIcoeffs, Norbs, Nele)
+            corr1RDM_og += pyscf.fci.direct_spin1.make_rdm1(Re_CIcoeffs, Norbs, Nele)
 
-            corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Im_CIcoeffs, Norbs, Nele)
+            corr1RDM_og += pyscf.fci.direct_spin1.make_rdm1(Im_CIcoeffs, Norbs, Nele)
 
         else:
-            corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
+            corr1RDM_og = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
+
+        if mo is None:
+            corr1RDM = corr1RDM_og
+        else:
+            corr1RDM = mo @ corr1RDM_og @ mo.conj().T
 
     # Notation for generalized 1RDM from fci_dhf_slow is dm_pq = <|p^+ q|>
     # PySCF requires CIcoeffs to be in a spin-blocked configuration

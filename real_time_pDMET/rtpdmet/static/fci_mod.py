@@ -6,26 +6,6 @@ import sys
 import scipy.linalg as la
 
 
-### NOTE: don't think this is used; remove
-
-# def RHF(h, V, Norbs, Nele):
-#    if isinstance(Nele, tuple):
-#        Nele = sum(Nele)
-
-#    mol = gto.M()
-#    mol.nelectron = Nele
-#    mol.imncore_anyway = True
-
-#    mf = scf.RHF(mol)
-#    mf.get_hcore = lambda *args: h
-#    mf.get_ovlp = lambda *args: np.eye(Norbs)
-
-#    mf._eri = ao2mo.restore(8, V, Norbs)
-#    mf.kernel()
-#    RDM = mf.make_rdm1()
-#    return RDM
-
-
 ###########################################################
 
 
@@ -71,10 +51,10 @@ def FCI_GS(h, V, U, Norbs, Nele, gen=False):
     if gen:
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
-        #h = utils.reshape_gtor_matrix(h)
-        #V = utils.reshape_gtor_tensor(V)
+        # h = utils.reshape_gtor_matrix(h)
+        # V = utils.reshape_gtor_tensor(V)
 
-        #E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
+        # E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
     return CIcoeffs, E_FCI
 
