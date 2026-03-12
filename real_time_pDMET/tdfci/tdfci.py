@@ -256,7 +256,7 @@ class tdfci:
             corrdens = diagcorr1RDM
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
-            corrdens = diagcorr1RDM.reshape(-1, 2).sum(axis=1)
+            corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
