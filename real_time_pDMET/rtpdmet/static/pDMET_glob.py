@@ -814,6 +814,7 @@ class static_pdmet:
                 self.DMET_E += np.real(frag.Efrag)
                 # discard what should be numerical error of imaginary part
         if self.gen:
-            print(
-                "energy calculation for generalized DMET not yet implemented; setting to zero for time being"
-            )
+            if self.rank == 0:
+                print(
+                    "energy calculation for generalized DMET not yet implemented; setting to zero for time being"
+                )

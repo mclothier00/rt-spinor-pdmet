@@ -245,6 +245,7 @@ class dynamics_driver:
             self.step = step
             if self.rank == 0:
                 if step == 0:
+                    print("Writing initial data at setp 0.")
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
                     if self.gen:
@@ -262,7 +263,6 @@ class dynamics_driver:
                     )
                     print(f"Total electron count: {np.trace(self.tot_system.glob1RDM)}")
                     self.print_data(current_time)
-                    self.print_checkpoint(current_time)
                     sys.stdout.flush()
 
                 # if a trajectory restarted, record data before a 1st step
@@ -276,6 +276,9 @@ class dynamics_driver:
                     )
                     self.print_data(current_time)
                     sys.stdout.flush()
+
+            if (np.mod(step, self.Nprint) == 0) and step >= 1:
+                self.print_checkpoint(current_time)
 
             # Integrate FCI coefficients and rotation matrix for all fragments
             self.integrate(self.nproc, current_time)
@@ -696,11 +699,31 @@ class dynamics_driver:
     def print_checkpoint(self, current_time):
         # Save total system to file for restart purposes using pickle
 
-        file_system = open("restart_system.dat", "wb")
-        pickle.dump(
-            {"last_time": current_time, "tot_system": self.tot_system}, file_system
-        )
-        file_system.close()
+        comm = MPI.COMM_WORLD
+    
+        # Gather fragments from all ranks to rank 0
+        all_frags = comm.gather(self.tot_system.frag_in_rank, root=0)
+    
+        if self.rank == 0:
+            # Flatten: all_frags is a list of lists
+            all_frags_flat = [f for rank_frags in all_frags for f in rank_frags]
+    
+            # Sort by fragment number so ordering is deterministic
+            all_frags_flat.sort(key=lambda f: f.frag_num)
+    
+            # Temporarily swap in the full fragment list for pickling
+            saved_frags = self.tot_system.frag_in_rank
+            self.tot_system.frag_in_rank = all_frags_flat
+    
+            file_system = open("restart_system.dat", "wb")
+            pickle.dump(
+                {"last_time": current_time, "tot_system": self.tot_system},
+                file_system,
+            )
+            file_system.close()
+    
+            # Restore rank 0's own subset
+            self.tot_system.frag_in_rank = saved_frags
 
     #####################################################################
 
@@ -763,6 +786,11 @@ class dynamics_driver:
         np.savetxt(self.file_spinx, sites_x.reshape(1, sites_x.shape[0]), fmt_str)
         np.savetxt(self.file_spiny, sites_y.reshape(1, sites_y.shape[0]), fmt_str)
         np.savetxt(self.file_spinz, sites_z.reshape(1, sites_z.shape[0]), fmt_str)
+
+        self.file_totspins.flush()
+        self.file_spinx.flush()
+        self.file_spiny.flush()
+        self.file_spinz.flush()
 
     #####################################################################
 
