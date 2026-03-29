@@ -64,12 +64,24 @@ class dynamics_driver:
         #   are calculated for Nsites < 50.
         # restart - whether or not to restart a calculation from the saved pickle dictionary
         #       'restart_system.dat'; to restart, use provided code:
-        #       ''' system_file="restart_system.dat"
+        #
+        #       system_file="restart_system.dat"
         #       with open(system_file, 'rb') as file:
         #           system = pickle.load(file)
         #
         #       init_time = system['last_time']
-        #       system = system['tot_system'] '''
+        #       system = system['tot_system']
+        #       comm = MPI.COMM_WORLD
+        #       rank = comm.Get_rank()
+        #       size = comm.Get_size()
+        #       
+        #       all_frags = system.frag_in_rank
+        #       frag_per_rank = [[] for _ in range(size)]
+        #       for i, frag in enumerate(all_frags):
+        #           frag_per_rank[i % size].append(frag)
+        #       
+        #       system.frag_in_rank = frag_per_rank[rank]
+
 
         self.tot_system = tot_system
         self.delt = delt
