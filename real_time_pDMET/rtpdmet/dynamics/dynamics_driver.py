@@ -582,6 +582,11 @@ class dynamics_driver:
         make_ham = time.time()
         self.tot_system.get_frag_Hemb()
 
+        # Update forte CI integrals to match current embedding Hamiltonian
+        if self.forte:
+            for frag in self.tot_system.frag_in_rank:
+                frag.forte_mod.setup_ci(frag.h_emb, frag.V_emb, 0.0)
+
         # Make sure Ecore for each fragment is 0 for dynamics
         for frag in self.tot_system.frag_in_rank:
             frag.Ecore = 0.0
@@ -620,7 +625,9 @@ class dynamics_driver:
         change_CIcoeffs_list = []
 
         for ifrag, frag in enumerate(self.tot_system.frag_in_rank):
-            change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
+            change_CIcoeffs_list.append(
+                applyham_wrapper(frag, self.delt, self.gen, self.forte)
+            )
 
         return (
             change_NOevecs,
@@ -770,6 +777,11 @@ class dynamics_driver:
     def print_just_dens(self, current_time):
         fmt_str = "%20.8e"
         # self.tot_system.get_DMET_E(self.nproc)
+        self.tot_system.get_frag_Hemb()
+        if self.forte:
+            for frag in self.tot_system.frag_in_rank:
+                frag.forte_mod.setup_ci(frag.h_emb, frag.V_emb, 0.0)
+
         self.tot_system.get_frag_corr1RDM()
         self.tot_system.get_DMET_Nele()
 
@@ -780,25 +792,27 @@ class dynamics_driver:
         self.file_globdens.flush()
 
     #####################################################################
+    #####################################################################
 
 
-def applyham_wrapper(frag, delt, gen=False):
-    # Subroutine to call pyscf to apply FCI
+def applyham_wrapper(frag, delt, gen=False, forte=False):
+    # Subroutine to call pyscf or forte to apply FCI
     # hamiltonian onto FCI vector in dynamics
     # Includes the -1j*timestep term and the
     # addition of bath-bath terms of X-matrix
     # to embedding Hamiltonian
-    # The wrapper is necessary to parallelize using
-    # Pool and must be separate from
-    # the class because the class includes
-    # IO file types (annoying and ugly but it works)
 
     Xmat_sml = np.zeros([2 * frag.Nimp, 2 * frag.Nimp], dtype=complex)
     Xmat_sml[frag.Nimp :, frag.Nimp :] = np.copy(
         frag.Xmat[frag.bathrange[:, None], frag.bathrange]
     )
 
-    if not gen:
+    if forte:
+        # Update forte CI integrals to include Xmat correction before applying H
+        frag.forte_mod.setup_ci(frag.h_emb - Xmat_sml, frag.V_emb, 0.0)
+        CIvec = -1j * delt * frag.forte_mod.applyham_forte2(frag.CIcoeffs)
+
+    elif not gen:
         CIvec = (
             -1j
             * delt
@@ -813,7 +827,7 @@ def applyham_wrapper(frag, delt, gen=False):
             )
         )
 
-    if gen:
+    elif gen:
         CIvec = (
             -1j
             * delt
@@ -828,3 +842,51 @@ def applyham_wrapper(frag, delt, gen=False):
         )
 
     return CIvec
+
+
+# def applyham_wrapper(frag, delt, gen=False):
+#     # Subroutine to call pyscf to apply FCI
+#     # hamiltonian onto FCI vector in dynamics
+#     # Includes the -1j*timestep term and the
+#     # addition of bath-bath terms of X-matrix
+#     # to embedding Hamiltonian
+#     # The wrapper is necessary to parallelize using
+#     # Pool and must be separate from
+#     # the class because the class includes
+#     # IO file types (annoying and ugly but it works)
+#
+#     Xmat_sml = np.zeros([2 * frag.Nimp, 2 * frag.Nimp], dtype=complex)
+#     Xmat_sml[frag.Nimp :, frag.Nimp :] = np.copy(
+#         frag.Xmat[frag.bathrange[:, None], frag.bathrange]
+#     )
+#
+#     if not gen:
+#         CIvec = (
+#             -1j
+#             * delt
+#             * applyham.apply_ham_pyscf_fully_complex(
+#                 frag.CIcoeffs,
+#                 frag.h_emb - Xmat_sml,
+#                 frag.V_emb,
+#                 frag.Nimp,
+#                 frag.Nimp,
+#                 2 * frag.Nimp,
+#                 frag.Ecore,
+#             )
+#         )
+#
+#     if gen:
+#         CIvec = (
+#             -1j
+#             * delt
+#             * applyham.apply_ham_pyscf_spinor(
+#                 frag.CIcoeffs,
+#                 frag.h_emb - Xmat_sml,
+#                 frag.V_emb,
+#                 frag.Nimp,
+#                 2 * frag.Nimp,
+#                 frag.Ecore,
+#             )
+#         )
+#
+#     return CIvec

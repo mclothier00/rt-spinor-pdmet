@@ -487,8 +487,6 @@ class static_pdmet:
             else:
                 fullcorr1RDM = np.zeros((Nsites, Nsites))
 
-            print(frag.corr1RDM)
-            exit()
             # impurity
             fullcorr1RDM[: frag.Nimp, : frag.Nimp] = frag.corr1RDM[
                 : frag.Nimp, : frag.Nimp

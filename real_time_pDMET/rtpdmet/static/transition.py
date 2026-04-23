@@ -56,7 +56,10 @@ def transition(
             for i in range(len(the_dmet.frag_in_rank)):
                 tot_system.frag_in_rank.append(
                     fragment_mod_dynamic.fragment(
-                        impindx[the_dmet.frag_in_rank[i].frag_num], Nsites, Nele
+                        impindx[the_dmet.frag_in_rank[i].frag_num],
+                        Nsites,
+                        Nele,
+                        is_forte=the_dmet.forte,
                     )
                 )
                 tot_system.frag_in_rank[i].rotmat = the_dmet.frag_in_rank[i].rotmat
@@ -126,6 +129,7 @@ def transition(
                     Nsites,
                     Nele,
                     gen=gen_dyn,
+                    is_forte=the_dmet.forte,
                 )
                 tot_system.frag_in_rank.append(frag_i)
                 tot_system.frag_in_rank[i].rotmat = utils.reshape_rtog_matrix(
@@ -198,6 +202,7 @@ def transition(
                         Nsites,
                         Nele,
                         gen=gen_dyn,
+                        is_forte=the_dmet.forte,
                     )
                 )
                 tot_system.frag_in_rank[i].rotmat = the_dmet.frag_in_rank[i].rotmat
@@ -207,11 +212,6 @@ def transition(
                 tot_system.frag_in_rank[i].frags_rank = the_dmet.frag_in_rank[
                     i
                 ].frags_rank
-
-    #           print(tot_system.frag_in_rank[i].CIcoeffs)
-    #           print()
-
-    # exit()
 
     return tot_system
 

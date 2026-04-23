@@ -1,6 +1,7 @@
 # including all quantities specific to a given fragment
 import numpy as np
 import real_time_pDMET.scripts.fci_mod as fci_mod
+import real_time_pDMET.scripts.forte as forte
 import real_time_pDMET.scripts.utils as utils
 import time
 
@@ -83,6 +84,11 @@ class fragment:
             self.last_virt = self.Nimp + self.Nvirt
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites
+
+            if self.forte and not self.gen:
+                self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
+            if self.forte and self.gen:
+                self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
 
             self.frags_rank = 0
             self.frag_num = 0
@@ -819,6 +825,27 @@ class fragment:
             eval_dif, self.Xmat[self.Nimp :, self.Nimp :]
         )
         self.Xmat = np.triu(self.Xmat) + np.triu(self.Xmat, 1).conjugate().transpose()
+
+    #####################################################################
+
+    def __getstate__(self):
+        # Return state dict excluding forte_mod since pybind11 C++ objects
+        # cannot be pickled
+        state = self.__dict__.copy()
+        if "forte_mod" in state:
+            del state["forte_mod"]
+        return state
+
+    #####################################################################
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # Reconstruct forte_mod on unpickle if this is a forte fragment
+        if self.forte:
+            if self.gen:
+                self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
+            else:
+                self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
 
     #####################################################################
 
