@@ -66,7 +66,7 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
 
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
 
-    return CIcoeffs
+    return E_FCI, CIcoeffs
 
 
 #####################################################################

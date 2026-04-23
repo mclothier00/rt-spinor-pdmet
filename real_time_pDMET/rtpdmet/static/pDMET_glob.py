@@ -132,7 +132,14 @@ class static_pdmet:
         self.frag_list = []
         for i in range(Nfrag):
             self.frag_list.append(
-                fragment_mod.fragment(impindx[i], self.Nsites, Nele, hubb_indx, gen)
+                fragment_mod.fragment(
+                    impindx[i],
+                    self.Nsites,
+                    Nele,
+                    hubb_indx,
+                    gen=gen,
+                    is_forte=self.forte,
+                )
             )
             self.frag_list[i].frag_num = i
 
@@ -480,6 +487,8 @@ class static_pdmet:
             else:
                 fullcorr1RDM = np.zeros((Nsites, Nsites))
 
+            print(frag.corr1RDM)
+            exit()
             # impurity
             fullcorr1RDM[: frag.Nimp, : frag.Nimp] = frag.corr1RDM[
                 : frag.Nimp, : frag.Nimp

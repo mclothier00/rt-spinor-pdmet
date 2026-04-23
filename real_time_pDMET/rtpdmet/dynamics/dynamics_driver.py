@@ -41,6 +41,7 @@ class dynamics_driver:
         init_time=0.0,
         laser=False,
         gen=False,
+        forte=False,
         mag_sites=None,
         restart=False,
     ):
@@ -92,6 +93,7 @@ class dynamics_driver:
         else:
             self.Vbias = False
         self.gen = gen
+        self.forte = forte
         self.restart = restart
 
         ## FOR DEBUGGING, PING

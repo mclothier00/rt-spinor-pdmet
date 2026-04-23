@@ -10,7 +10,7 @@ import time
 class fragment:
     #####################################################################
 
-    def __init__(self, impindx, Nsites, Nele, gen=False):
+    def __init__(self, impindx, Nsites, Nele, gen=False, is_forte=False):
         if not gen:
             self.impindx = impindx
             # array defining index of impurity orbitals in site basis
@@ -29,6 +29,7 @@ class fragment:
             # Number of virtual orbitals in fragment
 
             self.gen = False
+            self.forte = is_forte
 
             # range of orbitals in embedding basis,
             # embedding basis always indexed as impurity, virtual, bath, core
@@ -66,6 +67,7 @@ class fragment:
             # Number of virtual orbitals in fragment
 
             self.gen = True
+            self.forte = is_forte
 
             # range of orbitals in embedding basis,
             # embedding basis always indexed as impurity, virtual, bath, core
@@ -317,9 +319,12 @@ class fragment:
     def get_corr1RDM(self):
         # Subroutine to get the FCI 1RDM and 2RDM
         if not self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
-            )
+            if self.forte:
+                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+            else:
+                self.corr1RDM = fci_mod.get_corr1RDM(
+                    self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
+                )
             self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:
@@ -342,9 +347,12 @@ class fragment:
             ] += corr1RDM_virt
 
         if self.gen:
-            self.corr1RDM = fci_mod.get_corr1RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
-            )
+            if self.forte:
+                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+            else:
+                self.corr1RDM = fci_mod.get_corr1RDM(
+                    self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
+                )
             self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:
@@ -370,9 +378,14 @@ class fragment:
     def get_corr12RDM(self):
         # Subroutine to get the FCI 1RDM and 2RDM
         if not self.gen:
-            self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
-                self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
-            )
+            if self.forte:
+                self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
+                    self.CIcoeffs
+                )
+            else:
+                self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
+                    self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
+                )
             self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:
@@ -395,9 +408,14 @@ class fragment:
             ] += corr1RDM_virt
 
         if self.gen:
-            self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
-                self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
-            )
+            if self.forte:
+                self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
+                    self.CIcoeffs
+                )
+            else:
+                self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
+                    self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
+                )
             self.full_corr1RDM = np.zeros([self.Nsites, self.Nsites])
             self.full_corr1RDM = self.full_corr1RDM.astype(complex)
             for c in self.corerange:

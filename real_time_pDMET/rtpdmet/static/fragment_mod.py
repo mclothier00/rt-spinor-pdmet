@@ -3,6 +3,7 @@ import real_time_pDMET.scripts.fci_mod as fci_mod
 import real_time_pDMET.scripts.forte as forte
 import real_time_pDMET.scripts.utils as utils
 import scipy.linalg as la
+import real_time_pDMET.scripts.forte as forte
 
 np.set_printoptions(linewidth=120)
 
@@ -19,7 +20,7 @@ class fragment:
         delta=0.02,
         thrnele=1e-5,
         step=0.05,
-        forte=False,
+        is_forte=False,
     ):
         if not gen:
             self.impindx = impindx
@@ -49,7 +50,7 @@ class fragment:
             self.last_core = self.Nsites
 
             self.gen = False
-            self.forte = forte
+            self.forte = is_forte
 
         if gen:
             self.impindx = impindx
@@ -80,10 +81,12 @@ class fragment:
             self.last_core = self.Nsites
 
             self.gen = True
-            self.forte = forte
+            self.forte = is_forte
 
-        if self.forte:
-            self.forte_mod = forte.forte(self.Ecore, self.Norbs, self.Nele)
+        if self.forte and not self.gen:
+            self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
+        if self.forte and self.gen:
+            self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
 
         self.frags_rank = 0
         self.frag_num = 0
@@ -351,10 +354,13 @@ class fragment:
                 )
         else:
             if not self.gen:
-                print("Currently not tested. Calcelling simulation.")
-                exit()
+                self.CIcoeffs, self.E_FCI = self.forte_mod.FCI_GS_forte(
+                    self.h_emb, self.V_emb, U
+                )
             if self.gen:
-                self.CIcoeffs, self.E_FCI = forte.FCI_GS(self.h_emb, self.V_emb)
+                self.CIcoeffs, self.E_FCI = self.forte_mod.FCI_GS_forte(
+                    self.h_emb, self.V_emb, U
+                )
 
     #####################################################################
 
@@ -369,11 +375,7 @@ class fragment:
                     self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
                 )
         else:
-            if not self.gen:
-                print("Currently not tested. Ending simulation.")
-                exit()
-            else:
-                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+            self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
 
     #####################################################################
 
@@ -388,13 +390,7 @@ class fragment:
                     self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
                 )
         else:
-            if not self.gen:
-                print("Currently not tested. Ending simulation.")
-                exit()
-            else:
-                self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
-                    self.CIcoeffs
-                )
+            self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(self.CIcoeffs)
 
     #####################################################################
 
