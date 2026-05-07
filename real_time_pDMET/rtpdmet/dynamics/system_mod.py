@@ -137,7 +137,6 @@ class system:
         # Subroutine to calculate correlated 1RDM for each fragment
         for frag in self.frag_in_rank:
             frag.get_corr1RDM()
-        exit()
 
     #####################################################################
 

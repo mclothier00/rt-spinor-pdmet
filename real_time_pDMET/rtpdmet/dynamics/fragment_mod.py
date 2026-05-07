@@ -379,10 +379,6 @@ class fragment:
                 0 : 0 + corr1RDM_virt.shape[0], 0 : 0 + corr1RDM_virt.shape[1]
             ] += corr1RDM_virt
 
-        print(self.CIcoeffs)
-        # print(self.corr1RDM)
-        print()
-
     #####################################################################
 
     def get_corr12RDM(self):
