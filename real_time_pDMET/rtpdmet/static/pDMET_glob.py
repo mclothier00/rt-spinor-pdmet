@@ -347,6 +347,8 @@ class static_pdmet:
             self.get_globalRDM()
 
             # DIIS routine
+            print("GLOB PRINT")
+            print(self.glob1RDM)
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
             dif = la.norm(self.glob1RDM - old_glob1RDM)
