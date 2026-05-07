@@ -71,6 +71,9 @@ def transition(
                 ].frags_rank
 
         if gen_dyn:
+            if the_dmet.is_forte:
+                print("""Transition between restricted forte2-based pDMET calculation and generalized forte2-based RT-pDMET 
+                        calculation not supported. Please initialize with generalized forte2-based pDMET calculation.""")
             print(
                 "Transitioning from spin restricted static calculation to spin generalized dynamic simulation."
             )
