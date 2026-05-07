@@ -85,13 +85,13 @@ class fragment:
             self.last_bath = 2 * self.Nimp + self.Nvirt
             self.last_core = self.Nsites
 
-            if self.forte and not self.gen:
-                self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
-            if self.forte and self.gen:
-                self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
-
             self.frags_rank = 0
             self.frag_num = 0
+
+        if self.forte and not self.gen:
+            self.forte_mod = forte.forte(2 * self.Nimp)
+        if self.forte and self.gen:
+            self.forte_mod = forte.forte(self.Nimp)
 
     #####################################################################
 
@@ -326,7 +326,7 @@ class fragment:
         # Subroutine to get the FCI 1RDM and 2RDM
         if not self.gen:
             if self.forte:
-                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs, gen=self.gen)
             else:
                 self.corr1RDM = fci_mod.get_corr1RDM(
                     self.CIcoeffs, 2 * self.Nimp, (self.Nimp, self.Nimp)
@@ -354,7 +354,7 @@ class fragment:
 
         if self.gen:
             if self.forte:
-                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+                self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs, gen=self.gen)
             else:
                 self.corr1RDM = fci_mod.get_corr1RDM(
                     self.CIcoeffs, 2 * self.Nimp, self.Nimp, gen=True
@@ -416,7 +416,7 @@ class fragment:
         if self.gen:
             if self.forte:
                 self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
-                    self.CIcoeffs
+                    self.CIcoeffs, gen=self.gen
                 )
             else:
                 self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
@@ -662,8 +662,7 @@ class fragment:
                     utils.adjoint(rotmat_Hub[:, actrange]),
                     rotmat_Hub,
                     rotmat_Hub[:, actrange],
-                )
-                tmp -= np.einsum(
+                ) - np.einsum(
                     "iklj -> ijlk",
                     np.einsum(
                         "ip,lr,pk,rj -> iklj",
@@ -843,9 +842,9 @@ class fragment:
         # Reconstruct forte_mod on unpickle if this is a forte fragment
         if self.forte:
             if self.gen:
-                self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
+                self.forte_mod = forte.forte(self.Nimp)
             else:
-                self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
+                self.forte_mod = forte.forte(2 * self.Nimp)
 
     #####################################################################
 

@@ -84,9 +84,9 @@ class fragment:
             self.forte = is_forte
 
         if self.forte and not self.gen:
-            self.forte_mod = forte.forte(2 * self.Nimp, 2 * self.Nimp, self.gen)
+            self.forte_mod = forte.forte(2 * self.Nimp)
         if self.forte and self.gen:
-            self.forte_mod = forte.forte(2 * self.Nimp, self.Nimp, self.gen)
+            self.forte_mod = forte.forte(self.Nimp)
 
         self.frags_rank = 0
         self.frag_num = 0
@@ -355,11 +355,11 @@ class fragment:
         else:
             if not self.gen:
                 self.CIcoeffs, self.E_FCI = self.forte_mod.FCI_GS_forte(
-                    self.h_emb, self.V_emb, U
+                    self.h_emb, self.V_emb, U, 2 * self.Nimp, self.gen
                 )
             if self.gen:
                 self.CIcoeffs, self.E_FCI = self.forte_mod.FCI_GS_forte(
-                    self.h_emb, self.V_emb, U
+                    self.h_emb, self.V_emb, U, 2 * self.Nimp, self.gen
                 )
 
     #####################################################################
@@ -375,7 +375,7 @@ class fragment:
                     self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
                 )
         else:
-            self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs)
+            self.corr1RDM = self.forte_mod.get_corr1RDM(self.CIcoeffs, gen=self.gen)
 
     #####################################################################
 
@@ -390,7 +390,9 @@ class fragment:
                     self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
                 )
         else:
-            self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(self.CIcoeffs)
+            self.corr1RDM, self.corr2RDM = self.forte_mod.get_corr12RDM(
+                self.CIcoeffs, gen=self.gen
+            )
 
     #####################################################################
 

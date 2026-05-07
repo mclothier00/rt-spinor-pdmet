@@ -71,6 +71,9 @@ def transition(
                 ].frags_rank
 
         if gen_dyn:
+            if the_dmet.is_forte:
+                print("""Transition between restricted forte2-based pDMET calculation and generalized forte2-based RT-pDMET 
+                        calculation not supported. Please initialize with generalized forte2-based pDMET calculation.""")
             print(
                 "Transitioning from spin restricted static calculation to spin generalized dynamic simulation."
             )
@@ -151,9 +154,6 @@ def transition(
                     nbeta,
                     the_dmet.frag_in_rank[i].CIcoeffs,
                 )
-
-                # print(tot_system.frag_in_rank[i].CIcoeffs)
-                # print()
 
             print(
                 "currently setting tot_sysem.mf1RDM (and tot_system.glob1RDM) to the reshaped mf1RDM (glob1RDM)... theres also the option of the intialize_GHF call for the mf1RDM and the get_glob1RDM for the glob1RDM"

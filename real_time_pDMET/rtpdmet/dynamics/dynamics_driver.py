@@ -585,7 +585,9 @@ class dynamics_driver:
         # Update forte CI integrals to match current embedding Hamiltonian
         if self.forte:
             for frag in self.tot_system.frag_in_rank:
-                frag.forte_mod.setup_ci(frag.h_emb, frag.V_emb, 0.0)
+                frag.forte_mod.setup_ci(
+                    frag.h_emb, frag.V_emb, 0.0, 2 * frag.Nimp, self.gen
+                )
 
         # Make sure Ecore for each fragment is 0 for dynamics
         for frag in self.tot_system.frag_in_rank:
@@ -780,7 +782,9 @@ class dynamics_driver:
         self.tot_system.get_frag_Hemb()
         if self.forte:
             for frag in self.tot_system.frag_in_rank:
-                frag.forte_mod.setup_ci(frag.h_emb, frag.V_emb, 0.0)
+                frag.forte_mod.setup_ci(
+                    frag.h_emb, frag.V_emb, 0.0, 2 * frag.Nimp, self.gen
+                )
 
         self.tot_system.get_frag_corr1RDM()
         self.tot_system.get_DMET_Nele()
@@ -809,7 +813,9 @@ def applyham_wrapper(frag, delt, gen=False, forte=False):
 
     if forte:
         # Update forte CI integrals to include Xmat correction before applying H
-        frag.forte_mod.setup_ci(frag.h_emb - Xmat_sml, frag.V_emb, 0.0)
+        frag.forte_mod.setup_ci(
+            frag.h_emb - Xmat_sml, frag.V_emb, 0.0, 2 * frag.Nimp, gen
+        )
         CIvec = -1j * delt * frag.forte_mod.applyham_forte2(frag.CIcoeffs)
 
     elif not gen:
