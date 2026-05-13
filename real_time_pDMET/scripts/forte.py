@@ -85,28 +85,28 @@ class forte:
                 mo_space=mo_space,
                 state=state,
                 ints=ints,
-                nroot=1,
-                active_orbsym=[[0] * Norbs],
+                nroot=1, # ground state
+                active_orbsym=[[0] * Norbs], # C1 symmetry
                 log_level=0,
                 maxiter=200,
-                two_component=two_comp,
-                ci_algorithm="hz",
+                two_component=two_comp, # tells CI this is spinor
+                ci_algorithm="hz",  # currently default in forte2; could change
             )
         if not gen:
             self.ci = _CIBase(
                 mo_space=mo_space,
                 state=state,
                 ints=ints,
-                nroot=1,
-                active_orbsym=[[0] * Norbs],
+                nroot=1, # ground state
+                active_orbsym=[[0] * Norbs], # C1 symmetry
                 log_level=0,
                 maxiter=200,
                 two_component=two_comp,
-                ci_algorithm="hz",
+                ci_algorithm="hz",  # currently default in forte2; could change
             )
 
-        # Replicate just the sigma builder setup portion of run()
-        # without triggering the Davidson-Liu diagonalization
+        # Replicate sigma builder setup portion of run()
+        # without Davidson-Liu diagonalization
         self.ci._ci_solver_startup()
         if gen:
             self.ci.ci_sigma_builder = RelCISigmaBuilder(
@@ -127,8 +127,8 @@ class forte:
         self.ci.ci_sigma_builder.set_memory(self.ci.ci_builder_memory)
         self.ci.ci_sigma_builder.set_algorithm("hz")
 
-        # After creating ci_sigma_builder, allocate sigma_det and b_det
-        # to match what run() would have set up via _ci_solver_startup()
+        # allocate sigma_det and b_det to match what run() would have set 
+        # up via _ci_solver_startup()
         if gen:
             self.ci.sigma_det = np.zeros((self.ci.ndet,), dtype=complex)
             self.ci.b_det = np.zeros((self.ci.ndet,), dtype=complex)
