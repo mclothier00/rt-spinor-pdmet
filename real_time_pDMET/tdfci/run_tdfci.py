@@ -18,6 +18,7 @@ delt = 0.001
 Nstep = 5000
 Nprint = 100
 boundary = False
+
 # Initital Static Calculation
 U = 1.0
 Vbias = 0.0

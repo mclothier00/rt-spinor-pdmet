@@ -34,7 +34,7 @@ def apply_ham_pyscf_check(
                 CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr
             )
 
-        if not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
+        elif not numpy.iscomplexobj(hmat) and not numpy.iscomplexobj(Vmat):
             # Real restricted hamiltonian
             CIcoeffs = apply_ham_pyscf_real(
                 CIcoeffs, hmat, Vmat, nalpha, nbeta, norbs, Econst, fctr

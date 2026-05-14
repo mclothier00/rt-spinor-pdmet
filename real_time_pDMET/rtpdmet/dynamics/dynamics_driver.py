@@ -74,14 +74,13 @@ class dynamics_driver:
         #       comm = MPI.COMM_WORLD
         #       rank = comm.Get_rank()
         #       size = comm.Get_size()
-        #       
+        #
         #       all_frags = system.frag_in_rank
         #       frag_per_rank = [[] for _ in range(size)]
         #       for i, frag in enumerate(all_frags):
         #           frag_per_rank[i % size].append(frag)
-        #       
+        #
         #       system.frag_in_rank = frag_per_rank[rank]
-
 
         self.tot_system = tot_system
         self.delt = delt
@@ -712,28 +711,28 @@ class dynamics_driver:
         # Save total system to file for restart purposes using pickle
 
         comm = MPI.COMM_WORLD
-    
+
         # Gather fragments from all ranks to rank 0
         all_frags = comm.gather(self.tot_system.frag_in_rank, root=0)
-    
+
         if self.rank == 0:
             # Flatten: all_frags is a list of lists
             all_frags_flat = [f for rank_frags in all_frags for f in rank_frags]
-    
+
             # Sort by fragment number so ordering is deterministic
             all_frags_flat.sort(key=lambda f: f.frag_num)
-    
+
             # Temporarily swap in the full fragment list for pickling
             saved_frags = self.tot_system.frag_in_rank
             self.tot_system.frag_in_rank = all_frags_flat
-    
+
             file_system = open("restart_system.dat", "wb")
             pickle.dump(
                 {"last_time": current_time, "tot_system": self.tot_system},
                 file_system,
             )
             file_system.close()
-    
+
             # Restore rank 0's own subset
             self.tot_system.frag_in_rank = saved_frags
 
