@@ -855,6 +855,54 @@ def applyham_wrapper(frag, delt, gen=False):
     # )
     # print("norm of Hpsi with imag zeroed:", np.linalg.norm(Hpsi_real))
 
+    #  if not gen:
+    #      CIvec = (
+    #          -1j
+    #          * delt
+    #          * applyham_pyscf.apply_ham_pyscf_fully_complex(
+    #              frag.CIcoeffs,
+    #              frag.h_emb - Xmat_sml,
+    #              frag.V_emb,
+    #              frag.Nimp,
+    #              frag.Nimp,
+    #              2 * frag.Nimp,
+    #              frag.Ecore,
+    #          )
+    #      )
+
+    #  if gen:
+    #      h_eff = frag.h_emb - Xmat_sml
+    #      if not np.allclose(h_eff, h_eff.conj().T, atol=1e-10):
+    #          print(
+    #              f"WARNING: h_emb - Xmat_sml is not Hermitian, max deviation: {np.max(np.abs(h_eff - h_eff.conj().T))}"
+    #          )
+    #      if not np.allclose(
+    #          frag.V_emb, frag.V_emb.transpose(1, 0, 3, 2).conj(), atol=1e-10
+    #      ):
+    #          print(f"WARNING: V_emb not Hermitian")
+
+    #      CIvec = (
+    #          -1j
+    #          * delt
+    #          * applyham_pyscf.apply_ham_pyscf_spinor_complex(
+    #              frag.CIcoeffs,
+    #              frag.h_emb - Xmat_sml,
+    #              frag.V_emb,
+    #              frag.Nimp,
+    #              2 * frag.Nimp,
+    #              frag.Ecore,
+    #          )
+    #      )
+
+    #      Hpsi = applyham_pyscf.apply_ham_pyscf_spinor_complex(
+    #          frag.CIcoeffs,
+    #          frag.h_emb - Xmat_sml,
+    #          frag.V_emb,
+    #          frag.Nimp,
+    #          2 * frag.Nimp,
+    #          frag.Ecore,
+    #      )
+
     if not gen:
         CIvec = (
             -1j
@@ -870,21 +918,11 @@ def applyham_wrapper(frag, delt, gen=False):
             )
         )
 
-    if gen:
-        h_eff = frag.h_emb - Xmat_sml
-        if not np.allclose(h_eff, h_eff.conj().T, atol=1e-10):
-            print(
-                f"WARNING: h_emb - Xmat_sml is not Hermitian, max deviation: {np.max(np.abs(h_eff - h_eff.conj().T))}"
-            )
-        if not np.allclose(
-            frag.V_emb, frag.V_emb.transpose(1, 0, 3, 2).conj(), atol=1e-10
-        ):
-            print(f"WARNING: V_emb not Hermitian")
-
+    else:
         CIvec = (
             -1j
             * delt
-            * applyham_pyscf.apply_ham_pyscf_spinor_complex(
+            * applyham_pyscf.apply_ham_pyscf_spinor(
                 frag.CIcoeffs,
                 frag.h_emb - Xmat_sml,
                 frag.V_emb,
@@ -892,15 +930,6 @@ def applyham_wrapper(frag, delt, gen=False):
                 2 * frag.Nimp,
                 frag.Ecore,
             )
-        )
-
-        Hpsi = applyham_pyscf.apply_ham_pyscf_spinor_complex(
-            frag.CIcoeffs,
-            frag.h_emb - Xmat_sml,
-            frag.V_emb,
-            frag.Nimp,
-            2 * frag.Nimp,
-            frag.Ecore,
         )
 
     # if gen:
