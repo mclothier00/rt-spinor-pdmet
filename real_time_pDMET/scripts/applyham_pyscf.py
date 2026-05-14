@@ -91,7 +91,7 @@ def apply_ham_pyscf_spinor(CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=0.5)
      of the spin-generalized formalism.
     """
 
-    #Vmat = pyscf.fci.fci_dhf_slow.absorb_h1e(hmat, Vmat, norbs, nelec, fctr)
+    # Vmat = pyscf.fci.fci_dhf_slow.absorb_h1e(hmat, Vmat, norbs, nelec, fctr)
     Vmat = absorb_h1e_complex(hmat, Vmat, norbs, nelec, fctr)
 
     temp = pyscf.fci.fci_dhf_slow.contract_2e(Vmat, CIcoeffs, norbs, nelec)
@@ -258,50 +258,54 @@ def apply_ham_pyscf_complex(
 
     return CIcoeffs
 
+
 #####################################################################
 
 
-def apply_ham_pyscf_spinor_complex(CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=0.5):
+def apply_ham_pyscf_spinor_complex(
+    CIcoeffs, hmat, Vmat, nelec, norbs, Econst, fctr=0.5
+):
     """
-    Version of apply_ham_pyscf_spinor that correctly handles complex CI 
+    Version of apply_ham_pyscf_spinor that correctly handles complex CI
     coefficients and complex Hamiltonian using single spinor strings.
     """
     from pyscf.fci import cistring
-   
+
     # Absorb h1e following fci_dhf_slow spinor convention, complex-safe
     f1e = hmat.astype(complex) + 0.5 * numpy.einsum(
-        'jiik->jk', Vmat.transpose(0, 2, 3, 1).astype(complex))
+        "jiik->jk", Vmat.transpose(0, 2, 3, 1).astype(complex)
+    )
     Vmat_eff = (-1.0 * Vmat.transpose(0, 3, 2, 1)).astype(complex)
     idx = numpy.arange(norbs)
-    Vmat_eff[idx, idx, :, :] += f1e[numpy.newaxis, :, :] * 0   # wrong, see below
+    Vmat_eff[idx, idx, :, :] += f1e[numpy.newaxis, :, :] * 0  # wrong, see below
     for k in range(norbs):
         Vmat_eff[k, k, :, :] += f1e * (2.0 / (nelec + 1e-100))
     Vmat_eff *= fctr
-    
+
     # Build link index for single-string spinor basis
     link_index = cistring.gen_linkstr_index(range(norbs), nelec)
     na = link_index.shape[0]
-    
+
     fcivec = CIcoeffs.reshape(na)
-    
+
     # t1 must be complex to handle complex Vmat_eff and complex fcivec
     t1 = numpy.zeros((norbs, norbs, na), dtype=complex)
     for str0, tab in enumerate(link_index):
         for a, i, str1, sign in tab:
             t1[a, i, str1] += sign * fcivec[str0]
-    
+
     # Contract with 2e integrals
-    t1 = numpy.dot(Vmat_eff.reshape(norbs * norbs, -1), 
-                   t1.reshape(norbs * norbs, -1))
+    t1 = numpy.dot(Vmat_eff.reshape(norbs * norbs, -1), t1.reshape(norbs * norbs, -1))
     t1 = t1.reshape(norbs, norbs, na)
-    
+
     # Contract back
     ci1 = numpy.zeros_like(fcivec, dtype=complex)
     for str0, tab in enumerate(link_index):
         for a, i, str1, sign in tab:
             ci1[str0] += sign * t1[i, a, str1]
-  
+
     return ci1.reshape(CIcoeffs.shape) + Econst * CIcoeffs
+
 
 #####################################################################
 

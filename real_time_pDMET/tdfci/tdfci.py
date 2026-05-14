@@ -16,6 +16,7 @@ import real_time_pDMET.scripts.utils as utils
 # NOTE: assumes an even number of electrons for the integrator
 from scipy import linalg
 
+
 class tdfci:
     # Class to perform a time-dependent FCI calculation
 
@@ -107,30 +108,31 @@ class tdfci:
                 )
 
             if self.gen:
-               
-                self.CIcoeffs = integrators.runge_kutta_pyscf(
-                    self.CIcoeffs,
-                    self.Nsites,
-                    self.Nelec - int(self.Nelec / 2),
-                    int(self.Nelec / 2),
-                    self.delt,
-                    self.h_site,
-                    self.V_site,
-                    self.Ecore,
-                    gen=self.gen,
-                )
- 
-                # self.CIcoeffs = integrators.runge_kutta_spinor(
+                # self.CIcoeffs = integrators.runge_kutta_pyscf(
                 #     self.CIcoeffs,
                 #     self.Nsites,
-                #     #self.Nelec - int(self.Nelec / 2),
-                #     int(self.Nelec / 2),
+                #     self.Nelec - int(self.Nelec / 2),
                 #     int(self.Nelec / 2),
                 #     self.delt,
                 #     self.h_site,
                 #     self.V_site,
                 #     self.Ecore,
+                #     gen=self.gen,
                 # )
+                # print(self.CIcoeffs.dtype)
+                # print()
+
+                self.CIcoeffs = integrators.runge_kutta_spinor(
+                    self.CIcoeffs,
+                    self.Nsites,
+                    # self.Nelec - int(self.Nelec / 2),
+                    int(self.Nelec / 2),
+                    int(self.Nelec / 2),
+                    self.delt,
+                    self.h_site,
+                    self.V_site,
+                    self.Ecore,
+                )
 
             # update the current time
             current_time = self.delt * (step + 1)
@@ -184,7 +186,8 @@ class tdfci:
             )
 
             # total spin vectors
-            den = corr1RDM.copy()
+            den = utils.reshape_gtor_matrix(corr1RDM)
+
             Nsp = int(self.Nsites / 2)
             if self.ovlp is None:
                 self.ovlp = np.eye(Nsp)
@@ -211,9 +214,11 @@ class tdfci:
                 weight = np.zeros((Nsp, Nsp))
                 weight[i, :] = self.ovlp[i, :]
 
-                site_magx = np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * weight)
-                site_magy = 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * weight)
-                site_magz = np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * weight)
+                site_magx = 0.5 * np.sum((den[:Nsp, Nsp:] + den[Nsp:, :Nsp]) * weight)
+                site_magy = (
+                    0.5 * 1j * np.sum((den[:Nsp, Nsp:] - den[Nsp:, :Nsp]) * weight)
+                )
+                site_magz = 0.5 * np.sum((den[:Nsp, :Nsp] - den[Nsp:, Nsp:]) * weight)
 
                 sites_x.append(site_magx.real)
                 sites_y.append(site_magy.real)
@@ -258,7 +263,7 @@ class tdfci:
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
             corrdens = diagcorr1RDM
-            #corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
+            # corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)
