@@ -182,6 +182,9 @@ class fragment:
             if hamtype == 0:
                 V_emb = utils.rot2el_chem(V_site, rotmat_small)
 
+                V_emb = 0.5 * (V_emb + V_emb.transpose(2, 3, 0, 1))  # sym2, (ij|kl) = (kl|ij)
+                V_emb = 0.5 * (V_emb + V_emb.conj().transpose(1, 0, 3, 2))  # sym1, (ij|kl) = (ji|lk)*
+
             elif hamtype == 1:
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
                 self.V_emb = U * np.einsum(
@@ -191,6 +194,9 @@ class fragment:
                     rotmat_vsmall,
                     rotmat_vsmall,
                 )
+
+                self.V_emb = 0.5 * (self.V_emb + self.V_emb.transpose(2, 3, 0, 1))  # sym2, (ij|kl) = (kl|ij)
+                self.V_emb = 0.5 * (self.V_emb + self.V_emb.conj().transpose(1, 0, 3, 2))  # sym1, (ij|kl) = (ji|lk)*
 
             if hamtype == 0:
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
@@ -245,17 +251,38 @@ class fragment:
             # rotate the 2 e- terms
             if hamtype == 0:
                 V_emb = utils.rot2el_chem(V_site, rotmat_small)
+
+                V_emb = 0.5 * (V_emb + V_emb.transpose(2, 3, 0, 1))  # sym2, (ij|kl) = (kl|ij)
+                V_emb = 0.5 * (V_emb + V_emb.conj().transpose(1, 0, 3, 2))  # sym1, (ij|kl) = (ji|lk)*
+
             elif hamtype == 1:
                 # Hubbard hamiltonian
                 # remove core states from rotation matrix
+                #V_emb = utils.rot2el_chem(V_site, rotmat_small)
                 rotmat_vsmall = np.copy(rotmat_small[hubsite_indx, : 2 * self.Nimp])
-                self.V_emb = U * np.einsum(
-                    "ip,kr,pj,rl->ijkl",
-                    utils.adjoint(rotmat_vsmall),
-                    utils.adjoint(rotmat_vsmall),
-                    rotmat_vsmall,
-                    rotmat_vsmall,
-                )
+                #self.V_emb_g = U * np.einsum(
+                #    "ip,kr,pj,rl->ijkl",
+                #    utils.adjoint(rotmat_vsmall),
+                #    utils.adjoint(rotmat_vsmall),
+                #    rotmat_vsmall,
+                #    rotmat_vsmall,
+                #)
+
+                Nemb = 2 * self.Nimp
+                self.V_emb = np.zeros((Nemb, Nemb, Nemb, Nemb), dtype=complex)
+                for s in range(0, len(hubsite_indx), 2):
+                    ia = hubsite_indx[s]      # alpha spinor index
+                    ib = hubsite_indx[s + 1]  # beta spinor index
+                    ra = rotmat_small[ia, :Nemb]
+                    rb = rotmat_small[ib, :Nemb]
+                    # (iα iα | iβ iβ) term
+                    self.V_emb += U * np.einsum("i,j,k,l->ijkl", ra.conj(), ra, rb.conj(), rb)
+                    # (iβ iβ | iα iα) term
+                    self.V_emb += U * np.einsum("i,j,k,l->ijkl", rb.conj(), rb, ra.conj(), ra)
+
+                self.V_emb = 0.5 * (self.V_emb + self.V_emb.transpose(2, 3, 0, 1))  # sym2, (ij|kl) = (kl|ij)
+                self.V_emb = 0.5 * (self.V_emb + self.V_emb.conj().transpose(1, 0, 3, 2))  # sym1, (ij|kl) = (ji|lk)*
+
 
             if hamtype == 0:
                 for core in range(2 * self.Nimp, 2 * self.Nimp + self.Ncore):
@@ -268,26 +295,46 @@ class fragment:
                         0.5 * V_emb[: 2 * self.Nimp, : 2 * self.Nimp, core, core]
                         - 0.5 * V_emb[: 2 * self.Nimp, core, core, : 2 * self.Nimp]
                     )
-
+           
             if hamtype == 1:
-                core_int = U * np.einsum(
-                    "ip,nr,pj,rn->ij",
-                    utils.adjoint(rotmat_vsmall),
-                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                    rotmat_vsmall,
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                )
-                core_int -= U * np.einsum(
-                    "ip,nr,pn,rj->ij",
-                    utils.adjoint(rotmat_vsmall),
-                    utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
-                    rotmat_small[hubsite_indx, 2 * self.Nimp :],
-                    rotmat_vsmall,
-                )
-
-                h_emb[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
+                # core_int = U * np.einsum(
+                #     "ip,nr,pj,rn->ij",
+                #     utils.adjoint(rotmat_vsmall),
+                #     utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                #     rotmat_vsmall,
+                #     rotmat_small[hubsite_indx, 2 * self.Nimp :],
+                # )
+                # core_int -= U * np.einsum(
+                #     "ip,nr,pn,rj->ij",
+                #     utils.adjoint(rotmat_vsmall),
+                #     utils.adjoint(rotmat_small[hubsite_indx, 2 * self.Nimp :]),
+                #     rotmat_small[hubsite_indx, 2 * self.Nimp :],
+                #     rotmat_vsmall,
+                # )
+        
+                # h_emb_g = h_emb.copy() 
+                # h_emb_g[: 2 * self.Nimp, : 2 * self.Nimp] += core_int
+                # self.h_emb_halfcore += 0.5 * core_int
+                # self.h_emb = h_emb_g[: 2 * self.Nimp, : 2 * self.Nimp]
+            
+                core_int = np.zeros((2*self.Nimp, 2*self.Nimp), dtype=complex)
+                for s in range(0, len(hubsite_indx), 2):
+                    ia, ib = hubsite_indx[s], hubsite_indx[s+1]
+                    ra_imp  = rotmat_small[ia, :2*self.Nimp]
+                    rb_imp  = rotmat_small[ib, :2*self.Nimp]
+                    ra_core = rotmat_small[ia, 2*self.Nimp:]
+                    rb_core = rotmat_small[ib, 2*self.Nimp:]
+                    # Coulomb: sum_n V[i,j,n,n]
+                    core_int += U * np.einsum("i,j->ij", ra_imp.conj(), ra_imp) * np.dot(rb_core.conj(), rb_core)
+                    core_int += U * np.einsum("i,j->ij", rb_imp.conj(), rb_imp) * np.dot(ra_core.conj(), ra_core)
+                    # Exchange: sum_n V[i,n,n,j]
+                    core_int -= U * np.einsum("i,j->ij", ra_imp.conj(), rb_imp) * np.dot(ra_core, rb_core.conj())
+                    core_int -= U * np.einsum("i,j->ij", rb_imp.conj(), ra_imp) * np.dot(rb_core, ra_core.conj())
+                
+                h_emb[:2*self.Nimp, :2*self.Nimp] += core_int
                 self.h_emb_halfcore += 0.5 * core_int
 
+ 
             ### NOTE: what is this doing? does not seem to ever be called?
             # Calculate the energy associated with core-core interactions,
             # Ecore = 0
@@ -313,7 +360,7 @@ class fragment:
         # self.Ecore = Ecore.real
 
         # Shrink h_emb and V_emb arrays to only include the impurity and bath
-        self.h_emb = h_emb[: 2 * self.Nimp, : 2 * self.Nimp]
+        self.h_emb = h_emb[:2*self.Nimp, :2*self.Nimp] 
         if hamtype == 0:
             self.V_emb = V_emb[
                 : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp, : 2 * self.Nimp
@@ -365,13 +412,13 @@ class fragment:
             self.corr1RDM, self.corr2RDM = fci_mod.get_corr12RDM(
                 self.CIcoeffs, 2 * self.Nimp, self.Nimp, self.gen
             )
-
+                
     #####################################################################
 
     def nele_in_frag(self):
         self.currNele = 0.0
         for e in range(self.Nimp):
-            self.currNele += self.corr1RDM[e, e]
+            self.currNele += self.corr1RDM[e, e].real
         return self.currNele
 
     #####################################################################
@@ -389,8 +436,6 @@ class fragment:
         gen=False,
     ):
         if mubool:
-            if gen:
-                print("Chemical potential fitting is currently being tested.")
             # get rotational matrix in embedding basis
             self.get_rotmat(mf1RDM)
             # compute emb hamiltonian with the rotational matrix

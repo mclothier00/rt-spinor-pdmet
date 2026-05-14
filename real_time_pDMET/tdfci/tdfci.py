@@ -16,7 +16,6 @@ import real_time_pDMET.scripts.utils as utils
 # NOTE: assumes an even number of electrons for the integrator
 from scipy import linalg
 
-
 class tdfci:
     # Class to perform a time-dependent FCI calculation
 
@@ -108,6 +107,7 @@ class tdfci:
                 )
 
             if self.gen:
+               
                 self.CIcoeffs = integrators.runge_kutta_pyscf(
                     self.CIcoeffs,
                     self.Nsites,
@@ -119,6 +119,7 @@ class tdfci:
                     self.Ecore,
                     gen=self.gen,
                 )
+ 
                 # self.CIcoeffs = integrators.runge_kutta_spinor(
                 #     self.CIcoeffs,
                 #     self.Nsites,
@@ -256,7 +257,8 @@ class tdfci:
             corrdens = diagcorr1RDM
             corrdens = np.insert(corrdens, 0, current_time)
         if self.gen:
-            corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
+            corrdens = diagcorr1RDM
+            #corrdens = diagcorr1RDM.reshape(2, -1).sum(axis=0)
             corrdens = np.insert(corrdens, 0, current_time)
 
         np.savetxt(self.file_corrdens, corrdens.reshape(1, corrdens.shape[0]), fmt_str)

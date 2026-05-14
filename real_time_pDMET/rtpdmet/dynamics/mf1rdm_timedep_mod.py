@@ -131,7 +131,13 @@ def calc_Gmat(dG, system, iddt_glob1RDM):
             else:
                 G2_fast[a, b] = 0
 
-    G2_fast = np.triu(G2_fast) + np.triu(G2_fast, 1).conjugate().transpose()
+    #G2_fast = np.triu(G2_fast) + np.triu(G2_fast, 1).conjugate().transpose()
+
+    G2_fast = 0.5 * (G2_fast + G2_fast.conj().T)
+   
+    if not np.allclose(G2_fast, G2_fast.conj().T, atol=1e-10):
+        print(f"WARNING: Gmat not Hermitian: {np.max(np.abs(G2_fast + G2_fast.conj().T))}")
+ 
     G2_site = utils.rot1el(G2_fast, utils.adjoint(system.NOevecs))
 
     return G2_site

@@ -64,6 +64,9 @@ class dynamics_driver:
         #   are calculated for Nsites < 50.
         # restart - whether or not to restart a calculation from the saved pickle dictionary
         #       'restart_system.dat'; to restart, use provided code:
+        
+        #       import pickle
+        #       from mpi4py import MPI
         #
         #       system_file="restart_system.dat"
         #       with open(system_file, 'rb') as file:
@@ -165,6 +168,8 @@ class dynamics_driver:
         self.tot_system.V_site = V_site
         self.tot_system.hamtype = hamtype
 
+        print(self.tot_system.hamtype)
+
         if self.tot_system.hamtype == 1 and np.ndim(self.tot_system.V_site) != 0:
             print(
                 f"""Two electron Hamiltonian has dimension {np.ndim(self.tot_system.V_site)}, not 1. Please change dimension of two-electron Hamiltonian or remove the Hubbard shortcut."""
@@ -256,7 +261,7 @@ class dynamics_driver:
             self.step = step
             if self.rank == 0:
                 if step == 0:
-                    print("Writing initial data at setp 0.")
+                    print("Writing initial data at setup 0.")
                     self.print_just_dens(current_time)
                     sys.stdout.flush()
                     if self.gen:
@@ -382,7 +387,7 @@ class dynamics_driver:
             l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(
                 nproc, current_time
             )
-
+            
             diff = []
             self.tot_system.NOevecs = init_NOevecs + 0.5 * l1
             self.tot_system.glob1RDM = init_glob1RDM + 0.5 * n1
@@ -415,11 +420,9 @@ class dynamics_driver:
                     print(
                         f"norm of CIcoeffs at time {current_time} on rk step 2: {la.norm(frag.CIcoeffs)}"
                     )
-
+            
             if self.laser:
                 self.update_ham(current_time + 0.5 * self.delt)
-
-            # GETTING 3ST SUBSTEP DT
 
             l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(
                 nproc, current_time
@@ -624,17 +627,15 @@ class dynamics_driver:
 
         # Calculate change in embedding orbitals
         change_rotmat_list = []
-        # NOTE: hardcoded check below, remove later:
         for frag in self.tot_system.frag_in_rank:
             change_rotmat_list.append(-1j * self.delt * np.dot(frag.rotmat, frag.Xmat))
-
+ 
         # Calculate change in CI coefficients in parallel
-
         change_CIcoeffs_list = []
 
         for ifrag, frag in enumerate(self.tot_system.frag_in_rank):
             change_CIcoeffs_list.append(applyham_wrapper(frag, self.delt, self.gen))
-
+ 
         return (
             change_NOevecs,
             change_rotmat_list,
@@ -761,9 +762,9 @@ class dynamics_driver:
         den = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
         ovlp = np.eye(Nhalf)
 
-        magx = np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
-        magy = 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
-        magz = np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
+        magx = 0.5 * np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
+        magy = 0.5 * 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
+        magz = 0.5 * np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
 
         all_spin = np.insert(
             np.array([magx.real, magy.real, magz.real]), 0, current_time
@@ -780,9 +781,9 @@ class dynamics_driver:
             ovlp = np.zeros((Nhalf, Nhalf))
             ovlp[i, i] = 1
 
-            site_magx = np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
-            site_magy = 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
-            site_magz = np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
+            site_magx = 0.5 * np.sum((den[:Nhalf, Nhalf:] + den[Nhalf:, :Nhalf]) * ovlp)
+            site_magy = 0.5 * 1j * np.sum((den[:Nhalf, Nhalf:] - den[Nhalf:, :Nhalf]) * ovlp)
+            site_magz = 0.5 * np.sum((den[:Nhalf, :Nhalf] - den[Nhalf:, Nhalf:]) * ovlp)
 
             sites_x.append(site_magx.real)
             sites_y.append(site_magy.real)
@@ -836,6 +837,23 @@ def applyham_wrapper(frag, delt, gen=False):
         frag.Xmat[frag.bathrange[:, None], frag.bathrange]
     )
 
+
+    #h_eff = frag.h_emb - Xmat_sml
+    #print("h_eff is complex:", np.iscomplexobj(h_eff))
+    #print("max imaginary part of h_eff:", np.max(np.abs(h_eff.imag)))
+    #print("max imaginary part of V_emb:", np.max(np.abs(frag.V_emb.imag)))
+    #
+    #Hpsi = applyham_pyscf.apply_ham_pyscf_spinor(
+    #    frag.CIcoeffs, h_eff, frag.V_emb, frag.Nimp, 2*frag.Nimp, frag.Ecore
+    #)
+    #print("norm of Hpsi:", np.linalg.norm(Hpsi))
+    #
+    ## Now test with imaginary part zeroed out
+    #Hpsi_real = applyham_pyscf.apply_ham_pyscf_spinor(
+    #    frag.CIcoeffs, h_eff.real, frag.V_emb.real, frag.Nimp, 2*frag.Nimp, frag.Ecore
+    #)
+    #print("norm of Hpsi with imag zeroed:", np.linalg.norm(Hpsi_real))
+ 
     if not gen:
         CIvec = (
             -1j
@@ -852,10 +870,16 @@ def applyham_wrapper(frag, delt, gen=False):
         )
 
     if gen:
+        h_eff = frag.h_emb - Xmat_sml
+        if not np.allclose(h_eff, h_eff.conj().T, atol=1e-10):
+            print(f"WARNING: h_emb - Xmat_sml is not Hermitian, max deviation: {np.max(np.abs(h_eff - h_eff.conj().T))}")
+        if not np.allclose(frag.V_emb, frag.V_emb.transpose(1,0,3,2).conj(), atol=1e-10):
+            print(f"WARNING: V_emb not Hermitian") 
+
         CIvec = (
             -1j
             * delt
-            * applyham_pyscf.apply_ham_pyscf_spinor(
+            * applyham_pyscf.apply_ham_pyscf_spinor_complex(
                 frag.CIcoeffs,
                 frag.h_emb - Xmat_sml,
                 frag.V_emb,
@@ -864,5 +888,44 @@ def applyham_wrapper(frag, delt, gen=False):
                 frag.Ecore,
             )
         )
+
+        Hpsi = applyham_pyscf.apply_ham_pyscf_spinor_complex(
+                frag.CIcoeffs,
+                frag.h_emb - Xmat_sml,
+                frag.V_emb,
+                frag.Nimp,
+                2 * frag.Nimp,
+                frag.Ecore,
+                )
+
+    # if gen:
+    #     h_eff = frag.h_emb - Xmat_sml
+    #     if not np.allclose(h_eff, h_eff.conj().T, atol=1e-10):
+    #         print(f"WARNING: h_emb - Xmat_sml is not Hermitian, max deviation: {np.max(np.abs(h_eff - h_eff.conj().T))}")
+    #     if not np.allclose(frag.V_emb, frag.V_emb.transpose(1,0,3,2).conj(), atol=1e-10):
+    #         print(f"WARNING: V_emb not Hermitian") 
+
+    #     CIvec = (
+    #         -1j * delt * applyham_pyscf.apply_ham_pyscf_check(
+    #             np.copy(frag.CIcoeffs.real),
+    #             frag.h_emb - Xmat_sml,
+    #             frag.V_emb,
+    #             frag.Nimp,      # Nalpha
+    #             frag.Nimp,      # Nbeta  
+    #             2 * frag.Nimp,
+    #             frag.Ecore,
+    #             gen=True,
+    #         )
+    #         + delt * applyham_pyscf.apply_ham_pyscf_check(
+    #             np.copy(frag.CIcoeffs.imag),
+    #             frag.h_emb - Xmat_sml,
+    #             frag.V_emb,
+    #             frag.Nimp,
+    #             frag.Nimp,
+    #             2 * frag.Nimp,
+    #             frag.Ecore,
+    #             gen=True,
+    #         )
+    #     )
 
     return CIvec

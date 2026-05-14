@@ -2,10 +2,9 @@ import numpy as np
 import time
 import scipy.linalg as la
 import real_time_pDMET.rtpdmet.static.fragment_mod as fragment_mod
-from pyscf import gto, scf, ao2mo
+from pyscf import gto, scf, ao2mo, lib
 from real_time_pDMET.rtpdmet.static.quad_fit import quad_fit_mu
 from math import copysign
-from pyscf import lib
 from mpi4py import MPI
 import real_time_pDMET.scripts.utils as utils
 
@@ -205,7 +204,6 @@ class static_pdmet:
                 print(f"Total electron count: {np.trace(old_glob1RDM)}")
                 print()
                 
-
             # embedding calculation
             if self.mubool:
                 # do correlation calculation and add the self.mu to the H_emb
@@ -265,7 +263,7 @@ class static_pdmet:
                             dmu1_tmp = copysign(self.step, dmu1)
                             self.step = min(abs(dmu1), 0.25)
                             dmu1 = dmu1_tmp
-
+    
                         test_mu = self.mu + dmu1
                         totalNele_2 = self.corr_calc_with_mu(test_mu)
                         record.append((dmu1, totalNele_2))
@@ -303,7 +301,6 @@ class static_pdmet:
                                     totalNele_3,
                                 ])
                                 dmu3 = quad_fit_mu(mus, Neles, self.Nele / 2, self.step)
-
                                 test_mu = self.mu + dmu3
                                 totalNele_4 = self.corr_calc_with_mu(test_mu)
                                 print(
@@ -333,10 +330,25 @@ class static_pdmet:
 
             # constract a global density matrix from all impurities
             self.get_globalRDM()
+
+            ##### CLAUDE           
+            # DIIS routine
+            #if itr >= self.DiisStart and not self.mubool:
+            #    self.glob1RDM = adiis.update(self.glob1RDM)
+            #    if self.gen:
+            #        np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
  
+            #elif itr >= 1 and self.mubool:
+            #    alpha = 0.5  # mixing parameter
+            #    self.glob1RDM = alpha * self.glob1RDM + (1 - alpha) * old_glob1RDM
+            #    if self.gen:
+            #        np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
+
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
+                if self.gen:
+                    np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
             dif = la.norm(self.glob1RDM - old_glob1RDM)
             dVcor_per_ele = self.max_abs(dif)
             old_glob1RDM = np.copy(self.glob1RDM)
@@ -431,6 +443,11 @@ class static_pdmet:
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
         mf = scf.GHF(mol)
+        mf.max_cycle = 1000  
+        mf.conv_tol = 1e-9  
+        mf.diis = scf.diis.ADIIS()
+        mf.diis_space = 12
+        # mf.conv_tol_grad = 1e-6  
 
         h_site = utils.reshape_gtor_matrix(h_site)
         V_site = utils.reshape_gtor_tensor(V_site)
@@ -743,7 +760,7 @@ class static_pdmet:
         else:
             NOevals, NOevecs = la.eigh(self.glob1RDM)
 
-        NOevals, NOevecs = la.eigh(self.glob1RDM)
+        # NOevals, NOevecs = la.eigh(self.glob1RDM)
 
         # Re-order such that eigenvalues are in descending order
         self.NOevals = np.flip(NOevals)

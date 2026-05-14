@@ -44,6 +44,8 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
         E_FCI, CIcoeffs = cisolver.kernel()
 
+        print(E_FCI)
+
         # NOTE: commented for use by TDFCI; if using this function for RT-pDMET,
         #       uncomment. Currently not used by RT-pDMET
         # E_FCI, CIcoeffs = pyscf.fci.direct_spin1.kernel(h, V, Norbs, Nele)
@@ -61,12 +63,11 @@ def FCI_GS(h, V, Ecore, Norbs, Nele, gen=False):
         #       directly.
 
         E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
-
+        
     return CIcoeffs
 
 
 #####################################################################
-
 
 def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False, mo=None):
     # Subroutine to get the FCI 1RDM

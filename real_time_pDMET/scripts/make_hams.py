@@ -870,10 +870,10 @@ def make_ham_multi_imp_anderson_realspace_mag(
 
     # Form the trivial two electron terms
     if Full:
-        Vmat = np.zeros([2 * N, 2 * N, 2 * N, 2 * N])
+        vmat = np.zeros([2 * n, 2 * n, 2 * n, 2 * n])
         for imp in impindx:
-            Vmat[imp[0], imp[0], imp[1], imp[1]] = U
-            Vmat[imp[1], imp[1], imp[0], imp[0]] = U
+            vmat[imp[0], imp[0], imp[1], imp[1]] = u
+            vmat[imp[1], imp[1], imp[0], imp[0]] = u
     else:
         print("For spinor, must be set to Full.")
         exit()

@@ -113,6 +113,7 @@ class system:
             self.site_to_frag_list = []
             self.site_to_impindx = []
 
+            print(impindx)
             for i in range(self.Nsites):
                 for ifrag, arr in enumerate(impindx):
                     if i in arr:
