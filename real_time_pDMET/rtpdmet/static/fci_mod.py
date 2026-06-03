@@ -1,10 +1,8 @@
 import numpy as np
 import real_time_pDMET.scripts.utils as utils
-import pyscf.fci
-from pyscf import gto, scf, ao2mo
+from pyscf import gto, scf, ao2mo, fci
 import sys
 import scipy.linalg as la
-
 
 ###########################################################
 
@@ -38,20 +36,39 @@ def FCI_GS(h, V, U, Norbs, Nele, gen=False):
 
         # might be useful to use direct_uhf.FCI() instead for the cisolver
         # Second - FCI calculation using HF molecular orbitals
-        cisolver = pyscf.fci.FCI(mf, mf.mo_coeff)
+        cisolver = fci.FCI(mf, mf.mo_coeff)
         E_FCI, CIcoeffs = cisolver.kernel()
 
         # Need to rotate CI coefficients back to embeding basis
         # used in DMET (because now they are in orbital basis)
 
-        CIcoeffs = pyscf.fci.addons.transform_ci_for_orbital_rotation(
+        CIcoeffs = fci.addons.transform_ci_for_orbital_rotation(
             CIcoeffs, Norbs, Nele, utils.adjoint(mf.mo_coeff)
         )
 
     if gen:
-        E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
+        # E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
+        E_FCI, CIcoeffs = dhf_fci_dense(h, V, Norbs, Nele)
 
     return CIcoeffs, E_FCI
+
+
+###########################################################
+
+
+def dhf_fci_dense(h1e, eri, norb, nelec):
+    """Exact generalized FCI by dense diagonalization (for small embedded spaces).
+    Returns (E, CIvec) with CIvec in the same orbital basis as h1e."""
+    h2e = fci.fci_dhf_slow.absorb_h1e(h1e, eri, norb, nelec, 0.5)
+    ndet = fci.cistring.num_strings(norb, nelec)
+    Hfci = np.empty((ndet, ndet), dtype=complex)
+    for i in range(ndet):
+        v = np.zeros(ndet, dtype=complex)
+        v[i] = 1.0
+        Hfci[:, i] = fci.fci_dhf_slow.contract_2e(h2e, v, norb, nelec)
+    Hfci = 0.5 * (Hfci + Hfci.conj().T)
+    w, Vv = la.eigh(Hfci)
+    return w[0], Vv[:, 0]
 
 
 ###########################################################
@@ -73,24 +90,24 @@ def get_corr1RDM(CIcoeffs, Norbs, Nele, gen=False):
             Re_CIcoeffs = np.copy(CIcoeffs.real)
             Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
-            corr1RDM = 1j * pyscf.fci.direct_spin1.trans_rdm1(
+            corr1RDM = 1j * fci.direct_spin1.trans_rdm1(
                 Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele
             )
 
-            corr1RDM -= 1j * pyscf.fci.direct_spin1.trans_rdm1(
+            corr1RDM -= 1j * fci.direct_spin1.trans_rdm1(
                 Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele
             )
 
-            corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Re_CIcoeffs, Norbs, Nele)
-            corr1RDM += pyscf.fci.direct_spin1.make_rdm1(Im_CIcoeffs, Norbs, Nele)
+            corr1RDM += fci.direct_spin1.make_rdm1(Re_CIcoeffs, Norbs, Nele)
+            corr1RDM += fci.direct_spin1.make_rdm1(Im_CIcoeffs, Norbs, Nele)
         else:
-            corr1RDM = pyscf.fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
+            corr1RDM = fci.direct_spin1.make_rdm1(CIcoeffs, Norbs, Nele)
 
     if gen:
         # (notes from dynamics:)
         # Notation for generalized 1RDM from fci_dhf_slow is dm_pq = <|p^+ q|>
         # PySCF requires CIcoeffs to be in a spin-blocked configuration
-        corr1RDM = pyscf.fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
+        corr1RDM = fci.fci_dhf_slow.make_rdm1(CIcoeffs, Norbs, Nele)
 
         if not np.allclose(np.diag(corr1RDM.imag), 0, atol=1e-9):
             print(
@@ -130,34 +147,32 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
             Re_CIcoeffs = np.copy(CIcoeffs.real)
             Im_CIcoeffs = np.copy(CIcoeffs.imag)
 
-            corr1RDM, corr2RDM = pyscf.fci.direct_spin1.trans_rdm12(
+            corr1RDM, corr2RDM = fci.direct_spin1.trans_rdm12(
                 Re_CIcoeffs, Im_CIcoeffs, Norbs, Nele
             )
 
             corr1RDM = corr1RDM * 1j
             corr2RDM = corr2RDM * 1j
 
-            tmp1, tmp2 = pyscf.fci.direct_spin1.trans_rdm12(
+            tmp1, tmp2 = fci.direct_spin1.trans_rdm12(
                 Im_CIcoeffs, Re_CIcoeffs, Norbs, Nele
             )
 
             corr1RDM -= 1j * tmp1
             corr2RDM -= 1j * tmp2
 
-            tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(Re_CIcoeffs, Norbs, Nele)
+            tmp1, tmp2 = fci.direct_spin1.make_rdm12(Re_CIcoeffs, Norbs, Nele)
 
             corr1RDM += tmp1
             corr2RDM += tmp2
 
-            tmp1, tmp2 = pyscf.fci.direct_spin1.make_rdm12(Im_CIcoeffs, Norbs, Nele)
+            tmp1, tmp2 = fci.direct_spin1.make_rdm12(Im_CIcoeffs, Norbs, Nele)
 
             corr1RDM += tmp1
             corr2RDM += tmp2
 
         else:
-            corr1RDM, corr2RDM = pyscf.fci.direct_spin1.make_rdm12(
-                CIcoeffs, Norbs, Nele
-            )
+            corr1RDM, corr2RDM = fci.direct_spin1.make_rdm12(CIcoeffs, Norbs, Nele)
 
     if gen:
         # Notation for generalized 1RDM is dm_pq = <|p^+ q|>
@@ -165,7 +180,7 @@ def get_corr12RDM(CIcoeffs, Norbs, Nele, gen=False):
         # This would be equivalent to (p_dag r_dag s q) in chemists notation, so equal to restricted notation
         # PySCF requires CIcoeffs to be in a spin-blocked configuration
 
-        corr1RDM, corr2RDM = pyscf.fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
+        corr1RDM, corr2RDM = fci.fci_dhf_slow.make_rdm12(CIcoeffs, Norbs, Nele)
 
         if not np.isclose(la.norm(CIcoeffs), 1.0, atol=1e-3):
             print(f"norm of CIcoeffs: {la.norm(CIcoeffs)}")

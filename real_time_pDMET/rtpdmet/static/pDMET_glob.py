@@ -120,7 +120,7 @@ class static_pdmet:
 
         self.mf1RDM = mf1RDM
         print(f"Initial electron count: {np.trace(self.mf1RDM)}")
-        
+
         # Initialize the system from mf 1RDM and fragment information
 
         if gen:
@@ -203,7 +203,7 @@ class static_pdmet:
                 print("Iteration:", itr)
                 print(f"Total electron count: {np.trace(old_glob1RDM)}")
                 print()
-                
+
             # embedding calculation
             if self.mubool:
                 # do correlation calculation and add the self.mu to the H_emb
@@ -263,7 +263,7 @@ class static_pdmet:
                             dmu1_tmp = copysign(self.step, dmu1)
                             self.step = min(abs(dmu1), 0.25)
                             dmu1 = dmu1_tmp
-    
+
                         test_mu = self.mu + dmu1
                         totalNele_2 = self.corr_calc_with_mu(test_mu)
                         record.append((dmu1, totalNele_2))
@@ -331,14 +331,14 @@ class static_pdmet:
             # constract a global density matrix from all impurities
             self.get_globalRDM()
 
-            ##### CLAUDE           
+            ##### CLAUDE
             # DIIS routine
-            #if itr >= self.DiisStart and not self.mubool:
+            # if itr >= self.DiisStart and not self.mubool:
             #    self.glob1RDM = adiis.update(self.glob1RDM)
             #    if self.gen:
             #        np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
- 
-            #elif itr >= 1 and self.mubool:
+
+            # elif itr >= 1 and self.mubool:
             #    alpha = 0.5  # mixing parameter
             #    self.glob1RDM = alpha * self.glob1RDM + (1 - alpha) * old_glob1RDM
             #    if self.gen:
@@ -443,11 +443,11 @@ class static_pdmet:
         mol.nelectron = self.Nele
         mol.imncore_anyway = True
         mf = scf.GHF(mol)
-        mf.max_cycle = 1000  
-        mf.conv_tol = 1e-9  
+        mf.max_cycle = 1000
+        mf.conv_tol = 1e-9
         mf.diis = scf.diis.ADIIS()
         mf.diis_space = 12
-        # mf.conv_tol_grad = 1e-6  
+        # mf.conv_tol_grad = 1e-6
 
         h_site = utils.reshape_gtor_matrix(h_site)
         V_site = utils.reshape_gtor_tensor(V_site)

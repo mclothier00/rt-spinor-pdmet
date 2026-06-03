@@ -101,7 +101,7 @@ class dynamics_driver:
         self.omega = omega
         self.laser = laser
         self.laser_sites = laser_sites
-        if not (np.diagonal(h_site)).any() == True:
+        if (np.diagonal(h_site)).any():
             self.Vbias = True
         else:
             self.Vbias = False
@@ -167,8 +167,6 @@ class dynamics_driver:
         self.tot_system.h_site = h_site
         self.tot_system.V_site = V_site
         self.tot_system.hamtype = hamtype
-
-        print(self.tot_system.hamtype)
 
         if self.tot_system.hamtype == 1 and np.ndim(self.tot_system.V_site) != 0:
             print(
@@ -364,7 +362,6 @@ class dynamics_driver:
 
             # Copy MF 1RDM, global RDM, CI coefficients,
             # natural and embedding orbs at time t
-
             init_NOevecs = np.copy(self.tot_system.NOevecs)
             init_glob1RDM = np.copy(self.tot_system.glob1RDM)
             init_mf1RDM = np.copy(self.tot_system.mf1RDM)
@@ -382,7 +379,28 @@ class dynamics_driver:
 
             # GETTING 1ST SUBSTEP DT
 
-            np.set_printoptions(precision=10)
+            # print("blackberries")
+            np.set_printoptions(precision=10, suppress=True)
+
+            # print("mf check")
+            # print(
+            #     -1j
+            #     * (
+            #         np.dot(self.tot_system.h_site, self.tot_system.mf1RDM)
+            #         - np.dot(self.tot_system.mf1RDM, self.tot_system.h_site)
+            #     )
+            # )
+            # print()
+
+            # print("glob check")
+            # print(
+            #     -1j
+            #     * (
+            #         np.dot(self.tot_system.h_site, self.tot_system.glob1RDM)
+            #         - np.dot(self.tot_system.glob1RDM, self.tot_system.h_site)
+            #     )
+            # )
+            # print()
 
             l1, k1_list, m1_list, n1, p1, mfRDM_check = self.one_rk_step(
                 nproc, current_time
@@ -487,7 +505,7 @@ class dynamics_driver:
             if self.step == 0:
                 self.mfRDM_check_old = mfRDM_check
 
-            if mfRDM_check == False and self.mfRDM_check_old == True:
+            if self.mfRDM_check_old and not mfRDM_check:
                 print(" ")
                 text_warn = """ddt of mean-field 1RDM formed from natural orbitals
                             is different from ddt of mean-field 1RDM
@@ -515,7 +533,6 @@ class dynamics_driver:
                 rtol=0,
                 atol=self.dG,
             )
-
             # if not self.gen:
             #    diag_globalRDM_check = np.allclose(
             #        diag_global,
@@ -588,7 +605,6 @@ class dynamics_driver:
 
         # Calculate the terms needed for time-derivative of mf-1rdm
         self.tot_system.get_frag_corr12RDM()
-        # self.tot_system.get_frag_corr1RDM()
 
         self.tot_system.NOevals = np.diag(
             np.real(utils.rot1el(self.tot_system.glob1RDM, self.tot_system.NOevecs))
@@ -606,15 +622,11 @@ class dynamics_driver:
         make_derivs = time.time()
         if not self.gen:
             ddt_glob1RDM, ddt_NOevec, ddt_mf1RDM, G_site, ddt_mfRDM_check = (
-                mf1rdm_timedep_mod.get_ddt_mf1rdm_serial(
-                    self.dG, self.tot_system, round(self.tot_system.Nele / 2)
-                )
+                mf1rdm_timedep_mod.get_ddt_mf1rdm_serial(self.dG, self.tot_system)
             )
         if self.gen:
             ddt_glob1RDM, ddt_NOevec, ddt_mf1RDM, G_site, ddt_mfRDM_check = (
-                mf1rdm_timedep_mod.get_ddt_mf1rdm_serial(
-                    self.dG, self.tot_system, round(self.tot_system.Nele)
-                )
+                mf1rdm_timedep_mod.get_ddt_mf1rdm_serial(self.dG, self.tot_system)
             )
 
         # Use change in mf1RDM to calculate X-matrix for each fragment
@@ -747,8 +759,6 @@ class dynamics_driver:
         will be calculated for all sites.
         NOTE: Assumes spatial orbitals.
         """
-        np.set_printoptions(precision=6, suppress=True, linewidth=sys.maxsize)
-
         fmt_str = "%20.8e"
 
         if self.tot_system.Nsites % 2 != 0:
@@ -790,8 +800,6 @@ class dynamics_driver:
             sites_x.append(site_magx.real)
             sites_y.append(site_magy.real)
             sites_z.append(site_magz.real)
-
-        np.set_printoptions(precision=7, suppress=True, linewidth=sys.maxsize)
 
         sites_x = np.insert(np.array(sites_x), 0, current_time)
         sites_y = np.insert(np.array(sites_y), 0, current_time)
