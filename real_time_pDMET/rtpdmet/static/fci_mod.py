@@ -47,8 +47,8 @@ def FCI_GS(h, V, U, Norbs, Nele, gen=False):
         )
 
     if gen:
-        # E_FCI, CIcoeffs = pyscf.fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
-        E_FCI, CIcoeffs = dhf_fci_dense(h, V, Norbs, Nele)
+        E_FCI, CIcoeffs = fci.fci_dhf_slow.kernel(h, V, Norbs, Nele)
+        # E_FCI, CIcoeffs = dhf_fci_dense(h, V, Norbs, Nele)
 
     return CIcoeffs, E_FCI
 
