@@ -3,6 +3,7 @@ import real_time_pDMET.scripts.utils as utils
 from pyscf import gto, scf, ao2mo, fci
 import sys
 import scipy.linalg as la
+import scipy.sparse.linalg as sla
 
 ###########################################################
 

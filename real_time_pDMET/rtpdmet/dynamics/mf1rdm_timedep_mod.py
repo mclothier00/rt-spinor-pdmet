@@ -114,21 +114,49 @@ def calc_iddt_glob1RDM(system):
 #####################################################################
 
 
+# def calc_Gmat(dG, system, iddt_glob1RDM):
+#     # Subroutine to calculate matrix that
+#     # governs time-dependence of natural orbitals
+#
+#     # Matrix of one over the difference in global 1RDM eigenvalues
+#     # Uses Tikhonov regularization
+#
+#     evals = np.copy(system.NOevals)
+#     G2_fast = utils.rot1el(iddt_glob1RDM, system.NOevecs)
+#
+#     for a in range(system.Nsites):
+#         for b in range(system.Nsites):
+#             if a != b:
+#                 d = evals[b] - evals[a]
+#                 G2_fast[a, b] *= d / (d**2 + dG**2)
+#
+#     G2_fast = 0.5 * (G2_fast + G2_fast.conj().T)
+#
+#     if not np.allclose(G2_fast, G2_fast.conj().T, atol=1e-10):
+#         print(
+#             f"WARNING: Gmat not Hermitian: {np.max(np.abs(G2_fast + G2_fast.conj().T))}"
+#         )
+#
+#     G2_site = utils.rot1el(G2_fast, utils.adjoint(system.NOevecs))
+#
+#     return G2_site
+
+
 def calc_Gmat(dG, system, iddt_glob1RDM):
     # Subroutine to calculate matrix that
     # governs time-dependence of natural orbitals
 
-    # Matrix of one over the difference in global 1RDM eigenvalues
-    # Uses Tikhonov regularization
+    # Matrix of one over the difference in global 1RDM eigenvalues,
+    # smoothed by a Tikhonov regularizer with width dG.
+    # Near degenerate eigenvalues are handled continuously; see get_Xmat.
 
     evals = np.copy(system.NOevals)
     G2_fast = utils.rot1el(iddt_glob1RDM, system.NOevecs)
 
     for a in range(system.Nsites):
         for b in range(system.Nsites):
-            if a != b:
-                d = evals[b] - evals[a]
-                G2_fast[a, b] *= d / (d**2 + dG**2)
+            d = evals[b] - evals[a]
+            G2_fast[a, b] *= d / (d**2 + dG**2)
 
     G2_fast = 0.5 * (G2_fast + G2_fast.conj().T)
 
