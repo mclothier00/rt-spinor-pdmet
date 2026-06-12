@@ -591,6 +591,7 @@ class fragment:
         elif hamtype == 1:
             # Hubbard hamiltonian
             rotmat_Hub = self.rotmat[hubsite_indx, :]
+
         if not gen:
             # Form inactive Fock matrix
             if hamtype == 0:
@@ -677,6 +678,18 @@ class fragment:
                 )
 
         if gen:
+            # testing
+            if hamtype == 1:
+                nhub = rotmat_Hub.shape[0]
+                sites = (
+                    np.asarray(hubsite_indx) // 2
+                )  # physical site of each Hubbard spinor
+                Vmat_Hub = np.zeros((nhub, nhub))
+                for a in range(nhub):
+                    for b in range(nhub):
+                        if a != b and sites[a] == sites[b]:  # same site, opposite spin
+                            Vmat_Hub[a, b] = V_site
+
             if hamtype == 0:
                 # General hamiltonian
                 IFmat = utils.rot1el(h_site, self.rotmat)
@@ -689,15 +702,32 @@ class fragment:
 
             if hamtype == 1:
                 IFmat = utils.rot1el(h_site, self.rotmat)
-                IFmat += V_site * np.einsum(
-                    "ip,kr,pj,rk->ij",
+                # IFmat += V_site * np.einsum(
+                #     "ip,kr,pj,rk->ij",
+                #     utils.adjoint(rotmat_Hub),
+                #     utils.adjoint(rotmat_Hub[:, self.corerange]),
+                #     rotmat_Hub,
+                #     rotmat_Hub[:, self.corerange],
+                # )
+                # IFmat -= V_site * np.einsum(
+                #     "ip,kr,pk,rj->ij",
+                #     utils.adjoint(rotmat_Hub),
+                #     utils.adjoint(rotmat_Hub[:, self.corerange]),
+                #     rotmat_Hub[:, self.corerange],
+                #     rotmat_Hub,
+                # )
+
+                IFmat += np.einsum(
+                    "pr,ip,kr,pj,rk->ij",
+                    Vmat_Hub,
                     utils.adjoint(rotmat_Hub),
                     utils.adjoint(rotmat_Hub[:, self.corerange]),
                     rotmat_Hub,
                     rotmat_Hub[:, self.corerange],
                 )
-                IFmat -= V_site * np.einsum(
-                    "ip,kr,pk,rj->ij",
+                IFmat -= np.einsum(
+                    "pr,ip,kr,pk,rj->ij",
+                    Vmat_Hub,
                     utils.adjoint(rotmat_Hub),
                     utils.adjoint(rotmat_Hub[:, self.corerange]),
                     rotmat_Hub[:, self.corerange],
@@ -715,8 +745,28 @@ class fragment:
 
             if hamtype == 1:
                 # Hubbard hamiltonian
+                # tmp = np.einsum(
+                #    "ip,lr,pj,rk -> ijlk",
+                #    utils.adjoint(rotmat_Hub),
+                #    utils.adjoint(rotmat_Hub[:, actrange]),
+                #    rotmat_Hub,
+                #    rotmat_Hub[:, actrange],
+                # )
+                # tmp -= np.einsum(
+                #    "iklj -> ijlk",
+                #    np.einsum(
+                #        "ip,lr,pk,rj -> iklj",
+                #        utils.adjoint(rotmat_Hub),
+                #        utils.adjoint(rotmat_Hub[:, actrange]),
+                #        rotmat_Hub[:, actrange],
+                #        rotmat_Hub,
+                #    ),
+                # )
+                # AFmat = V_site * np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
+
                 tmp = np.einsum(
-                    "ip,lr,pj,rk -> ijlk",
+                    "pr,ip,lr,pj,rk -> ijlk",
+                    Vmat_Hub,
                     utils.adjoint(rotmat_Hub),
                     utils.adjoint(rotmat_Hub[:, actrange]),
                     rotmat_Hub,
@@ -725,14 +775,15 @@ class fragment:
                 tmp -= np.einsum(
                     "iklj -> ijlk",
                     np.einsum(
-                        "ip,lr,pk,rj -> iklj",
+                        "pr,ip,lr,pk,rj -> iklj",
+                        Vmat_Hub,
                         utils.adjoint(rotmat_Hub),
                         utils.adjoint(rotmat_Hub[:, actrange]),
                         rotmat_Hub[:, actrange],
                         rotmat_Hub,
                     ),
                 )
-                AFmat = V_site * np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
+                AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
 
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0:
@@ -764,16 +815,26 @@ class fragment:
                 genFmat[actrange, :] = np.transpose(
                     np.dot(IFmat[:, actrange], self.corr1RDM)
                 )
-                # genFmat = np.dot(IFmat, self.corr1RDM)
+                # tmp = np.einsum(
+                #     "lr,pk,rm,jklm->pj",
+                #     utils.adjoint(rotmat_Hub[:, actrange]),
+                #     rotmat_Hub[:, actrange],
+                #     rotmat_Hub[:, actrange],
+                #     self.corr2RDM,
+                # )
+                # genFmat[actrange, :] += V_site * np.transpose(
+                #     np.dot(utils.adjoint(rotmat_Hub), tmp)
+                # )
+
                 tmp = np.einsum(
-                    "lr,pk,rm,jklm->pj",
+                    "lr,pk,rm,jklm->prj",
                     utils.adjoint(rotmat_Hub[:, actrange]),
                     rotmat_Hub[:, actrange],
                     rotmat_Hub[:, actrange],
                     self.corr2RDM,
                 )
-                genFmat[actrange, :] += V_site * np.transpose(
-                    np.dot(utils.adjoint(rotmat_Hub), tmp)
+                genFmat[actrange, :] += np.transpose(
+                    np.einsum("ip,pr,prj->ij", utils.adjoint(rotmat_Hub), Vmat_Hub, tmp)
                 )
 
         # Calculate i times H commutator portion of time-dependence of corr1RDM
