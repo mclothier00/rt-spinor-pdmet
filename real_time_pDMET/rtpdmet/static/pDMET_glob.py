@@ -331,19 +331,6 @@ class static_pdmet:
             # constract a global density matrix from all impurities
             self.get_globalRDM()
 
-            ##### CLAUDE
-            # DIIS routine
-            # if itr >= self.DiisStart and not self.mubool:
-            #    self.glob1RDM = adiis.update(self.glob1RDM)
-            #    if self.gen:
-            #        np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
-
-            # elif itr >= 1 and self.mubool:
-            #    alpha = 0.5  # mixing parameter
-            #    self.glob1RDM = alpha * self.glob1RDM + (1 - alpha) * old_glob1RDM
-            #    if self.gen:
-            #        np.fill_diagonal(self.glob1RDM, self.glob1RDM.diagonal().real)
-
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
@@ -759,8 +746,6 @@ class static_pdmet:
             NOevals, NOevecs = utils.sort_eigenpairs(NOevals, NOevecs)
         else:
             NOevals, NOevecs = la.eigh(self.glob1RDM)
-
-        # NOevals, NOevecs = la.eigh(self.glob1RDM)
 
         # Re-order such that eigenvalues are in descending order
         self.NOevals = np.flip(NOevals)

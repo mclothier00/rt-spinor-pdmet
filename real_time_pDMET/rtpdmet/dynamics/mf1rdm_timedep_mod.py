@@ -59,11 +59,6 @@ def get_ddt_mf1rdm_serial(dG, system):
     ddt_NOevecs = -1j * np.dot(G_site, system.NOevecs)
     ddt_glob1RDM = -1j * iddt_glob1RDM
 
-    # print(f"mf1RDM: \n {ddt_mf1RDM}")
-    # print()
-    # print(f"glob1RDM: \n {ddt_glob1RDM}")
-    # exit()
-
     # Calculate alternative time-derivative of MF 1RDM
     # This method is more sensitive to numerical instabilitied associated with
     # NO degeneracies
