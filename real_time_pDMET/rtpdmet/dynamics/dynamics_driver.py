@@ -38,11 +38,13 @@ class dynamics_driver:
         omega=None,
         A_nott=None,
         t_nott=None,
+        restart=False,
         init_time=0.0,
         laser=False,
         gen=False,
         mag_sites=None,
-        restart=False,
+        tdmag=False,
+        tdmag_info=None,
     ):
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
@@ -62,6 +64,9 @@ class dynamics_driver:
         # mag_sites - (for a generalized calculation) the spatial sites on which
         #   to calculate the spin magnetic moment. If not specified, all sites
         #   are calculated for Nsites < 50.
+        # tdmag_info - information to implement the time-dependent magentic field; takes as input
+        #       list of form [theta, omega, J, sites] where J = np.array(b_x, b_y, b_z)
+        #       and sites=[beginning,end]
         # restart - whether or not to restart a calculation from the saved pickle dictionary
         #       'restart_system.dat'; to restart, use provided code:
 
@@ -101,12 +106,17 @@ class dynamics_driver:
         self.omega = omega
         self.laser = laser
         self.laser_sites = laser_sites
+        self.magfield = tdmag
         if (np.diagonal(h_site)).any():
             self.Vbias = True
         else:
             self.Vbias = False
         self.gen = gen
         self.restart = restart
+        self.tdmag_info = tdmag_info
+        if self.tdmag_info is not None:
+            self.magfield = True
+            self.base_ham = np.copy(h_site)
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -331,27 +341,57 @@ class dynamics_driver:
 
     #####################################################################
     def update_ham(self, curr_time):
-        laser_pulse = (
-            self.A_nott
-            * np.exp(-((curr_time - self.t_nott) ** 2) / (2 * self.t_d**2))
-            * math.cos(self.omega * (curr_time - self.t_nott))
-        )
-        self.tot_system.h_site = make_hams.make_ham_multi_imp_anderson_realspace_laser(
-            self.tot_system.Nsites,
-            self.U,
-            laser_pulse,
-            self.laser_sites,
-            self.tot_system.hubsite_indx,
-            t=1,
-            update=True,
-            boundary=False,
-            Full=False,
-        )
+        if self.laser:
+            laser_pulse = (
+                self.A_nott
+                * np.exp(-((curr_time - self.t_nott) ** 2) / (2 * self.t_d**2))
+                * math.cos(self.omega * (curr_time - self.t_nott))
+            )
+            self.tot_system.h_site = (
+                make_hams.make_ham_multi_imp_anderson_realspace_laser(
+                    self.tot_system.Nsites,
+                    self.U,
+                    laser_pulse,
+                    self.laser_sites,
+                    self.tot_system.hubsite_indx,
+                    t=1,
+                    update=True,
+                    boundary=False,
+                    Full=False,
+                )
+            )
 
-        fmt_str = "%20.8e"
-        laser_time = np.array([curr_time, laser_pulse])
-        np.savetxt(self.file_laser, laser_time.reshape(1, 2), fmt_str)
-        self.file_laser.flush()
+            fmt_str = "%20.8e"
+            laser_time = np.array([curr_time, laser_pulse])
+            np.savetxt(self.file_laser, laser_time.reshape(1, 2), fmt_str)
+            self.file_laser.flush()
+
+        if self.magfield:
+            #       list of form [theta, omega, J, sites] where J = np.array(b_x, b_y, b_z)
+            theta = self.tdmag_info[0]
+            omega = self.tdmag_info[1]
+            J = self.tdmag_info[2]
+            sites = self.tdmag_info[3]
+
+            mx = np.sin(theta) * np.cos(omega * curr_time)
+            my = np.sin(theta) * np.sin(omega * curr_time)
+            mz = np.cos(theta)
+            bx, by, bz = J[0] * mx, J[1] * my, J[2] * mz
+
+            self.tot_system.h_site = np.copy(self.base_ham)
+
+            for i in range(sites[0], sites[1]):
+                up = 2 * i
+                dn = 2 * i + 1
+                # z-field
+                self.tot_system.h_site[up, up] += bz / 2.0
+                self.tot_system.h_site[dn, dn] -= bz / 2.0
+                # x-field
+                self.tot_system.h_site[up, dn] += bx / 2.0
+                self.tot_system.h_site[dn, up] += bx / 2.0
+                # y-field
+                self.tot_system.h_site[up, dn] -= 1j * by / 2.0
+                self.tot_system.h_site[dn, up] += 1j * by / 2.0
 
     #####################################################################
 
@@ -359,6 +399,9 @@ class dynamics_driver:
         # Subroutine to integrate equations of motion
         if self.integ == "rk4":
             # Use 4th order runge-kutta to integrate EOMs
+
+            if self.magfield:
+                self.update_ham(current_time)
 
             # Copy MF 1RDM, global RDM, CI coefficients,
             # natural and embedding orbs at time t
@@ -418,7 +461,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 1: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser:
+            if self.laser or self.magfield:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             # GETTING 2ST SUBSTEP DT
@@ -439,7 +482,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 2: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser:
+            if self.laser or self.magfield:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(
@@ -457,7 +500,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 3: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser:
+            if self.laser or self.magfield:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # GETTING 4ST SUBSTEP DT
@@ -494,7 +537,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 4: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser:
+            if self.laser or self.magfield:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # Checks for numerical stability
