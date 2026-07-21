@@ -45,6 +45,8 @@ class dynamics_driver:
         mag_sites=None,
         tdmag=False,
         tdmag_info=None,
+        current=False,
+        current_sites=None,
     ):
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
@@ -206,7 +208,7 @@ class dynamics_driver:
             self.file_globdens = open("electron_density.dat", "a")
             if self.laser:
                 self.file_laser = open("laser.dat", "a")
-            if self.Vbias:
+            if self.Vbias or self.current:
                 self.file_current = open("current.dat", "a")
             if self.gen:
                 self.file_totspins = open("total_spins.dat", "a")
@@ -218,7 +220,7 @@ class dynamics_driver:
             self.file_globdens = open("electron_density.dat", "w")
             if self.laser:
                 self.file_laser = open("laser.dat", "w")
-            if self.Vbias:
+            if self.Vbias or self.current:
                 self.file_current = open("current.dat", "w")
             if self.gen:
                 self.file_totspins = open("total_spins.dat", "w")
@@ -327,9 +329,9 @@ class dynamics_driver:
             self.file_output.close()
             self.file_globdens.close()
 
-            if self.Vbias == True:
+            if self.Vbias or self.current:
                 self.file_current.close()
-            if self.laser == True:
+            if self.laser:
                 self.file_laser.close()
 
             print()
@@ -367,7 +369,7 @@ class dynamics_driver:
             self.file_laser.flush()
 
         if self.magfield:
-            #       list of form [theta, omega, J, sites] where J = np.array(b_x, b_y, b_z)
+            # takes list of form [theta, omega, J, sites] where J = np.array(b_x, b_y, b_z)
             theta = self.tdmag_info[0]
             omega = self.tdmag_info[1]
             J = self.tdmag_info[2]
@@ -729,6 +731,14 @@ class dynamics_driver:
                 self.print_just_spins(current_time)
             else:
                 self.print_spinor_spins(current_time)
+
+        if self.current:
+            a, b = self.current_sites[0], self.current_sites[1]
+            current = np.real(
+                self.tot_system.glob1RDM[a, b] - self.tot_system.glob1RDM[b, a]
+            )
+            current = np.insert(current, 0, current_time)
+            np.savetxt(self.file_current, current.reshape(1, current.shape[0]), fmt_str)
 
         # Print output data
         writing_outfile = time.time()
