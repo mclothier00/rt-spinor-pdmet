@@ -733,12 +733,38 @@ class dynamics_driver:
                 self.print_spinor_spins(current_time)
 
         if self.current:
-            a, b = self.current_sites[0], self.current_sites[1]
-            current = np.real(
-                self.tot_system.glob1RDM[a, b] - self.tot_system.glob1RDM[b, a]
-            )
-            current = np.insert(current, 0, current_time)
-            np.savetxt(self.file_current, current.reshape(1, current.shape[0]), fmt_str)
+            site_current = []
+            if self.gen:
+                for i in self.current_sites:
+                    print("need to derive!!")
+                    site_current.append(
+                        -1j
+                        * (
+                            self.tot_system.glob1RDM[i, i + 2]
+                            - self.tot_system.glob1RDM[i + 2, i]
+                        )
+                        - 1j
+                        * (
+                            self.tot_system.glob1RDM[i, i + 3]
+                            - self.tot_system.glob1RDM[i + 3, i]
+                        )
+                    )
+                current = np.insert(np.average(site_current), 0, current_time)
+                np.savetxt(
+                    self.file_current, current.reshape(1, current.shape[0]), fmt_str
+                )
+            else:
+                for i in self.current_sites:
+                    site_current.append(
+                        np.real(
+                            self.tot_system.glob1RDM[i, i + 1]
+                            - self.tot_system.glob1RDM[i + 1, i]
+                        )
+                    )
+                current = np.insert(np.average(site_current), 0, current_time)
+                np.savetxt(
+                    self.file_current, current.reshape(1, current.shape[0]), fmt_str
+                )
 
         # Print output data
         writing_outfile = time.time()
