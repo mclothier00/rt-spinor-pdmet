@@ -611,6 +611,7 @@ class fragment:
                     "pc,cp->p",
                     rotmat_Hub[:, self.corerange],
                     utils.adjoint(rotmat_Hub[:, self.corerange]),
+                    optimize=True,
                 )
                 IFmat += V_site * np.einsum(
                     "ap,pb,p->ab", utils.adjoint(rotmat_Hub), rotmat_Hub, tmp
@@ -632,6 +633,7 @@ class fragment:
                     rotmat_Hub[:, actrange],
                     self.corr1RDM,
                     utils.adjoint(rotmat_Hub[:, actrange]),
+                    optimize=True,
                 )
                 AFmat = (
                     0.5
@@ -655,6 +657,7 @@ class fragment:
                     "acde,bcde->ba",
                     V_MO[:, actrange[:, None, None], actrange[:, None], actrange],
                     self.corr2RDM,
+                    optimize=True,
                 )
 
             elif hamtype == 1:
@@ -672,6 +675,7 @@ class fragment:
                     rotmat_Hub[:, actrange],
                     rotmat_Hub[:, actrange],
                     self.corr2RDM,
+                    optimize=True,
                 )
                 genFmat[actrange, :] += V_site * np.transpose(
                     np.dot(utils.adjoint(rotmat_Hub), tmp)
@@ -724,6 +728,7 @@ class fragment:
                     utils.adjoint(rotmat_Hub[:, self.corerange]),
                     rotmat_Hub,
                     rotmat_Hub[:, self.corerange],
+                    optimize=True,
                 )
                 IFmat -= np.einsum(
                     "pr,ip,kr,pk,rj->ij",
@@ -732,6 +737,7 @@ class fragment:
                     utils.adjoint(rotmat_Hub[:, self.corerange]),
                     rotmat_Hub[:, self.corerange],
                     rotmat_Hub,
+                    optimize=True,
                 )
 
             # Form active Fock matrix
@@ -771,6 +777,7 @@ class fragment:
                     utils.adjoint(rotmat_Hub[:, actrange]),
                     rotmat_Hub,
                     rotmat_Hub[:, actrange],
+                    optimize=True,
                 )
                 tmp -= np.einsum(
                     "iklj -> ijlk",
@@ -781,9 +788,10 @@ class fragment:
                         utils.adjoint(rotmat_Hub[:, actrange]),
                         rotmat_Hub[:, actrange],
                         rotmat_Hub,
+                        optimize=True,
                     ),
                 )
-                AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp)
+                AFmat = np.einsum("kl,ijlk->ij", self.corr1RDM, tmp, optimize=True)
 
             # Form generalized Fock matrix from inactive and active ones
             if hamtype == 0:
@@ -832,6 +840,7 @@ class fragment:
                     rotmat_Hub[:, actrange],
                     rotmat_Hub[:, actrange],
                     self.corr2RDM,
+                    optimize=True,
                 )
                 genFmat[actrange, :] += np.transpose(
                     np.einsum("ip,pr,prj->ij", utils.adjoint(rotmat_Hub), Vmat_Hub, tmp)

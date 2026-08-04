@@ -119,6 +119,7 @@ class dynamics_driver:
         if self.tdmag_info is not None:
             self.magfield = True
             self.base_ham = np.copy(h_site)
+        self.current = current
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -707,6 +708,8 @@ class dynamics_driver:
     def print_data(self, current_time):
         # Subroutine to calculate and print-out observables of interest
 
+        # NOTE: current equation takes as a hopping term 1.0 
+
         fmt_str = "%20.8e"
 
         # ####### CALCULATE OBSERVABLES OF INTEREST #######
@@ -736,8 +739,7 @@ class dynamics_driver:
             site_current = []
             if self.gen:
                 for i in self.current_sites:
-                    print("need to derive!!")
-                    site_current.append(
+                    site_current.append(np.real(
                         -1j
                         * (
                             self.tot_system.glob1RDM[i, i + 2]
@@ -745,22 +747,22 @@ class dynamics_driver:
                         )
                         - 1j
                         * (
-                            self.tot_system.glob1RDM[i, i + 3]
-                            - self.tot_system.glob1RDM[i + 3, i]
+                            self.tot_system.glob1RDM[i + 1, i + 3]
+                            - self.tot_system.glob1RDM[i + 3, i + 1]
                         )
-                    )
+                    ))
                 current = np.insert(np.average(site_current), 0, current_time)
                 np.savetxt(
                     self.file_current, current.reshape(1, current.shape[0]), fmt_str
                 )
             else:
                 for i in self.current_sites:
-                    site_current.append(
-                        np.real(
+                    site_current.append(np.real((
+                        -1j * (
                             self.tot_system.glob1RDM[i, i + 1]
                             - self.tot_system.glob1RDM[i + 1, i]
                         )
-                    )
+                    )))
                 current = np.insert(np.average(site_current), 0, current_time)
                 np.savetxt(
                     self.file_current, current.reshape(1, current.shape[0]), fmt_str

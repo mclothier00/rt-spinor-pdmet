@@ -57,16 +57,16 @@ def rot2el_chem(V_orig, rotmat):
     else:
         rotmat_conj = rotmat.transpose()
 
-    V_new = np.einsum("trus,sy -> truy", V_orig, rotmat)
+    V_new = np.einsum("trus,sy -> truy", V_orig, rotmat, optimize=True)
     # V_new now Nb x Nb x Nb x Ns
 
-    V_new = np.einsum("vu,truy -> trvy", rotmat_conj, V_new)
+    V_new = np.einsum("vu,truy -> trvy", rotmat_conj, V_new, optimize=True)
     # V_new now Nb x Nb x Ns x Ns
 
-    V_new = np.einsum("trvy,rx -> txvy", V_new, rotmat)
+    V_new = np.einsum("trvy,rx -> txvy", V_new, rotmat, optimize=True)
     # V_new now Nb x Ns x Ns x Ns
 
-    V_new = np.einsum("wt,txvy -> wxvy", rotmat_conj, V_new)
+    V_new = np.einsum("wt,txvy -> wxvy", rotmat_conj, V_new, optimize=True)
     # V_new now Ns x Ns x Ns x Ns
 
     return V_new
@@ -87,16 +87,16 @@ def rot2el_phys(V_orig, rotmat):
     else:
         rotmat_conj = rotmat.transpose()
 
-    V_new = np.einsum("turs,sy -> tury", V_orig, rotmat)
+    V_new = np.einsum("turs,sy -> tury", V_orig, rotmat, optimize=True)
     # V_new now Nb x Nb x Nb x Ns
 
-    V_new = np.einsum("tury,rx -> tuxy", V_new, rotmat)
+    V_new = np.einsum("tury,rx -> tuxy", V_new, rotmat, optimize=True)
     # V_new now Nb x Nb x Ns x Ns
 
-    V_new = np.einsum("vu,tuxy -> tvxy", rotmat_conj, V_new)
+    V_new = np.einsum("vu,tuxy -> tvxy", rotmat_conj, V_new, optimize=True)
     # V_new now Nb x Ns x Ns x Ns
 
-    V_new = np.einsum("wt,tvxy -> wvxy", rotmat_conj, V_new)
+    V_new = np.einsum("wt,tvxy -> wvxy", rotmat_conj, V_new, optimize=True)
     # V_new now Ns x Ns x Ns x Ns
 
     return V_new
