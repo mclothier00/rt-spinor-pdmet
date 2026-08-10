@@ -45,8 +45,10 @@ class dynamics_driver:
         mag_sites=None,
         tdmag=False,
         tdmag_info=None,
-        current=False,
-        current_sites=None,
+        #current=False,
+        #current_sites=None,
+        bond_dm=False,
+        bond_dm_sites=None,
     ):
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
@@ -119,7 +121,10 @@ class dynamics_driver:
         if self.tdmag_info is not None:
             self.magfield = True
             self.base_ham = np.copy(h_site)
-        self.current = current
+        #self.current = current
+        self.bond_dm = bond_dm
+        # site indices i for which the bond i -> i+1 is recorded; default is every bond in the chain
+        self.bond_dm_sites = bond_dm_sites
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -209,25 +214,30 @@ class dynamics_driver:
             self.file_globdens = open("electron_density.dat", "a")
             if self.laser:
                 self.file_laser = open("laser.dat", "a")
-            if self.Vbias or self.current:
-                self.file_current = open("current.dat", "a")
+            #if self.Vbias: or self.current:
+            #    self.file_current = open("current.dat", "a")
             if self.gen:
                 self.file_totspins = open("total_spins.dat", "a")
                 self.file_spinx = open("spin_x.dat", "a")
                 self.file_spiny = open("spin_y.dat", "a")
                 self.file_spinz = open("spin_z.dat", "a")
+            if self.bond_dm:
+                self.file_bond_dm = open("bond_density_matrix.dat", "a")
         else:
             self.file_output = open("output_dynamics.dat", "w")
             self.file_globdens = open("electron_density.dat", "w")
             if self.laser:
                 self.file_laser = open("laser.dat", "w")
-            if self.Vbias or self.current:
-                self.file_current = open("current.dat", "w")
+            #if self.Vbias or self.current:
+            #    self.file_current = open("current.dat", "w")
             if self.gen:
                 self.file_totspins = open("total_spins.dat", "w")
                 self.file_spinx = open("spin_x.dat", "w")
                 self.file_spiny = open("spin_y.dat", "w")
                 self.file_spinz = open("spin_z.dat", "w")
+            if self.bond_dm:
+                self.file_bond_dm = open("bond_density_matrix.dat", "w")
+
 
         self.max_diagonalG = 0
         # self.corrdens_old = np.zeros((self.tot_system.Nsites))
@@ -274,6 +284,8 @@ class dynamics_driver:
                 if step == 0:
                     print("Writing initial data at setup 0.")
                     self.print_just_dens(current_time)
+                    if self.bond_dm:
+                        self.print_bond_dm(current_time)
                     sys.stdout.flush()
                     if self.gen:
                         if self.tot_system.Nsites % 2 == 0:
@@ -330,8 +342,10 @@ class dynamics_driver:
             self.file_output.close()
             self.file_globdens.close()
 
-            if self.Vbias or self.current:
-                self.file_current.close()
+            if self.bond_dm:
+                self.file_bond_dm.close()
+            #if self.Vbias or self.current:
+            #    self.file_current.close()
             if self.laser:
                 self.file_laser.close()
 
@@ -735,38 +749,41 @@ class dynamics_driver:
             else:
                 self.print_spinor_spins(current_time)
 
-        if self.current:
-            site_current = []
-            if self.gen:
-                for i in self.current_sites:
-                    site_current.append(np.real(
-                        -1j
-                        * (
-                            self.tot_system.glob1RDM[i, i + 2]
-                            - self.tot_system.glob1RDM[i + 2, i]
-                        )
-                        - 1j
-                        * (
-                            self.tot_system.glob1RDM[i + 1, i + 3]
-                            - self.tot_system.glob1RDM[i + 3, i + 1]
-                        )
-                    ))
-                current = np.insert(np.average(site_current), 0, current_time)
-                np.savetxt(
-                    self.file_current, current.reshape(1, current.shape[0]), fmt_str
-                )
-            else:
-                for i in self.current_sites:
-                    site_current.append(np.real((
-                        -1j * (
-                            self.tot_system.glob1RDM[i, i + 1]
-                            - self.tot_system.glob1RDM[i + 1, i]
-                        )
-                    )))
-                current = np.insert(np.average(site_current), 0, current_time)
-                np.savetxt(
-                    self.file_current, current.reshape(1, current.shape[0]), fmt_str
-                )
+        # if self.current:
+        #     site_current = []
+        #     if self.gen:
+        #         for i in self.current_sites:
+        #             site_current.append(np.real(
+        #                 -1j
+        #                 * (
+        #                     self.tot_system.glob1RDM[i, i + 2]
+        #                     - self.tot_system.glob1RDM[i + 2, i]
+        #                 )
+        #                 - 1j
+        #                 * (
+        #                     self.tot_system.glob1RDM[i + 1, i + 3]
+        #                     - self.tot_system.glob1RDM[i + 3, i + 1]
+        #                 )
+        #             ))
+        #         current = np.insert(np.average(site_current), 0, current_time)
+        #         np.savetxt(
+        #             self.file_current, current.reshape(1, current.shape[0]), fmt_str
+        #         )
+        #     else:
+        #         for i in self.current_sites:
+        #             site_current.append(np.real((
+        #                 -1j * (
+        #                     self.tot_system.glob1RDM[i, i + 1]
+        #                     - self.tot_system.glob1RDM[i + 1, i]
+        #                 )
+        #             )))
+        #         current = np.insert(np.average(site_current), 0, current_time)
+        #         np.savetxt(
+        #             self.file_current, current.reshape(1, current.shape[0]), fmt_str
+        #         )
+
+        if self.bond_dm:
+            self.print_bond_dm(current_time)
 
         # Print output data
         writing_outfile = time.time()
@@ -798,6 +815,59 @@ class dynamics_driver:
 
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
         self.file_output.flush()
+
+    #####################################################################
+
+    def bond_dm_site_list(self):
+        # number of spatial sites, taken from the RDM itself so this does
+        # not depend on whether Nsites counts sites or spin orbitals
+        nsite = self.tot_system.Nbasis // 2
+        if self.bond_dm_sites is None:
+            sites = np.arange(nsite - 1)
+        else:
+            sites = np.asarray(self.bond_dm_sites, dtype=int)
+        bad = sites[(sites < 0) | (sites > nsite - 2)]
+        if bad.size > 0:
+            print(
+                f"ERROR: bond_dm_sites entries {bad} have no site i+1 to bond to; "
+                f"valid range is 0 to {nsite - 2}"
+            )
+            print()
+            exit()
+        return sites
+
+    #####################################################################
+
+    def print_bond_dm(self, current_time):
+        # Eight spin-resolved elements of the global 1RDM for each bond
+        # i -> i+1, written as alternating real and imaginary parts.
+        # Column layout, for each site i in bond_dm_sites:
+        #   aa_fwd aa_bwd bb_fwd bb_bwd ab_fwd ab_bwd ba_fwd ba_bwd
+        # preceded by the time in column 0.
+        fmt_str = "%20.8e"
+        rho = self.tot_system.glob1RDM
+ 
+        row = [current_time]
+        for i in self.bond_dm_site_list():
+            a, b = 2 * i, 2 * i + 1              # site i,   alpha / beta
+            c, d = 2 * i + 2, 2 * i + 3          # site i+1, alpha / beta
+            elements = [
+                rho[a, c],  # alpha-alpha forward
+                rho[c, a],  # alpha-alpha backward
+                rho[b, d],  # beta-beta   forward
+                rho[d, b],  # beta-beta   backward
+                rho[a, d],  # alpha-beta  forward
+                rho[d, a],  # alpha-beta  backward
+                rho[b, c],  # beta-alpha  forward
+                rho[c, b],  # beta-alpha  backward
+            ]
+            for e in elements:
+                row.append(np.real(e))
+                row.append(np.imag(e))
+ 
+        row = np.asarray(row)
+        np.savetxt(self.file_bond_dm, row.reshape(1, row.shape[0]), fmt_str)
+        self.file_bond_dm.flush()
 
     #####################################################################
 

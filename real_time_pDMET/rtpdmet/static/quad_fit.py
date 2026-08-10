@@ -201,6 +201,7 @@ def quad_fit_mu(mus, nelecs, filling, step):
     Returns:
         dmu: the change in mu.
     """
+    
     mus = np.asarray(mus)
     nelecs = np.asarray(nelecs)
     target = filling * 2.0
@@ -216,9 +217,13 @@ def quad_fit_mu(mus, nelecs, filling, step):
     dmu, status = quad_fit(mus_sub, dnelec_sub, tol=1e-12)
 
     # check duplicates
+    # if has_duplicate(dmu, mus):
+    #     print("duplicate in extrapolation.")
+    #     status = False
+
     if has_duplicate(dmu, mus):
-        print("duplicate in extrapolation.")
-        status = False
+            print("duplicate in extrapolation.")
+            dmu = math.copysign(step, target - nelecs[-1]) + mus[-1]
 
     if not status:
         print('quadratic fit failed or duplicated, use linear regression')

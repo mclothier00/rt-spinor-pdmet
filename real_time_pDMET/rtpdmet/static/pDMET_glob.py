@@ -8,7 +8,7 @@ from math import copysign
 from mpi4py import MPI
 import real_time_pDMET.scripts.utils as utils
 
-DiisDim = 4
+DiisDim = 8 # 4
 adiis = lib.diis.DIIS()
 adiis.space = DiisDim
 
@@ -211,19 +211,14 @@ class static_pdmet:
                 record = [(0.0, totalNele_0)]
 
                 if abs((totalNele_0 / self.Nele) - 1.0) < self.nelecTol:
-                    print(
-                        f"chemical potential fitting is unnecessary on rank {self.rank}"
-                    )
                     total_Nele = totalNele_0
                     self.history.append(record)
+                    self.history = self.history[-40:]
 
                 else:
                     if self.muhistory:
                         # predict from  historic information
                         temp_dmu = self.predict(totalNele_0, self.Nele)
-                        print(
-                            f"temp_dmu from prediction on rank {self.rank}: {temp_dmu}"
-                        )
                         if temp_dmu is not None:
                             self.dmu = temp_dmu
                         else:
@@ -234,19 +229,14 @@ class static_pdmet:
                         self.dmu = abs(self.dmu) * (
                             -1 if (totalNele_0 > self.Nele) else 1
                         )
-                    print(
-                        f"chemical potential dmu after 1st approximation on rank {self.rank}: {self.dmu}"
-                    )
 
                     test_mu = self.mu + self.dmu
                     totalNele_1 = self.corr_calc_with_mu(test_mu)
                     record.append((self.dmu, totalNele_1))
 
                     if abs((totalNele_1 / self.Nele) - 1.0) < self.nelecTol:
-                        print(
-                            f"chemical potential is converged on rank {self.rank} with dmu: {self.dmu}"
-                        )
                         self.history.append(record)
+                        self.history = self.history[-40:]
                         self.mu = test_mu
                         total_Nele = totalNele_1
 
@@ -269,28 +259,24 @@ class static_pdmet:
                         record.append((dmu1, totalNele_2))
 
                         if abs((totalNele_2 / self.Nele) - 1.0) < self.nelecTol:
-                            print(
-                                f"chem potential is converged on rank {self.rank} w/ dmu1: {dmu1}"
-                            )
                             self.mu = test_mu
                             self.history.append(record)
+                            self.history = self.history[-40:]
                             total_Nele = totalNele_2
 
                         else:
                             mus = np.array([0.0, self.dmu, dmu1])
                             Neles = np.array([totalNele_0, totalNele_1, totalNele_2])
-                            dmu2 = quad_fit_mu(mus, Neles, self.Nele / 2, self.step)
+                            dmu2 = quad_fit_mu(mus, Neles, self.Nele / 2, self.step) # quad_fit_mu multiplies by 2 internally
 
                             test_mu = self.mu + dmu2
                             totalNele_3 = self.corr_calc_with_mu(test_mu)
                             record.append((dmu2, totalNele_3))
 
                             if abs(totalNele_3 / self.Nele - 1.0) < self.nelecTol:
-                                print(
-                                    f"chem potential is converged on rank {self.rank} w/ dmu2: {dmu2}"
-                                )
                                 self.mu = test_mu
                                 self.history.append(record)
+                                self.history = self.history[-40:]
                                 total_Nele = totalNele_3
                             else:
                                 mus = np.array([0.0, self.dmu, dmu1, dmu2])
@@ -307,9 +293,17 @@ class static_pdmet:
                                     f"mu didnt converge on rank {self.rank}, final electron #: {totalNele_4}"
                                 )
                                 record.append((dmu3, totalNele_4))
-                                total_Nele = totalNele_4
                                 self.history.append(record)
-                                self.mu = test_mu
+                                self.history = self.history[-40:]
+                                # accepts the best probe, not just the last one
+                                best_dmu, best_Nele = min(
+                                    record, key=lambda r: abs(r[1] - self.Nele)
+                                )
+                                if best_dmu != dmu3:
+                                    best_Nele = self.corr_calc_with_mu(
+                                        self.mu + best_dmu
+                                    )
+                                self.mu += best_dmu
 
             else:
                 if self.rank == 0:
@@ -357,7 +351,11 @@ class static_pdmet:
                     print("Current difference in global 1RDM =", dif)
                     print("vcore=", dVcor_per_ele)
                     self.calc_data(itr, dif, total_Nele)
-
+            
+            # testing stability; DELETE:
+            if np.mod(itr, 10) == 0 and self.rank == 0:
+                self.calc_data(itr, dif, total_Nele)
+            
             if dVcor_per_ele < self.tol and abs(dE) < 1.0e-6:
                 conv = True
                 break
@@ -514,13 +512,15 @@ class static_pdmet:
     def predict(self, nelec, target):
         """
         assume the chemical potential landscape more
-        or less the same for revious fittings.
+        or less the same for previous fittings.
         the simplest thing to do is predicting
         a dmu from each previous fitting, and compute
         a weighted average. The weight should prefer
-        lattest runs, and prefer the fittigs that
+        latest runs, and prefer the fittigs that
         has points close to current and target number of electrons
 
+        NOTE: trunacted such that this only iteraction over the last 40
+        runs so as to lower memory usage
         """
         from math import sqrt, exp
 
@@ -530,11 +530,12 @@ class static_pdmet:
         # hyperparameters
         damp_factor = np.e
         sigma2, sigma3 = 0.00025, 0.0005
-
-        for dmu, record in enumerate(self.history):
-            # exponential
-            weight = damp_factor ** (dmu + 1 - len(self.history))
-
+        
+        hist = self.history[-40:]   # only consider last 40 runs
+        for dmu, record in enumerate(hist):
+            # exponential; weight depends only on distance from the end
+            weight = damp_factor ** (dmu + 1 - len(hist))
+        
             if len(record) == 1:
                 val, weight = 0.0, 0.0
                 continue
@@ -807,16 +808,16 @@ class static_pdmet:
     ##########################################################
 
     def get_DMET_E(self):
-        self.get_frag_Hemb()
-        self.get_frag_corr12RDM()
         self.DMET_E = 0.0
-        if not self.gen:
-            for frag in self.frag_in_rank:
-                frag.get_frag_E()
-                self.DMET_E += np.real(frag.Efrag)
-                # discard what should be numerical error of imaginary part
         if self.gen:
             if self.rank == 0:
                 print(
                     "energy calculation for generalized DMET not yet implemented; setting to zero for time being"
                 )
+        else:
+            self.get_frag_Hemb()
+            self.get_frag_corr12RDM()
+            for frag in self.frag_in_rank:
+                frag.get_frag_E()
+                self.DMET_E += np.real(frag.Efrag)
+                # discard what should be numerical error of imaginary part
