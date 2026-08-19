@@ -7,6 +7,9 @@ from real_time_pDMET.rtpdmet.static.quad_fit import quad_fit_mu
 from math import copysign
 from mpi4py import MPI
 import real_time_pDMET.scripts.utils as utils
+import pickle
+import os
+
 
 DiisDim = 8 # 4
 adiis = lib.diis.DIIS()
@@ -34,6 +37,10 @@ class static_pdmet:
         dmu=0.02,
         step=0.05,
         trust_region=2.5,
+        damp=1.0,
+        DampStart=0,
+        restart=False,
+        Ncheckpoint=100,
     ):
         """
         Nele      - total number of electrons
@@ -80,10 +87,16 @@ class static_pdmet:
         self.Nele = Nele
         self.Nfrag = Nfrag
         self.mu = 0
-        self.DiisStart = 4
+        self.DiisStart = 40000 #4
         self.DiisDim = 4
         self.history = []
         self.gen = gen
+
+        self.damp = damp
+        self.DampStart = DampStart
+        self.restart = restart
+        self.Ncheckpoint = Ncheckpoint
+        self.start_itr = 0
 
         if self.hamtype == 1:
             if self.U == None:
@@ -121,6 +134,26 @@ class static_pdmet:
         self.mf1RDM = mf1RDM
         print(f"Initial electron count: {np.trace(self.mf1RDM)}")
 
+        if self.restart:
+            comm = MPI.COMM_WORLD
+            state = None
+            if self.rank == 0:
+                with open("restart_static.dat", "rb") as f:
+                    state = pickle.load(f)
+                print(f"Restarting static pDMET from iteration {state['itr']}, ")
+            state = comm.bcast(state, root=0)
+ 
+            self.start_itr = state["itr"] + 1
+            self.mf1RDM = state["mf1RDM"]
+            self.old_glob1RDM = state["old_glob1RDM"]
+            self.mu = state["mu"]
+            self.dmu = state["dmu"]
+            self.step = state["step"]
+            self.history = state["history"]
+            self.restart_old_E = state["old_E"]
+        else:
+            self.restart_old_E = 0.0
+
         # Initialize the system from mf 1RDM and fragment information
 
         if gen:
@@ -146,7 +179,9 @@ class static_pdmet:
                     self.site_to_impindx.append(np.argwhere(array == i)[0][0])
 
         # output file
-        self.file_output = open("output_static.dat", "w")
+        if self.rank == 0:
+            mode = "a" if self.restart else "w"
+            self.file_output = open("output_static.dat", mode)
 
         # Parallelization
 
@@ -194,10 +229,10 @@ class static_pdmet:
         start_time = time.perf_counter()
         dVcor_per_ele = None
         conv = False
-        old_E = 0.0
+        old_E = self.restart_old_E
         old_glob1RDM = np.copy(self.old_glob1RDM)
-
-        for itr in range(self.Maxitr):
+ 
+        for itr in range(self.start_itr, self.Maxitr):
             if self.rank == 0:
                 print()
                 print("Iteration:", itr)
@@ -324,7 +359,26 @@ class static_pdmet:
 
             # constract a global density matrix from all impurities
             self.get_globalRDM()
+    
 
+            ## CLAUDE DEBUG
+            # ---- damping ----------------------------------------------
+            # smooth the fixed-point update before it is projected onto
+            # natural orbitals. old_glob1RDM holds the previous iteration.
+            if self.damp < 1.0 and itr > self.DampStart:
+                self.glob1RDM = (
+                    self.damp * self.glob1RDM
+                    + (1.0 - self.damp) * old_glob1RDM
+                )
+                if self.gen:
+                    # the projection later assumes a Hermitian RDM with a
+                    # real diagonal; mixing two Hermitian matrices preserves
+                    # both, but re-impose it against roundoff drift
+                    np.fill_diagonal(
+                        self.glob1RDM, self.glob1RDM.diagonal().real
+                    )
+            # -----------------------------------------------------------
+ 
             # DIIS routine
             if itr >= self.DiisStart:
                 self.glob1RDM = adiis.update(self.glob1RDM)
@@ -351,10 +405,9 @@ class static_pdmet:
                     print("Current difference in global 1RDM =", dif)
                     print("vcore=", dVcor_per_ele)
                     self.calc_data(itr, dif, total_Nele)
-            
-            # testing stability; DELETE:
-            if np.mod(itr, 10) == 0 and self.rank == 0:
-                self.calc_data(itr, dif, total_Nele)
+
+            if np.mod(itr, self.Ncheckpoint) == 0 and itr > self.start_itr:
+                self.print_checkpoint(itr, old_glob1RDM, old_E)
             
             if dVcor_per_ele < self.tol and abs(dE) < 1.0e-6:
                 conv = True
@@ -376,6 +429,8 @@ class static_pdmet:
                 print("Final difference in global 1RDM =", dif)
                 print()
 
+                self.print_checkpoint(itr, old_glob1RDM, old_E)
+            
             else:
                 print(
                     "WARNING:DMET calculation finished, but did not converge in",
@@ -383,6 +438,8 @@ class static_pdmet:
                     "iterations",
                 )
                 print("Final difference in global 1RDM =", dif)
+
+                self.print_checkpoint(itr, old_glob1RDM, old_E)
 
         end_time = time.perf_counter()
         total_time = end_time - start_time
@@ -800,9 +857,38 @@ class static_pdmet:
         output[1] = self.mu
         output[2] = dif
         output[3] = total_Nele
-        output[4] = self.DMET_E / Nsites
+        # output[4] = self.DMET_E / Nsites
+        d = np.real(np.diag(self.glob1RDM))
+        site = d[0::2] + d[1::2]
+        output[4] = np.abs(site - site[::-1]).max()      # currently unused
         output[5 : 5 + Nsites] = self.NOevals
         np.savetxt(self.file_output, output.reshape(1, output.shape[0]), fmt_str)
+        self.file_output.flush()
+
+    ##########################################################
+
+    def print_checkpoint(self, itr, old_glob1RDM, old_E):
+        # Save the static iteration state for restart purposes using pickle.
+        # Only writes on rank 0
+        if self.rank != 0:
+            return
+ 
+        state = {
+            "itr": itr,
+            "mf1RDM": self.mf1RDM,
+            "old_glob1RDM": old_glob1RDM,
+            "mu": self.mu,
+            "dmu": self.dmu,
+            "step": self.step,
+            "history": self.history,
+            "old_E": old_E,
+        }
+ 
+        tmp = "restart_static.dat.tmp"
+        with open(tmp, "wb") as f:
+            pickle.dump(state, f)
+        os.replace(tmp, "restart_static.dat")
+ 
         self.file_output.flush()
 
     ##########################################################
