@@ -107,7 +107,13 @@ class fragment:
                 evals_no, evecs1 = la.eigh(temp1_mf1rdm)
                 evecs = utils.reshape_rtog_matrix(np.kron(np.eye(2), evecs1))
             else:
-                evals, evecs = la.eigh(mf1RDM)
+		if not np.isfinite(mf1RDM).all():
+		    raise ValueError("mf1RDM contains NaN or inf")
+		try:
+		    evals, evecs = la.eigh(mf1RDM)
+		except la.LinAlgError:
+		    evals, evecs = la.eigh(mf1RDM, driver="evd")
+                # evals, evecs = la.eigh(mf1RDM)
         else:
             evals, evecs = la.eigh(mf1RDM)
 

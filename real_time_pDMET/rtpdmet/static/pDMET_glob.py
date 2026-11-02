@@ -761,7 +761,8 @@ class static_pdmet:
             rankNele += fragNele
 
         totalNele = MPI.COMM_WORLD.allreduce(rankNele, op=MPI.SUM)
-        print("total electrons:", totalNele)
+        if self.rank == 0:
+            print(f"total electrons: {totalNele}")
 
         return totalNele
 

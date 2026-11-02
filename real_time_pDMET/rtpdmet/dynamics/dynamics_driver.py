@@ -45,10 +45,17 @@ class dynamics_driver:
         mag_sites=None,
         tdmag=False,
         tdmag_info=None,
-        #current=False,
-        #current_sites=None,
+        bias_ramp=None,
         bond_dm=False,
         bond_dm_sites=None,
+    
+        # to print entire top half of density matrix for current calculations; CLEAN UP
+        glob_dm=False,
+        glob_dm_file="global_dm.npz",
+        glob_dm_stride=None,
+        glob_dm_single=True,
+        glob_dm_save_h=True,
+        glob_dm_flush=25,
     ):
         # h_site -
         # 1 e- hamiltonian in site-basis for total system to run dynamics
@@ -125,6 +132,29 @@ class dynamics_driver:
         self.bond_dm = bond_dm
         # site indices i for which the bond i -> i+1 is recorded; default is every bond in the chain
         self.bond_dm_sites = bond_dm_sites
+        # time-dependent bias ramp for left (L) and right (R) leads
+        self.bias_ramp = bias_ramp
+        if self.bias_ramp is not None:
+            self.base_ham = np.copy(h_site)
+            # diagonal profile, unit amplitude, built once
+            self.bias_profile = np.zeros(h_site.shape[0])
+            V, t_ramp, L, R = self.bias_ramp
+            for i in range(L[0], L[1]):
+                self.bias_profile[2 * i] = +0.5
+                self.bias_profile[2 * i + 1] = +0.5
+            for i in range(R[0], R[1]):
+                self.bias_profile[2 * i] = -0.5
+                self.bias_profile[2 * i + 1] = -0.5
+
+        # whole upper triangle of the global 1RDM, to a compressed .npz.
+        # currently written in BLOCKED spin-orbital order
+        self.glob_dm = glob_dm
+        self.glob_dm_file = glob_dm_file
+        self.glob_dm_stride = glob_dm_stride   # None -> whenever data is printed
+        self.glob_dm_single = glob_dm_single
+        self.glob_dm_save_h = glob_dm_save_h
+        self.glob_dm_flush = glob_dm_flush
+        self._glob_frames = None
 
         ## FOR DEBUGGING, PING
         self.printstep = 0
@@ -237,7 +267,10 @@ class dynamics_driver:
                 self.file_spinz = open("spin_z.dat", "w")
             if self.bond_dm:
                 self.file_bond_dm = open("bond_density_matrix.dat", "w")
-
+        
+        # for saving entire DM upper triangle for current calculations
+        if self.glob_dm and self.rank == 0:
+            self.setup_glob_dm()
 
         self.max_diagonalG = 0
         # self.corrdens_old = np.zeros((self.tot_system.Nsites))
@@ -286,6 +319,8 @@ class dynamics_driver:
                     self.print_just_dens(current_time)
                     if self.bond_dm:
                         self.print_bond_dm(current_time)
+                    if self.glob_dm:
+                        self.record_glob_dm(current_time)
                     sys.stdout.flush()
                     if self.gen:
                         if self.tot_system.Nsites % 2 == 0:
@@ -344,6 +379,9 @@ class dynamics_driver:
 
             if self.bond_dm:
                 self.file_bond_dm.close()
+            if self.glob_dm:
+                self.write_glob_dm()
+
             #if self.Vbias or self.current:
             #    self.file_current.close()
             if self.laser:
@@ -410,6 +448,19 @@ class dynamics_driver:
                 self.tot_system.h_site[up, dn] -= 1j * by / 2.0
                 self.tot_system.h_site[dn, up] += 1j * by / 2.0
 
+        if self.bias_ramp is not None:
+            V, t_ramp, null1, null2 = self.bias_ramp
+            if t_ramp <= 0.0 or curr_time >= t_ramp:
+                amp = V
+            else:
+                # sin^2 switch-on: zero value AND zero slope at t=0,
+                # zero slope at t=t_ramp, so nothing is discontinuous
+                amp = V * np.sin(np.pi * curr_time / (2.0 * t_ramp)) ** 2
+            self.tot_system.h_site = (
+                np.copy(self.base_ham)
+                + np.diag(amp * self.bias_profile).astype(complex)
+            )
+
     #####################################################################
 
     def integrate(self, nproc, current_time):
@@ -417,7 +468,7 @@ class dynamics_driver:
         if self.integ == "rk4":
             # Use 4th order runge-kutta to integrate EOMs
 
-            if self.magfield:
+            if self.magfield or self.bias_ramp is not None:
                 self.update_ham(current_time)
 
             # Copy MF 1RDM, global RDM, CI coefficients,
@@ -478,7 +529,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 1: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser or self.magfield:
+            if self.laser or self.magfield or self.bias_ramp is not None:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             # GETTING 2ST SUBSTEP DT
@@ -499,7 +550,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 2: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser or self.magfield:
+            if self.laser or self.magfield or self.bias_ramp is not None:
                 self.update_ham(current_time + 0.5 * self.delt)
 
             l3, k3_list, m3_list, n3, p3, mfRDM_check = self.one_rk_step(
@@ -517,7 +568,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 3: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser or self.magfield:
+            if self.laser or self.magfield or self.bias_ramp is not None:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # GETTING 4ST SUBSTEP DT
@@ -554,7 +605,7 @@ class dynamics_driver:
                         f"norm of CIcoeffs at time {current_time} on rk step 4: {la.norm(frag.CIcoeffs)}"
                     )
 
-            if self.laser or self.magfield:
+            if self.laser or self.magfield or self.bias_ramp is not None:
                 self.update_ham(current_time + 1.0 * self.delt)
 
             # Checks for numerical stability
@@ -785,6 +836,9 @@ class dynamics_driver:
         if self.bond_dm:
             self.print_bond_dm(current_time)
 
+        if self.glob_dm:
+            self.record_glob_dm(current_time)
+
         # Print output data
         writing_outfile = time.time()
         output = np.zeros((12 + self.tot_system.Nbasis))
@@ -869,6 +923,112 @@ class dynamics_driver:
         np.savetxt(self.file_bond_dm, row.reshape(1, row.shape[0]), fmt_str)
         self.file_bond_dm.flush()
 
+
+    #####################################################################
+
+    def setup_glob_dm(self):
+        # Buffer for the upper triangle of the global 1RDM. Frames are held
+        # in memory and the .npz is rewritten every glob_dm_flush frames, so
+        # the file exists mid-run and an interrupted run keeps what it had.
+        nbasis = self.tot_system.Nbasis
+        self._glob_row, self._glob_col = np.triu_indices(nbasis, k=1)
+        self._glob_dtype = np.complex64 if self.glob_dm_single else np.complex128
+        self._glob_real = np.float32 if self.glob_dm_single else np.float64
+        self._glob_frames = {"time": [], "rho_offdiag": [], "rho_diag": []}
+        if self.glob_dm_save_h:
+            self._glob_frames["fock_offdiag"] = []
+            self._glob_frames["fock_diag"] = []
+
+        # a restarted run continues the existing file rather than truncating it
+        if self.restart and Path(self.glob_dm_file).is_file():
+            old = np.load(self.glob_dm_file)
+            if old["ndim"] == nbasis:
+                for key in self._glob_frames:
+                    if key in old.files:
+                        self._glob_frames[key] = list(old[key])
+                print(
+                    f"glob_dm: continuing {self.glob_dm_file} from "
+                    f"{len(self._glob_frames['time'])} existing frames"
+                )
+            else:
+                print(
+                    f"WARNING glob_dm: {self.glob_dm_file} has ndim "
+                    f"{int(old['ndim'])} but this run has {nbasis}; "
+                    "starting a new file"
+                )
+
+        npairs = self._glob_row.size
+        nframe = self.Nstep // (self.glob_dm_stride or self.Nprint) + 1
+        nbyte = (nframe * npairs * np.dtype(self._glob_dtype).itemsize
+                 * (2 if self.glob_dm_save_h else 1))
+        print(
+            f"glob_dm: {nframe} frames x {npairs} pairs -> "
+            f"{nbyte / 1e6:.0f} MB buffered, written to {self.glob_dm_file}"
+        )
+
+    #####################################################################
+
+    def record_glob_dm(self, current_time):
+        # Every off-diagonal element of the global 1RDM at one instant,
+        # converted from the interleaved layout to blocked.
+        if self._glob_frames is None:
+            return
+        if self.glob_dm_stride is not None and \
+                np.mod(getattr(self, "step", 0), self.glob_dm_stride) != 0:
+            return
+        # print_data can be reached twice at the same time on a restart
+        if self._glob_frames["time"] and \
+                current_time == self._glob_frames["time"][-1]:
+            return
+
+        row, col = self._glob_row, self._glob_col
+        rho = utils.reshape_gtor_matrix(self.tot_system.glob1RDM)
+        self._glob_frames["time"].append(current_time)
+        self._glob_frames["rho_offdiag"].append(
+            rho[row, col].astype(self._glob_dtype))
+        self._glob_frames["rho_diag"].append(
+            np.real(np.diagonal(rho)).astype(self._glob_real))
+
+        if self.glob_dm_save_h:
+            # the BARE one-electron Hamiltonian, including the bias ramp --
+            # not a Fock matrix; see the note at the top
+            h = utils.reshape_gtor_matrix(self.tot_system.h_site)
+            self._glob_frames["fock_offdiag"].append(
+                h[row, col].astype(self._glob_dtype))
+            self._glob_frames["fock_diag"].append(
+                np.real(np.diagonal(h)).astype(self._glob_real))
+
+        nframe = len(self._glob_frames["time"])
+        if self.glob_dm_flush and np.mod(nframe, self.glob_dm_flush) == 0:
+            self.write_glob_dm()
+            print(f"glob_dm: {nframe} frames -> {self.glob_dm_file}")
+
+    #####################################################################
+
+    def write_glob_dm(self):
+        # Compress the buffered frames to a single .npz. Written to a
+        # temporary file and renamed, so a run killed mid-write leaves the
+        # previous complete file rather than a truncated one.
+        if self._glob_frames is None or not self._glob_frames["time"]:
+            return
+        nbasis = self.tot_system.Nbasis
+        time_arr = np.asarray(self._glob_frames["time"])
+        arrays = {k: np.asarray(v) for k, v in self._glob_frames.items()
+                  if k != "time"}
+        tmp = self.glob_dm_file + ".tmp"
+        with open(tmp, "wb") as handle:
+            np.savez_compressed(
+                handle,
+                time=time_arr,
+                time_ps=time_arr / 41341.374575751,
+                row=self._glob_row,
+                col=self._glob_col,
+                ndim=nbasis,
+                nspatial=nbasis // 2,
+                **arrays,
+            )
+        Path(tmp).replace(self.glob_dm_file)
+    
     #####################################################################
 
     def print_checkpoint(self, current_time):
